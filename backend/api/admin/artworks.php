@@ -1,0 +1,194 @@
+<?php
+// Admin Artworks Management API
+// Methods: GET (list), POST (create), DELETE (delete)
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowed_origins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+if (in_array($origin, $allowed_origins, true)) {
+  header("Access-Control-Allow-Origin: $origin");
+} else {
+  header("Access-Control-Allow-Origin: http://localhost:5173");
+}
+header("Vary: Origin");
+header("Content-Type: application/json");
+header("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  http_response_code(204);
+  exit;
+}
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$mysqli = new mysqli("localhost", "root", "", "my_little_thingz");
+$mysqli->set_charset('utf8mb4');
+if ($mysqli->connect_error) {
+  http_response_code(500);
+  echo json_encode(["status" => "error", "message" => "DB connect failed: " . $mysqli->connect_error]);
+  exit;
+}
+
+function ensure_schema(mysqli $db) {
+  // Minimal ensure for categories and artworks
+  $db->query("CREATE TABLE IF NOT EXISTS categories (\n    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(120) NOT NULL UNIQUE,\n    description VARCHAR(255) NULL,\n    status ENUM('active','inactive') NOT NULL DEFAULT 'active',\n    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+  $db->query("CREATE TABLE IF NOT EXISTS artworks (\n    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n    title VARCHAR(180) NOT NULL,\n    description TEXT NULL,\n    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,\n    image_url VARCHAR(255) NOT NULL,\n    category_id INT UNSIGNED NULL,\n    artist_id INT UNSIGNED NULL,\n    availability ENUM('in_stock','out_of_stock','made_to_order') NOT NULL DEFAULT 'in_stock',\n    status ENUM('active','inactive') NOT NULL DEFAULT 'active',\n    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    KEY idx_artworks_category (category_id),\n    KEY idx_artworks_status (status)\n  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+  // roles/user_roles for admin check
+  $db->query("CREATE TABLE IF NOT EXISTS roles (id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL UNIQUE) ENGINE=InnoDB");
+  $db->query("INSERT IGNORE INTO roles (id, name) VALUES (1,'admin'),(2,'customer'),(3,'supplier')");
+  $db->query("CREATE TABLE IF NOT EXISTS user_roles (user_id INT UNSIGNED NOT NULL, role_id TINYINT UNSIGNED NOT NULL, PRIMARY KEY (user_id, role_id)) ENGINE=InnoDB");
+}
+
+try { ensure_schema($mysqli); } catch (Throwable $e) {}
+
+// Admin auth
+$adminUserId = isset($_SERVER['HTTP_X_ADMIN_USER_ID']) ? (int)$_SERVER['HTTP_X_ADMIN_USER_ID'] : 0;
+if ($adminUserId <= 0) {
+  http_response_code(401);
+  echo json_encode(["status" => "error", "message" => "Missing admin identity"]);
+  exit;
+}
+
+$isAdmin = false;
+$chk = $mysqli->prepare("SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id=r.id WHERE ur.user_id=? AND r.name='admin' LIMIT 1");
+$chk->bind_param('i', $adminUserId);
+$chk->execute();
+$chk->store_result();
+if ($chk->num_rows > 0) { $isAdmin = true; }
+$chk->close();
+
+if (!$isAdmin) {
+  http_response_code(403);
+  echo json_encode(["status" => "error", "message" => "Not an admin user"]);
+  exit;
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+function json_success($payload) { echo json_encode(["status" => "success"] + $payload); }
+function json_error($message, $code = 400) { http_response_code($code); echo json_encode(["status" => "error", "message" => $message]); }
+
+try {
+  if ($method === 'GET') {
+    $status = isset($_GET['status']) ? strtolower(trim($_GET['status'])) : 'all';
+    $allowed = ['active','inactive','all'];
+    if (!in_array($status, $allowed, true)) { $status = 'all'; }
+
+    $sql = "SELECT a.id, a.title, a.description, a.price, a.image_url, a.category_id, a.availability, a.status, a.created_at,\n                   CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name,\n                   c.name AS category_name\n            FROM artworks a\n            LEFT JOIN users u ON u.id=a.artist_id\n            LEFT JOIN categories c ON c.id=a.category_id";
+    if ($status !== 'all') { $sql .= " WHERE a.status=?"; }
+    $sql .= " ORDER BY a.created_at DESC";
+
+    if ($status !== 'all') { $st = $mysqli->prepare($sql); $st->bind_param('s', $status); }
+    else { $st = $mysqli->prepare($sql); }
+
+    $st->execute();
+    $res = $st->get_result();
+    $rows = [];
+    while ($row = $res->fetch_assoc()) { $rows[] = $row; }
+    $st->close();
+
+    json_success(["artworks" => $rows]);
+    exit;
+  }
+
+  if ($method === 'POST') {
+    // Accept multipart/form-data or JSON
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+
+    $title = '';
+    $description = null;
+    $price = 0.0;
+    $category_id = null;
+    $availability = 'in_stock';
+    $status = 'active';
+    $image_url = '';
+
+    if (stripos($contentType, 'application/json') !== false) {
+      $input = json_decode(file_get_contents('php://input'), true) ?? [];
+      $title = trim((string)($input['title'] ?? ''));
+      $description = isset($input['description']) ? trim((string)$input['description']) : null;
+      $price = (float)($input['price'] ?? 0);
+      $category_id = isset($input['category_id']) && $input['category_id'] !== '' ? (int)$input['category_id'] : null;
+      $availability = in_array(($input['availability'] ?? 'in_stock'), ['in_stock','out_of_stock','made_to_order'], true) ? $input['availability'] : 'in_stock';
+      $status = in_array(($input['status'] ?? 'active'), ['active','inactive'], true) ? $input['status'] : 'active';
+      $image_url = trim((string)($input['image_url'] ?? ''));
+    } else {
+      $title = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
+      $description = isset($_POST['description']) ? trim((string)$_POST['description']) : null;
+      $price = isset($_POST['price']) ? (float)$_POST['price'] : 0;
+      $category_id = isset($_POST['category_id']) && $_POST['category_id'] !== '' ? (int)$_POST['category_id'] : null;
+      $availability = isset($_POST['availability']) && in_array($_POST['availability'], ['in_stock','out_of_stock','made_to_order'], true) ? $_POST['availability'] : 'in_stock';
+      $status = isset($_POST['status']) && in_array($_POST['status'], ['active','inactive'], true) ? $_POST['status'] : 'active';
+    }
+
+    if ($title === '' || $price <= 0) {
+      json_error('Title and positive price are required', 422);
+      exit;
+    }
+
+    // Handle file upload if present
+    if (!empty($_FILES['image']) && isset($_FILES['image']['tmp_name']) && is_uploaded_file($_FILES['image']['tmp_name'])) {
+      $uploadBase = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'artworks';
+      if (!is_dir($uploadBase)) { @mkdir($uploadBase, 0777, true); }
+
+      $orig = $_FILES['image']['name'] ?? 'image';
+      $ext = pathinfo($orig, PATHINFO_EXTENSION);
+      $safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($orig, PATHINFO_FILENAME));
+      $final = $safe . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . ($ext ? ('.' . strtolower($ext)) : '');
+      $dest = $uploadBase . DIRECTORY_SEPARATOR . $final;
+
+      if (!move_uploaded_file($_FILES['image']['tmp_name'], $dest)) {
+        json_error('Failed to store uploaded image', 500);
+        exit;
+      }
+
+      // Build public URL (XAMPP docroot: /my_little_thingz)
+      $image_url = 'http://localhost/my_little_thingz/backend/uploads/artworks/' . $final;
+    }
+
+    if ($image_url === '') {
+      json_error('Image is required (upload as image or provide image_url)', 422);
+      exit;
+    }
+
+    $artist_id = $adminUserId; // store admin user as the artist/uploader
+
+    $cid = $category_id; // can be null
+    if ($cid === null) {
+      $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status) VALUES (?,?,?,?,NULL,?,?,?)");
+      $st->bind_param('ssdsiss', $title, $description, $price, $image_url, $artist_id, $availability, $status);
+    } else {
+      $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status) VALUES (?,?,?,?,?,?,?,?)");
+      $st->bind_param('ssdsiiss', $title, $description, $price, $image_url, $cid, $artist_id, $availability, $status);
+    }
+
+    $st->execute();
+    $newId = $st->insert_id;
+    $st->close();
+
+    json_success(["id" => $newId, "image_url" => $image_url]);
+    exit;
+  }
+
+  if ($method === 'DELETE') {
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if ($id <= 0) { json_error('ID required', 422); exit; }
+
+    $st = $mysqli->prepare("DELETE FROM artworks WHERE id=?");
+    $st->bind_param('i', $id);
+    $st->execute();
+    $affected = $st->affected_rows;
+    $st->close();
+
+    if ($affected === 0) { json_error('Artwork not found', 404); exit; }
+    json_success(["deleted" => $id]);
+    exit;
+  }
+
+  http_response_code(405);
+  echo json_encode(["status" => "error", "message" => "Method not allowed"]);
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode(["status" => "error", "message" => "Admin artworks handling failed", "detail" => $e->getMessage()]);
+}
