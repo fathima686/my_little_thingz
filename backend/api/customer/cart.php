@@ -14,9 +14,37 @@ try {
     $database = new Database();
     $db = $database->getConnection();
 
-    // Get user ID from headers
-    $user_id = $_SERVER['HTTP_X_USER_ID'] ?? null;
-    
+    // Get user ID robustly from headers or query
+    $user_id = null;
+    // Standard header mapping
+    if (isset($_SERVER['HTTP_X_USER_ID']) && $_SERVER['HTTP_X_USER_ID'] !== '') {
+        $user_id = $_SERVER['HTTP_X_USER_ID'];
+    }
+    // Alternative server mappings
+    if (!$user_id) {
+        $altKeys = ['REDIRECT_HTTP_X_USER_ID', 'X_USER_ID', 'HTTP_X_USERID'];
+        foreach ($altKeys as $k) {
+            if (isset($_SERVER[$k]) && $_SERVER[$k] !== '') {
+                $user_id = $_SERVER[$k];
+                break;
+            }
+        }
+    }
+    // getallheaders fallback
+    if (!$user_id && function_exists('getallheaders')) {
+        $headers = getallheaders();
+        foreach ($headers as $key => $value) {
+            if (strtolower(trim($key)) === 'x-user-id' && $value !== '') {
+                $user_id = $value;
+                break;
+            }
+        }
+    }
+    // Query param fallback for manual testing
+    if (!$user_id && isset($_GET['user_id']) && $_GET['user_id'] !== '') {
+        $user_id = $_GET['user_id'];
+    }
+
     if (!$user_id) {
         echo json_encode([
             'status' => 'error',
@@ -36,7 +64,7 @@ try {
                     a.price,
                     a.image_url,
                     a.availability,
-                    u.name as artist_name
+                    CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name
                   FROM cart c
                   JOIN artworks a ON c.artwork_id = a.id
                   LEFT JOIN users u ON a.artist_id = u.id
@@ -89,7 +117,10 @@ try {
             exit;
         }
 
-        if ($artwork['availability'] !== 'available') {
+        // Treat 'out_of_stock' (and similar) as not available; allow 'available', 'in_stock', 'made_to_order'
+        $availability = isset($artwork['availability']) ? strtolower($artwork['availability']) : '';
+        $notAvailable = in_array($availability, ['out_of_stock', 'unavailable', 'discontinued'], true);
+        if ($notAvailable) {
             echo json_encode([
                 'status' => 'error',
                 'message' => 'Artwork is not available'

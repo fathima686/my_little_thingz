@@ -1,102 +1,122 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  LuPackage, LuBoxes, LuClipboardList, LuUpload, LuLogOut, LuUser
-} from "react-icons/lu";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import logo from "../assets/logo.png";
-import "../styles/dashboard.css";
+import {
+  LuPackage, LuClipboardList, LuUpload
+} from "react-icons/lu";
 
-const API_BASE = "http://localhost/my_little_thingz/backend/api/supplier";
+// Reuse the Admin theme so Supplier matches the Admin look & feel
+import "../styles/admin.css";
+
+const API_SUP = "http://localhost/my_little_thingz/backend/api/supplier";
+const API_CUST = "http://localhost/my_little_thingz/backend/api/customer";
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
-  const { auth, logout, isLoading } = useAuth();
+  const { auth, logout } = useAuth();
+
+  // Navigation state similar to Admin
+  const [activeSection, setActiveSection] = useState('overview'); // overview | products | inventory | requirements | profile
+
+  // Supplier identity
   const [supplierId, setSupplierId] = useState(0);
-  const [inventory, setInventory] = useState([]);
+
+  // Data
   const [requirements, setRequirements] = useState([]);
-  const [form, setForm] = useState({ name: "", sku: "", quantity: 0, unit: "pcs" });
+  const [products, setProducts] = useState([]);
+  const [materials, setMaterials] = useState([]); // kept for overview stats (can be removed later)
+
+  // Forms
+  const [matForm, setMatForm] = useState({ name: "", sku: "", category: "", quantity: "", image_url: "" });
   const [updating, setUpdating] = useState(false);
 
+  // Product modal (edit/delete)
+  const [prodModalOpen, setProdModalOpen] = useState(false);
+  const [prodForm, setProdForm] = useState({ id: 0, name: "", price: 0, quantity: 0, category: "", image_url: "", availability: "available", is_trending: 0 });
+  const [categories, setCategories] = useState([]);
+
   useEffect(() => {
-    if (auth?.user_id) {
-      setSupplierId(Number(auth.user_id));
-    }
+    if (auth?.user_id) setSupplierId(Number(auth.user_id));
   }, [auth]);
 
   const headers = useMemo(() => ({ "Content-Type": "application/json", "X-SUPPLIER-ID": String(supplierId) }), [supplierId]);
 
   const loadData = async () => {
     if (!supplierId) return;
-    const inv = await fetch(`${API_BASE}/inventory.php?supplier_id=${supplierId}`);
-    const invJson = await inv.json();
-    if (inv.ok && invJson.status === "success") setInventory(invJson.items);
+    try {
+      // Requirements
+      const req = await fetch(`${API_SUP}/requirements.php?supplier_id=${supplierId}`);
+      const reqJson = await req.json();
+      if (req.ok && reqJson.status === "success") setRequirements(reqJson.items || []);
 
-    const req = await fetch(`${API_BASE}/requirements.php?supplier_id=${supplierId}`);
-    const reqJson = await req.json();
-    if (req.ok && reqJson.status === "success") setRequirements(reqJson.items);
+      // Products (include trending first)
+      const prod = await fetch(`${API_SUP}/products.php?supplier_id=${supplierId}`);
+      const prodJson = await prod.json();
+      if (prod.ok && prodJson.status === "success") setProducts(prodJson.items || []);
+
+      // Materials inventory — optional for overview count only
+      const inv = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}&limit=1`);
+      const invJson = await inv.json();
+      if (inv.ok && invJson.status === "success") setMaterials(invJson.items || []);
+    } catch (e) {
+      console.error(e);
+      alert("Network error loading dashboard");
+    }
   };
 
-  useEffect(() => { loadData(); }, [supplierId]);
+  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [supplierId]);
 
-  const handleLogout = () => {
-    logout();
-  };
+  // Load categories for selects (admin-managed)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_CUST}/categories.php`);
+        const data = await res.json();
+        if (res.ok && data.status === 'success' && Array.isArray(data.categories)) {
+          const names = [...new Set(data.categories.map(c => c.name).filter(Boolean))];
+          setCategories(names);
+        } else {
+          setCategories(['Gift box','boquetes','frames','poloroid','custom chocolate','Wedding card','drawings','album']);
+        }
+      } catch {
+        setCategories(['Gift box','boquetes','frames','poloroid','custom chocolate','Wedding card','drawings','album']);
+      }
+    })();
+  }, []);
 
-  const handleAdd = async (e) => {
+  // Actions
+  const handleAddMaterial = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) { alert("Material name required"); return; }
+    if (!supplierId) { alert("Not logged in as supplier. Please login again."); return; }
+    if (!matForm.name.trim()) { alert("Material name required"); return; }
     setUpdating(true);
     try {
-      const res = await fetch(`${API_BASE}/inventory.php`, {
+      const res = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ ...form })
+        body: JSON.stringify({
+          name: matForm.name,
+          sku: matForm.sku,
+          category: matForm.category,
+          quantity: Number(matForm.quantity) || 0,
+          image_url: matForm.image_url
+        })
       });
       const data = await res.json();
       if (res.ok && data.status === "success") {
-        setForm({ name: "", sku: "", quantity: 0, unit: "pcs" });
+        setMatForm({ name: "", sku: "", category: "", quantity: 0, image_url: "" });
         await loadData();
+        setActiveSection('inventory');
       } else {
         alert(data.message || "Failed to add material");
       }
     } finally { setUpdating(false); }
   };
 
-  const handleUpdateQty = async (id, quantity) => {
-    setUpdating(true);
-    try {
-      const item = inventory.find(i => i.id === id);
-      const res = await fetch(`${API_BASE}/inventory.php`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({ id, name: item.name, sku: item.sku, quantity: Number(quantity), unit: item.unit })
-      });
-      const data = await res.json();
-      if (!(res.ok && data.status === "success")) {
-        alert(data.message || "Update failed");
-      }
-      await loadData();
-    } finally { setUpdating(false); }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this material?")) return;
-    setUpdating(true);
-    try {
-      const res = await fetch(`${API_BASE}/inventory.php?id=${id}&supplier_id=${supplierId}`, { method: "DELETE", headers });
-      const data = await res.json();
-      if (!(res.ok && data.status === "success")) {
-        alert(data.message || "Delete failed");
-      }
-      await loadData();
-    } finally { setUpdating(false); }
-  };
-
   const markPacked = async (id) => {
     setUpdating(true);
     try {
-      const res = await fetch(`${API_BASE}/requirements.php`, {
+      const res = await fetch(`${API_SUP}/requirements.php?supplier_id=${supplierId}`, {
         method: "PUT",
         headers,
         body: JSON.stringify({ id, status: "packed" })
@@ -106,125 +126,362 @@ export default function SupplierDashboard() {
         alert(data.message || "Failed to update status");
       }
       await loadData();
+      setActiveSection('requirements');
     } finally { setUpdating(false); }
   };
 
+  // Derived counts for Overview
+  const totalProducts = products.length;
+  const totalMaterials = materials.length;
+  const pendingReqs = requirements.filter(r => r.status !== 'packed').length;
+
   return (
-    <div className="dash-page">
-      {/* Header */}
-      <header className="dash-header">
-        <div className="container dash-header-inner">
-          <div className="brand">
-            <img src={logo} alt="My Little Thingz" className="brand-logo" />
-            <span className="brand-name">Supplier Portal</span>
-          </div>
-          <nav className="dash-nav">
-            <Link to="#" className="nav-item"><LuBoxes /> Inventory</Link>
-            <Link to="#" className="nav-item"><LuClipboardList /> Requirements</Link>
-            <Link to="#" className="nav-item"><LuUser /> Profile</Link>
-            <button type="button" className="btn btn-soft small" onClick={handleLogout}><LuLogOut /> Logout</button>
-          </nav>
+    <div className="admin-shell">{/* Reuse Admin shell styles */}
+      <aside className="admin-sidebar">
+        <div className="brand">
+          <div className="brand-badge">S</div>
+          <div className="brand-name">Supplier</div>
         </div>
-      </header>
+        <nav className="nav">
+          <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => setActiveSection('overview')}>Overview</button>
+          <button className={activeSection === 'products' ? 'active' : ''} onClick={() => setActiveSection('products')}>Products</button>
+          <button className={activeSection === 'inventory' ? 'active' : ''} onClick={() => setActiveSection('inventory')}>Inventory</button>
+          <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => setActiveSection('requirements')}>Order Requirements</button>
+          <button className={activeSection === 'profile' ? 'active' : ''} onClick={() => navigate('/supplier/profile')}>Profile</button>
+          <button className="btn btn-soft small" onClick={logout}>Logout</button>
+        </nav>
+      </aside>
 
-      {/* Hero */}
-      <section className="dash-hero">
-        <div className="container">
-          <div className="hero-card">
-            <div className="hero-copy">
-              <h1>Welcome Supplier</h1>
-              <p>Manage materials and pack order requirements</p>
-              <button className="btn btn-emph"><LuUpload /> Upload Availability</button>
-            </div>
-            <div className="hero-mark" aria-hidden>
-              <LuPackage />
+      <main className="admin-main">
+        <div className="admin-topbar">
+          <div className="topbar-inner container">
+            <div className="topbar-title">Supplier Dashboard</div>
+            <div className="topbar-actions">
+              <button className="btn btn-soft" onClick={loadData}>Refresh</button>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Actions */}
-      <section className="dash-actions">
-        <div className="container grid actions-grid">
-          <div className="action-card">
-            <div className="action-icon"><LuBoxes /></div>
-            <h3>Add Material</h3>
-            <p>Record availability</p>
-          </div>
-          <div className="action-card">
-            <div className="action-icon"><LuClipboardList /></div>
-            <h3>View Requirements</h3>
-            <p>See packing list from orders</p>
-          </div>
-          <div className="action-card">
-            <div className="action-icon"><LuUpload /></div>
-            <h3>Bulk Upload (coming soon)</h3>
-            <p>CSV support</p>
-          </div>
-        </div>
-      </section>
+        <div className="admin-content">
+          <div className="container">
+            {activeSection === 'overview' && (
+              <>
+                {/* Hero */}
+                <section className="hero">
+                  <div className="hero-card">
+                    <h1>Welcome</h1>
+                    <p className="muted">Manage inventory, products, and packing requirements efficiently.</p>
+                    <div className="hero-mark">📦</div>
+                  </div>
+                </section>
 
-      {/* Widgets */}
-      <section className="dash-widgets">
-        <div className="container grid widgets-grid">
-          {/* Inventory widget */}
-          <article className="widget">
-            <header className="widget-head">
-              <h4><LuBoxes /> Inventory</h4>
-              <button className="btn btn-soft tiny" onClick={loadData} disabled={updating}>Refresh</button>
-            </header>
-            <div className="widget-body">
-              <form onSubmit={handleAdd} className="grid" style={{gridTemplateColumns:'1.5fr 1fr .8fr .6fr auto', gap: 10}}>
-                <input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} required />
-                <input placeholder="SKU" value={form.sku} onChange={e=>setForm({...form, sku:e.target.value})} />
-                <input type="number" placeholder="Qty" value={form.quantity} onChange={e=>setForm({...form, quantity:Number(e.target.value)})} min={0} />
-                <input placeholder="Unit" value={form.unit} onChange={e=>setForm({...form, unit:e.target.value})} />
-                <button className="btn btn-emph" type="submit" disabled={updating}><LuUpload /> Add</button>
-              </form>
-              <div className="grid" style={{gap:10}}>
-                {inventory.map(item => (
-                  <div key={item.id} className="order-item" style={{alignItems:'center'}}>
-                    <div>
-                      <div className="order-title">{item.name} {item.sku && <span className="muted">({item.sku})</span>}</div>
-                      <div className="order-date">{item.unit} — updated {new Date(item.updated_at).toLocaleString()}</div>
+                {/* Stats */}
+                <section className="stats">
+                  <div className="grid stats-grid">
+                    <div className="stat-card">
+                      <div className="stat-label">Products</div>
+                      <div className="stat-value">{totalProducts}</div>
                     </div>
-                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
-                      <input type="number" value={item.quantity} min={0} onChange={(e)=>handleUpdateQty(item.id, e.target.value)} style={{width:90}} />
-                      <button className="btn btn-soft tiny" onClick={()=>handleDelete(item.id)} disabled={updating}>Delete</button>
+                    <div className="stat-card">
+                      <div className="stat-label">Inventory Items</div>
+                      <div className="stat-value">{totalMaterials}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Pending Packs</div>
+                      <div className="stat-value">{pendingReqs}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Approved Status</div>
+                      <div className="stat-value">{auth?.is_supplier_approved ? 'Yes' : 'No'}</div>
                     </div>
                   </div>
-                ))}
-                {inventory.length === 0 && <div className="ph-card" />}
-              </div>
-            </div>
-          </article>
+                </section>
 
-          {/* Requirements widget */}
-          <article className="widget">
-            <header className="widget-head">
-              <h4><LuClipboardList /> Order Requirements</h4>
-              <p className="muted">Mark packed when ready</p>
-            </header>
-            <div className="widget-body">
-              {requirements.map(req => (
-                <div key={req.id} className="order-item">
-                  <div>
-                    <div className="order-title">{req.order_ref} — {req.material_name}</div>
-                    <div className="order-date">Need {req.required_qty} {req.unit} by {req.due_date || 'TBD'}</div>
+                {/* Quick Actions */}
+                <section className="quick-actions">
+                  <div className="grid actions-grid">
+                    <button className="action-card" onClick={() => setActiveSection('requirements')}>
+                      <div className="action-icon">🧾</div>
+                      <h3>Order Requirements</h3>
+                      <p>Check what's needed and mark packed</p>
+                    </button>
+                    <button className="action-card" onClick={() => setActiveSection('products')}>
+                      <div className="action-icon">📦</div>
+                      <h3>Products</h3>
+                      <p>Add items for admin review</p>
+                    </button>
+                    <button className="action-card" onClick={() => setActiveSection('inventory')}>
+                      <div className="action-icon">🧰</div>
+                      <h3>Inventory</h3>
+                      <p>Track raw materials and stock</p>
+                    </button>
                   </div>
-                  <div>
-                    <span className={`status ${req.status==='packed'?'success':'info'}`}>{req.status}</span>
-                    {req.status !== 'packed' && (
-                      <button className="btn btn-soft tiny" onClick={()=>markPacked(req.id)} disabled={updating} style={{marginLeft:8}}>Mark Packed</button>
-                    )}
+                </section>
+              </>
+            )}
+
+            {activeSection === 'products' && (
+              <section id="products" className="widget" style={{ marginTop: 12 }}>
+                <div className="widget-head">
+                  <h4><LuPackage /> Products</h4>
+                  <div className="controls">
+                    <button className="btn btn-emph" onClick={() => navigate('/supplier/products/new')}><LuUpload /> Add Product</button>
                   </div>
                 </div>
-              ))}
-              {requirements.length === 0 && <div className="ph-card" />}
-            </div>
-          </article>
+                <div className="widget-body">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Preview</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Qty</th>
+                        <th>Trending</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.length === 0 ? (
+                        <tr><td colSpan={10} className="muted">No products yet</td></tr>
+                      ) : (
+                        products.map(p => (
+                          <tr key={p.id}>
+                            <td>{p.id}</td>
+                            <td>{p.image_url ? <img alt={p.name} src={p.image_url} style={{width:48,height:48,objectFit:'cover',borderRadius:6}}/> : '—'}</td>
+                            <td>{p.name}</td>
+                            <td>{p.category || '-'}</td>
+                            <td>{Number(p.price).toFixed(2)}</td>
+                            <td>{p.quantity}</td>
+                            <td>{p.is_trending ? 'Yes' : 'No'}</td>
+                            <td style={{ textTransform:'capitalize' }}>{p.status || '-'}</td>
+                            <td>{new Date(p.updated_at).toLocaleString()}</td>
+                            <td>
+                              <button className="btn btn-soft tiny" onClick={()=>{ setProdForm({ id:p.id, name:p.name, price:p.price, quantity:p.quantity, category:p.category, image_url:p.image_url, availability:p.availability, is_trending:p.is_trending }); setProdModalOpen(true); }}>Edit</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {activeSection === 'inventory' && (
+              <section id="inventory" className="widget" style={{ marginTop: 12 }}>
+                <div className="widget-head">
+                  <h4><LuClipboardList /> Inventory</h4>
+                  <div className="controls" style={{display:'flex', gap:8}}>
+                    <button className="btn btn-soft" onClick={()=>setActiveSection('overview')}>Back</button>
+                    <span className="muted">Add new material</span>
+                  </div>
+                </div>
+                <div className="widget-body">
+                  <form className="grid" style={{gap:10, gridTemplateColumns:'repeat(4, 1fr)'}} onSubmit={handleAddMaterial}>
+                    <input className="select" placeholder="Name (e.g., Handmade paper)" value={matForm.name} onChange={e=>setMatForm(v=>({...v, name:e.target.value}))} />
+                    <input className="select" placeholder="SKU (opt)" value={matForm.sku} onChange={e=>setMatForm(v=>({...v, sku:e.target.value}))} />
+                    <select className="select" value={matForm.category} onChange={e=>setMatForm(v=>({...v, category:e.target.value}))}>
+                      <option value="">— Select category —</option>
+                      {categories.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                    <input className="select" placeholder="Qty" type="number" value={matForm.quantity} onChange={e=>setMatForm(v=>({...v, quantity:e.target.value}))} />
+
+                    <div style={{gridColumn:'span 6'}}>
+                      <label className="muted">Or upload image</label>
+                      <input className="select" type="file" accept="image/png,image/jpeg,image/webp" onChange={async (e)=>{
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const fd = new FormData();
+                          fd.append('image', file);
+                          const up = await fetch(`${API_SUP}/upload.php?supplier_id=${supplierId}`, { method:'POST', body: fd, headers: { 'X-SUPPLIER-ID': String(supplierId) } });
+                          const upJson = await up.json();
+                          if (up.ok && upJson.status === 'success') {
+                            // store uploaded url internally; field is hidden from UI
+                            setMatForm(v=>({...v, image_url: upJson.url }));
+                          } else {
+                            alert(upJson.message || 'Upload failed');
+                          }
+                        } catch (err) {
+                          alert('Upload error');
+                        }
+                      }} />
+                    </div>
+                    <div style={{gridColumn:'span 6'}}>
+                      <button className="btn btn-emph" disabled={updating} type="submit">Add to Inventory</button>
+                    </div>
+                  </form>
+
+                  <table className="table" style={{ marginTop: 12 }}>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>SKU</th>
+                        <th>Qty</th>
+                        <th>Availability</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materials.length === 0 ? (
+                        <tr><td colSpan={7} className="muted">No inventory yet</td></tr>
+                      ) : (
+                        materials.map(m => (
+                          <tr key={m.id}>
+                            <td>{m.id}</td>
+                            <td style={{display:'flex', alignItems:'center', gap:8}}>
+                              {m.image_url ? <img alt={m.name} src={m.image_url} style={{width:36,height:36,objectFit:'cover',borderRadius:6}}/> : null}
+                              <span>{m.name}</span>
+                            </td>
+                            <td>{m.category || '—'}</td>
+                            <td>{m.sku || '—'}</td>
+                            <td>{m.quantity}</td>
+                            <td style={{ textTransform:'capitalize' }}>{m.availability}</td>
+                            <td>{new Date(m.updated_at).toLocaleString()}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* Product Edit Modal */}
+            {prodModalOpen && (
+              <div className="modal-overlay">
+                <div className="modal-content" style={{maxWidth:560}}>
+                  <div className="modal-head">
+                    <h3>Edit Product</h3>
+                    <button className="btn btn-soft small" onClick={()=>setProdModalOpen(false)}>Close</button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="grid" style={{gap:10, gridTemplateColumns:'repeat(2, 1fr)'}}>
+                      <input className="select" placeholder="Name" value={prodForm.name} onChange={e=>setProdForm(v=>({...v, name:e.target.value}))} />
+                      <select className="select" value={prodForm.category} onChange={e=>setProdForm(v=>({...v, category: e.target.value }))}>
+                        <option value="">— Select category —</option>
+                        {categories.map(n => (<option key={n} value={n}>{n}</option>))}
+                      </select>
+                      <input className="select" placeholder="Price" type="number" step="0.01" value={prodForm.price} onChange={e=>setProdForm(v=>({...v, price:e.target.value}))} />
+                      <input className="select" placeholder="Qty" type="number" value={prodForm.quantity} onChange={e=>setProdForm(v=>({...v, quantity:e.target.value}))} />
+
+                      <input className="select" placeholder="Image URL" value={prodForm.image_url} onChange={e=>setProdForm(v=>({...v, image_url:e.target.value}))} />
+                      <div style={{gridColumn:'span 2'}}>
+                        <label className="muted">Or upload image</label>
+                        <input className="select" type="file" accept="image/png,image/jpeg,image/webp" onChange={async (e)=>{
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const fd = new FormData();
+                            fd.append('image', file);
+                            const up = await fetch(`${API_SUP}/upload.php?supplier_id=${supplierId}`, { method:'POST', body: fd, headers: { 'X-SUPPLIER-ID': String(supplierId) } });
+                            const upJson = await up.json();
+                            if (up.ok && upJson.status === 'success') {
+                              setProdForm(v=>({...v, image_url: upJson.url }));
+                            } else {
+                              alert(upJson.message || 'Upload failed');
+                            }
+                          } catch (err) {
+                            alert('Upload error');
+                          }
+                        }} />
+                      </div>
+                      <select className="select" value={prodForm.availability} onChange={e=>setProdForm(v=>({...v, availability:e.target.value}))}>
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                      </select>
+                      <label style={{display:'flex',alignItems:'center',gap:8}}>
+                        <input type="checkbox" checked={!!prodForm.is_trending} onChange={e=>setProdForm(v=>({...v, is_trending: e.target.checked ? 1 : 0}))} /> Trending
+                      </label>
+                    </div>
+                  </div>
+                  <div className="modal-foot" style={{display:'flex',justifyContent:'space-between'}}>
+                    <button className="btn btn-soft" onClick={async ()=>{
+                      if (!supplierId || !prodForm.id) return;
+                      setUpdating(true);
+                      try {
+                        const res = await fetch(`${API_SUP}/products.php?supplier_id=${supplierId}`, {
+                          method: 'PUT',
+                          headers,
+                          body: JSON.stringify(prodForm)
+                        });
+                        const data = await res.json();
+                        if (!(res.ok && data.status==='success')) { alert(data.message || 'Update failed'); return; }
+                        await loadData();
+                        setProdModalOpen(false);
+                      } finally { setUpdating(false); }
+                    }}>Save</button>
+                    <button className="btn btn-danger" onClick={async ()=>{
+                      if (!supplierId || !prodForm.id) return;
+                      if (!confirm('Delete this product?')) return;
+                      setUpdating(true);
+                      try {
+                        const res = await fetch(`${API_SUP}/products.php?supplier_id=${supplierId}&id=${prodForm.id}`, { method:'DELETE', headers });
+                        const data = await res.json();
+                        if (!(res.ok && data.status==='success')) { alert(data.message || 'Delete failed'); return; }
+                        await loadData();
+                        setProdModalOpen(false);
+                      } finally { setUpdating(false); }
+                    }}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'requirements' && (
+              <section id="requirements" className="widget" style={{ marginTop: 12 }}>
+                <div className="widget-head">
+                  <h4>Order Requirements</h4>
+                </div>
+                <div className="widget-body">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Order Ref</th>
+                        <th>Material</th>
+                        <th>Required</th>
+                        <th>Due</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requirements.length === 0 ? (
+                        <tr><td colSpan={7} className="muted">No requirements yet</td></tr>
+                      ) : (
+                        requirements.map(req => (
+                          <tr key={req.id}>
+                            <td>{req.id}</td>
+                            <td>{req.order_ref}</td>
+                            <td>{req.material_name}</td>
+                            <td>{req.required_qty} {req.unit}</td>
+                            <td>{req.due_date || 'TBD'}</td>
+                            <td style={{ textTransform:'capitalize' }}>{req.status}</td>
+                            <td>
+                              {req.status !== 'packed' && (
+                                <button className="btn btn-soft tiny" disabled={updating} onClick={() => markPacked(req.id)}>Mark Packed</button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </div>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

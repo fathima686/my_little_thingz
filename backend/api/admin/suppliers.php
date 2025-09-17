@@ -112,7 +112,26 @@ try {
       exit;
     }
 
-    echo json_encode(["status" => "success", "user_id" => $userId, "supplier_status" => $newStatus]);
+    // On approval, send an approval email to the supplier
+    $emailSent = false;
+    if ($newStatus === 'approved') {
+      // Fetch supplier's name and email
+      $ust = $mysqli->prepare("SELECT first_name, last_name, email FROM users WHERE id=? LIMIT 1");
+      $ust->bind_param('i', $userId);
+      $ust->execute();
+      $res = $ust->get_result();
+      if ($row = $res->fetch_assoc()) {
+        $fullName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+        if ($row['email']) {
+          require_once __DIR__ . '/../../includes/SimpleEmailSender.php';
+          $mailer = new SimpleEmailSender();
+          $emailSent = $mailer->sendSupplierApprovalEmail($row['email'], $fullName !== '' ? $fullName : 'Supplier');
+        }
+      }
+      $ust->close();
+    }
+
+    echo json_encode(["status" => "success", "user_id" => $userId, "supplier_status" => $newStatus, "email_sent" => $emailSent]);
     exit;
   }
 

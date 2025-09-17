@@ -24,19 +24,20 @@ body { background: var(--dash-bg); color: var(--text); font-synthesis-weight: no
 
 /* Header */
 .dash-header { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.7); backdrop-filter: saturate(160%) blur(10px); border-bottom: 1px solid var(--line); }
-.dash-header-inner { display: grid; grid-template-columns: 1fr minmax(220px, 460px) auto; align-items: center; gap: 12px; padding: 12px 0; }
+.dash-header-inner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 0; }
+.dash-header-inner > * { min-width: 0; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-weight: 800; }
 .brand-logo { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
 .brand-name { font-size: 1.06rem; }
 
 /* Search */
-.searchbar { display: grid; grid-template-columns: 28px 1fr; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; box-shadow: 0 10px 24px rgba(15,23,42,.06); }
-.searchbar input { border: 0; outline: 0; background: transparent; font-size: .98rem; color: var(--text); }
+.searchbar { display: grid; grid-template-columns: 28px 1fr; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; box-shadow: 0 10px 24px rgba(15,23,42,.06); width: 100%; min-width: 0; }
+.searchbar input { border: 0; outline: 0; background: transparent; font-size: .98rem; color: var(--text); min-width: 0; }
 .searchbar .icon { color: var(--muted); display: grid; place-items: center; }
 
 /* Header actions */
-.dash-actions-right { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.nav-item { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); padding: 8px 12px; border-radius: 999px; border: 1px solid transparent; }
+.dash-actions-right { display: inline-flex; gap: 10px; align-items: center; flex-wrap: nowrap; overflow: hidden; }
+.nav-item { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); padding: 8px 12px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
 .nav-item:hover { color: var(--primary-600); background: rgba(59,130,246,.08); }
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; border: 1px solid transparent; font-weight: 700; cursor: pointer; transition: .2s ease; }
 .btn.small { padding: 8px 12px; }

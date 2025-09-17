@@ -18,6 +18,7 @@ export default function Register() {
     email: "",
     password: "",
     role: "", // require explicit selection: 2=customer, 3=supplier
+    shop_name: "",
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -67,10 +68,19 @@ export default function Register() {
               return;
             }
             const desired_role = parseInt(chosen, 10) === 3 ? 3 : 2;
+            // For supplier via Google, require shop_name on client too
+            if (desired_role === 3) {
+              const err = validators.shop_name(formData.shop_name, 3);
+              if (err) {
+                setErrors(p => ({ ...p, shop_name: err }));
+                alert("Please provide your shop name to continue as a supplier.");
+                return;
+              }
+            }
             const res = await fetch(`${API_BASE}/auth/google.php`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ credential, desired_role }),
+              body: JSON.stringify({ credential, desired_role, shop_name: formData.shop_name }),
             });
             const data = await res.json();
             if (res.ok && data.status === "success") {
@@ -147,13 +157,14 @@ export default function Register() {
         : !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(v)
         ? "Include one special character"
         : null,
+    shop_name: (v, role) => String(role) === '3' && !v.trim() ? 'Shop name is required for suppliers' : (String(v).length > 120 ? 'Max 120 characters' : null),
   }), []);
 
   const validateAll = () => {
     const next = Object.fromEntries(
       Object.entries(formData)
         .filter(([k]) => !!validators[k]) // only validate fields that have validators
-        .map(([k, v]) => [k, validators[k](v)])
+        .map(([k, v]) => [k, validators[k](k === 'shop_name' ? v : v, formData.role)])
     );
     Object.keys(next).forEach((k) => next[k] === null && delete next[k]);
     setErrors(next);
@@ -167,7 +178,8 @@ export default function Register() {
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    const err = validators[name]?.(value) || null;
+    const effectiveRole = formData.role || googleRole;
+    const err = validators[name]?.(value, effectiveRole) || null;
     setErrors((p) => ({ ...p, [name]: err || undefined }));
   };
 
@@ -290,6 +302,22 @@ export default function Register() {
               </select>
             </div>
 
+            {String(formData.role) === '3' && (
+              <div className="field">
+                <label>Shop name</label>
+                <input
+                  name="shop_name"
+                  type="text"
+                  value={formData.shop_name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  maxLength={120}
+                  placeholder="e.g., Rose Crafts Studio"
+                />
+                {errors.shop_name && <span className="error">{errors.shop_name}</span>}
+              </div>
+            )}
+
             <button className="btn primary glossy" type="submit" disabled={submitting}>
               {submitting ? "Creating..." : "Create account"}
             </button>
@@ -306,6 +334,23 @@ export default function Register() {
               </select>
               <p className="hint">Required when using Google sign-up.</p>
             </div>
+
+            {String(googleRole || formData.role) === '3' && (
+              <div className="field">
+                <label>Shop name (for Google sign-up)</label>
+                <input
+                  name="shop_name"
+                  type="text"
+                  value={formData.shop_name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  maxLength={120}
+                  placeholder="e.g., Rose Crafts Studio"
+                />
+                {errors.shop_name && <span className="error">{errors.shop_name}</span>}
+                <p className="hint">Required if signing up as Supplier.</p>
+              </div>
+            )}
 
             {/* Google sign-up button rendered by GSI; fallback button shows when CLIENT_ID is missing */}
             <div className="google-wrap" ref={googleBtnRef} />

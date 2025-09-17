@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { LuHeart, LuShoppingCart, LuEye, LuSettings, LuSearch, LuX } from 'react-icons/lu';
+import { LuHeart, LuShoppingCart, LuEye, LuSettings, LuSearch, LuX, LuWand } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
+import CustomizationModal from './CustomizationModal';
+import '../../styles/customization-modal.css';
 
 // Asset image imports for fallback data
 import polaroidImg from '../../assets/poloroid.png';
@@ -69,12 +71,14 @@ const FALLBACK_ARTWORKS = [
   { id: 'b1', title: 'Bouquets', description: 'Gift bouquet arrangement', price: 200, image_url: bouquetsImg, category_id: 'bouquets', category_name: 'Bouquets', artist_name: 'Store' }
 ];
 
-const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
+const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
   const { auth } = useAuth();
   const [artworks, setArtworks] = useState([]);
   const [filteredArtworks, setFilteredArtworks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedArtwork, setSelectedArtwork] = useState(null);
+  const [showCustomizationModal, setShowCustomizationModal] = useState(false);
+  const [customizationArtwork, setCustomizationArtwork] = useState(null);
   const [filters, setFilters] = useState({
     category: '',
     search: '',
@@ -149,6 +153,16 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
   };
 
   const applyFilters = () => {
+    // Normalize price to a number (handles strings like "1,234.00" or "₹1,234.00")
+    const getPriceNumber = (item) => {
+      const raw = item?.price;
+      if (typeof raw === 'number') return raw;
+      if (raw == null) return NaN;
+      const cleaned = String(raw).replace(/[^0-9.]/g, ''); // drop currency symbols and commas
+      const val = parseFloat(cleaned);
+      return Number.isFinite(val) ? val : NaN;
+    };
+
     let filtered = [...artworks];
 
     if (filters.search) {
@@ -164,7 +178,8 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
       filtered = filtered.filter(artwork => 
         matches(artwork.title) ||
         matches(artwork.description) ||
-        matches(artwork.category_name)
+        matches(artwork.category_name) ||
+        matches(artwork.artist_name)
       );
     }
 
@@ -175,7 +190,8 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
     // Quick chips
     if (filters.priceChip) {
       filtered = filtered.filter(a => {
-        const price = parseFloat(a.price);
+        const price = getPriceNumber(a);
+        if (Number.isNaN(price)) return false;
         switch (filters.priceChip) {
           case 'lte-100': return price <= 100;
           case 'lte-200': return price <= 200;
@@ -201,7 +217,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
     const max = filters.maxPrice !== '' ? parseFloat(filters.maxPrice) : null;
     if (min !== null || max !== null) {
       filtered = filtered.filter(a => {
-        const price = parseFloat(a.price);
+        const price = getPriceNumber(a);
         if (Number.isNaN(price)) return false;
         if (min !== null && price < min) return false;
         if (max !== null && price > max) return false;
@@ -211,9 +227,23 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
 
     // Sorting
     if (filters.sort === 'price-asc') {
-      filtered.sort((a,b) => parseFloat(a.price) - parseFloat(b.price));
+      filtered.sort((a, b) => {
+        const ap = getPriceNumber(a);
+        const bp = getPriceNumber(b);
+        if (Number.isNaN(ap) && Number.isNaN(bp)) return 0;
+        if (Number.isNaN(ap)) return 1;  // push unknown prices to end
+        if (Number.isNaN(bp)) return -1;
+        return ap - bp;
+      });
     } else if (filters.sort === 'price-desc') {
-      filtered.sort((a,b) => parseFloat(b.price) - parseFloat(a.price));
+      filtered.sort((a, b) => {
+        const ap = getPriceNumber(a);
+        const bp = getPriceNumber(b);
+        if (Number.isNaN(ap) && Number.isNaN(bp)) return 0;
+        if (Number.isNaN(ap)) return 1;
+        if (Number.isNaN(bp)) return -1;
+        return bp - ap;
+      });
     }
 
     setFilteredArtworks(filtered);
@@ -221,6 +251,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
 
   const toggleWishlist = async (artworkId) => {
     // Always navigate to Wishlist as per requirement, regardless of API result
+    if (typeof onClose === 'function') onClose();
     if (typeof onOpenWishlist === 'function') {
       onOpenWishlist();
     }
@@ -270,30 +301,25 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
     }
   };
 
-  const addToCart = async (artworkId) => {
-    try {
-      const response = await fetch(`${API_BASE}/customer/cart.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth?.token}`,
-          'X-User-ID': auth?.user_id
-        },
-        body: JSON.stringify({ 
-          artwork_id: artworkId,
-          quantity: 1
-        })
-      });
+  const handleCustomizationRequest = (artwork) => {
+    setCustomizationArtwork(artwork);
+    setShowCustomizationModal(true);
+  };
 
-      const data = await response.json();
-      if (data.status === 'success') {
-        alert('Added to cart successfully!');
-      } else {
-        alert(data.message || 'Failed to add to cart');
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('Error adding to cart');
+  const handleCustomizationSuccess = () => {
+    window.dispatchEvent(new CustomEvent('toast', { 
+      detail: { 
+        type: 'success', 
+        message: 'Customization request submitted! Admin will review and approve before payment.' 
+      } 
+    }));
+  };
+
+  const addToCart = async (artworkId) => {
+    // First show customization modal instead of directly adding to cart
+    const artwork = artworks.find(a => a.id === artworkId);
+    if (artwork) {
+      handleCustomizationRequest(artwork);
     }
   };
 
@@ -421,6 +447,13 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
                   </button>
                   <button 
                     className="btn-icon"
+                    onClick={() => handleCustomizationRequest(artwork)}
+                    title="Request Customization"
+                  >
+                    <LuWand />
+                  </button>
+                  <button 
+                    className="btn-icon"
                     onClick={() => addToCart(artwork.id)}
                     title="Add to Cart"
                   >
@@ -488,6 +521,14 @@ const ArtworkGallery = ({ onClose, onOpenWishlist }) => {
             </div>
           </div>
         )}
+
+        {/* Customization Modal */}
+        <CustomizationModal
+          artwork={customizationArtwork}
+          isOpen={showCustomizationModal}
+          onClose={() => setShowCustomizationModal(false)}
+          onSuccess={handleCustomizationSuccess}
+        />
       </div>
 
       <style>{`

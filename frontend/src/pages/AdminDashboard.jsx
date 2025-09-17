@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import CustomizationRequests from "../components/admin/CustomizationRequests";
 import "../styles/admin.css";
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
@@ -20,6 +21,8 @@ export default function AdminDashboard() {
   const [artworks, setArtworks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [showCustomizationRequests, setShowCustomizationRequests] = useState(false);
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | settings
   const [artForm, setArtForm] = useState({
     title: "",
     description: "",
@@ -31,6 +34,25 @@ export default function AdminDashboard() {
   });
   // Inline notice for artwork actions
   const [artNotice, setArtNotice] = useState({ type: "", text: "" });
+  const [imagePreview, setImagePreview] = useState(null);
+
+  // Supplier Products moderation state
+  const [supplierProducts, setSupplierProducts] = useState([]);
+  const [spStatus, setSpStatus] = useState("");
+  const [spQuery, setSpQuery] = useState("");
+  const [spAvailability, setSpAvailability] = useState("");
+  const [spSupplierId, setSpSupplierId] = useState("");
+
+  // Supplier Inventory view state (view-only)
+  const [supplierInventory, setSupplierInventory] = useState([]);
+  const [siQuery, setSiQuery] = useState("");
+  const [siAvailability, setSiAvailability] = useState("");
+  const [siSupplierId, setSiSupplierId] = useState("");
+  const [siCategory, setSiCategory] = useState("");
+
+  // Lightbox for images
+  const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [lightboxAlt, setLightboxAlt] = useState("");
 
   // Derive admin header for simple authorization to backend admin endpoints
   const adminHeader = useMemo(() => {
@@ -96,6 +118,30 @@ export default function AdminDashboard() {
     }
   };
 
+  // Upload an image for a custom request (admin)
+  const uploadAdminRequestImage = async (requestId, file) => {
+    if (!file) return;
+    try {
+      const fd = new FormData();
+      fd.append('request_id', String(requestId));
+      fd.append('image', file);
+      const res = await fetch(`${API_BASE}/admin/custom-request-images.php`, {
+        method: 'POST',
+        headers: { ...adminHeader },
+        body: fd
+      });
+      const data = await res.json();
+      if (!(res.ok && data.status === 'success')) {
+        throw new Error(data.message || 'Upload failed');
+      }
+      // Reload current list to reflect any counters later
+      await fetchRequests(reqFilter);
+      return data;
+    } catch (err) {
+      alert(err.message || 'Network error uploading image');
+    }
+  };
+
   // Artworks admin helpers
   const fetchArtworks = async () => {
     try {
@@ -129,6 +175,111 @@ export default function AdminDashboard() {
     }
   };
 
+  // Supplier Products: list and approve/reject
+  const fetchSupplierProducts = async (opts = {}) => {
+    const { q = spQuery, supplier_id = spSupplierId, availability = spAvailability } = opts;
+    const url = new URL(`${API_BASE}/admin/supplier-products.php`);
+    if (q) url.searchParams.set('q', q);
+    if (supplier_id) url.searchParams.set('supplier_id', supplier_id);
+    if (availability) url.searchParams.set('availability', availability);
+    try {
+      const res = await fetch(url.toString(), { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setSupplierProducts(data.items || []);
+      }
+    } catch {}
+  };
+
+  // Supplier Inventory: view-only list
+  const fetchSupplierInventory = async (opts = {}) => {
+    const { q = siQuery, supplier_id = siSupplierId, availability = siAvailability, category = siCategory } = opts;
+    const url = new URL(`${API_BASE}/admin/supplier-inventory.php`);
+    if (q) url.searchParams.set('q', q);
+    if (supplier_id) url.searchParams.set('supplier_id', supplier_id);
+    if (availability) url.searchParams.set('availability', availability);
+    if (category) url.searchParams.set('category', category);
+    try {
+      const res = await fetch(url.toString(), { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setSupplierInventory(data.items || []);
+      }
+    } catch {}
+  };
+
+  // Export current Supplier Inventory table to CSV (respects current list in state)
+  const exportSupplierInventoryCSV = () => {
+    try {
+      const rows = supplierInventory || [];
+      if (!rows.length) {
+        alert('No inventory to export');
+        return;
+      }
+      const headers = [
+        'ID','Supplier','Supplier ID','Image URL','Name','SKU','Category','Type','Size','Color','Brand','Qty','Availability','Updated'
+      ];
+      const escapeCSV = (val) => {
+        const s = val === null || val === undefined ? '' : String(val);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const lines = [headers.join(',')];
+      for (const m of rows) {
+        const line = [
+          m.id,
+          m.supplier_name || '',
+          m.supplier_id || '',
+          m.image_url || '',
+          m.name || '',
+          m.sku || '',
+          m.category || '',
+          m.type || '',
+          m.size || '',
+          m.color || '',
+          m.brand || '',
+          m.quantity ?? '',
+          m.availability || '',
+          m.updated_at ? new Date(m.updated_at).toISOString() : ''
+        ].map(escapeCSV).join(',');
+        lines.push(line);
+      }
+      const csv = '\uFEFF' + lines.join('\n'); // BOM for Excel compatibility
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
+      a.href = url;
+      a.download = `supplier_inventory_${ts}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV export failed', err);
+      alert('CSV export failed');
+    }
+  };
+
+
+  const actSupplierProduct = async (id, action) => {
+    if (!window.confirm(`Confirm ${action} for product #${id}?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/supplier-products.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeader },
+        body: JSON.stringify({ id, action })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        fetchSupplierProducts();
+      } else {
+        alert(data.message || 'Action failed');
+      }
+    } catch {
+      alert('Network error');
+    }
+  };
+
   const uploadArtwork = async (e) => {
     e.preventDefault();
     if (!artForm.title || !artForm.price || (!artForm.image)) {
@@ -154,6 +305,8 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (res.ok && data.status === 'success') {
         setArtForm({ title: '', description: '', price: '', category_id: '', availability: 'in_stock', status: 'active', image: null });
+        if (imagePreview) URL.revokeObjectURL(imagePreview);
+        setImagePreview(null);
         await fetchArtworks();
         setArtNotice({ type: 'success', text: 'Artwork uploaded successfully.' });
       } else {
@@ -188,6 +341,8 @@ export default function AdminDashboard() {
       fetchRequests();
       fetchArtworks();
       fetchCategories();
+      fetchSupplierProducts();
+      fetchSupplierInventory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, adminHeader]);
@@ -198,6 +353,13 @@ export default function AdminDashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  useEffect(() => {
+    if (!isLoading && adminHeader["X-Admin-User-Id"]) {
+      fetchSupplierProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spStatus, spQuery, spSupplierId]);
 
   useEffect(() => {
     if (!isLoading && adminHeader["X-Admin-User-Id"]) {
@@ -235,17 +397,34 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-shell">
+      {lightboxUrl ? (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+        >
+          <img
+            src={lightboxUrl}
+            alt={lightboxAlt}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', boxShadow: '0 8px 30px rgba(0,0,0,.4)', borderRadius: 8 }}
+          />
+        </div>
+      ) : null}
+
       <aside className="admin-sidebar">
         <div className="brand">
           <div className="brand-badge">A</div>
           <div className="brand-name">Admin</div>
         </div>
         <nav className="nav">
-          <a className="active" href="#overview">Overview</a>
-          <a href="#suppliers">Suppliers</a>
-          <a href="#custom-requests">Custom Requests</a>
-          <a href="#users">Users</a>
-          <a href="#settings">Settings</a>
+          <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => setActiveSection('overview')}>Overview</button>
+          <button className={activeSection === 'suppliers' ? 'active' : ''} onClick={() => { setActiveSection('suppliers'); fetchSuppliers(filter); fetchAll(); }}>Suppliers</button>
+          <button className={activeSection === 'supplier-products' ? 'active' : ''} onClick={() => { setActiveSection('supplier-products'); fetchSupplierProducts(); }}>Supplier Products</button>
+          <button className={activeSection === 'supplier-inventory' ? 'active' : ''} onClick={() => { setActiveSection('supplier-inventory'); fetchSupplierInventory(); }}>Supplier Inventory</button>
+          <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }}>Custom Requests</button>
+          <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }}>Artworks</button>
           <button className="btn btn-soft small" onClick={logout}>Logout</button>
         </nav>
       </aside>
@@ -262,38 +441,66 @@ export default function AdminDashboard() {
 
         <div className="admin-content">
           <div className="container">
-            {/* Hero */}
-            <section className="hero">
-              <div className="hero-card">
-                <h1>Welcome back</h1>
-                <p className="muted">Manage suppliers, users, and approvals efficiently.</p>
-                <div className="hero-mark">⚙️</div>
-              </div>
-            </section>
+            {activeSection === 'overview' && (
+              <>
+                {/* Hero */}
+                <section className="hero">
+                  <div className="hero-card">
+                    <h1>Welcome back</h1>
+                    <p className="muted">Manage suppliers, users, and approvals efficiently.</p>
+                    <div className="hero-mark">⚙️</div>
+                  </div>
+                </section>
 
-            {/* Stats */}
-            <section className="stats">
-              <div className="grid stats-grid">
-                <div className="stat-card">
-                  <div className="stat-label">Total Suppliers</div>
-                  <div className="stat-value">{totalSuppliers}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Pending</div>
-                  <div className="stat-value">{pendingCount}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Approved</div>
-                  <div className="stat-value">{approvedCount}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Rejected</div>
-                  <div className="stat-value">{rejectedCount}</div>
-                </div>
-              </div>
-            </section>
+                {/* Stats */}
+                <section className="stats">
+                  <div className="grid stats-grid">
+                    <div className="stat-card">
+                      <div className="stat-label">Total Suppliers</div>
+                      <div className="stat-value">{totalSuppliers}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Pending</div>
+                      <div className="stat-value">{pendingCount}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Approved</div>
+                      <div className="stat-value">{approvedCount}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Rejected</div>
+                      <div className="stat-value">{rejectedCount}</div>
+                    </div>
+                  </div>
+                </section>
 
-            {/* Supplier Approvals */}
+                {/* Quick Actions */}
+                <section className="quick-actions">
+                  <div className="grid actions-grid">
+                    <button 
+                      className="action-card"
+                      onClick={() => setActiveSection('custom-requests')}
+                    >
+                      <div className="action-icon">🎨</div>
+                      <h3>Customization Requests</h3>
+                      <p>Review and approve customer customization requests</p>
+                    </button>
+                    <button className="action-card" onClick={() => setActiveSection('supplier-products')}>
+                      <div className="action-icon">📦</div>
+                      <h3>Supplier Products</h3>
+                      <p>Moderate supplier submissions</p>
+                    </button>
+                    <button className="action-card" onClick={() => setActiveSection('artworks')}>
+                      <div className="action-icon">🖼️</div>
+                      <h3>Artwork Gallery</h3>
+                      <p>Upload and manage artworks</p>
+                    </button>
+                  </div>
+                </section>
+              </>
+            )}
+
+            {activeSection === 'suppliers' && (
             <section id="suppliers" className="widget" style={{ marginTop: 12 }}>
               <div className="widget-head">
                 <h4>Supplier Approvals</h4>
@@ -342,8 +549,154 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </section>
+            )}
 
-            {/* Custom Requests */}
+            {activeSection === 'supplier-products' && (
+            <section id="supplier-products" className="widget" style={{ marginTop: 12 }}>
+              <div className="widget-head">
+                <h4>Supplier Products</h4>
+                <div className="controls" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+
+                  <label className="muted">Availability</label>
+                  <select className="select" value={spAvailability} onChange={(e)=>setSpAvailability(e.target.value)}>
+                    <option value="">Any</option>
+                    <option value="available">Available</option>
+                    <option value="unavailable">Unavailable</option>
+                  </select>
+                  <input className="input" placeholder="Supplier ID" value={spSupplierId} onChange={e=>setSpSupplierId(e.target.value)} style={{ width:120 }} />
+                  <input className="input" placeholder="Search (name, SKU, category, supplier)" value={spQuery} onChange={e=>setSpQuery(e.target.value)} />
+                  <button className="btn btn-emph" onClick={()=>fetchSupplierProducts()}>Refresh</button>
+                </div>
+              </div>
+              <div className="widget-body">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Supplier</th>
+                      <th>Image</th>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th>Price</th>
+                      <th>Qty</th>
+                      <th>Trend</th>
+                      <th>Stock</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplierProducts.length === 0 ? (
+                      <tr><td colSpan={10} className="muted">No products</td></tr>
+                    ) : (
+                      supplierProducts.map(p => (
+                        <tr key={p.id}>
+                          <td>{p.id}</td>
+                          <td>{p.supplier_name} <div className="muted" style={{fontSize:12}}>#{p.supplier_id}</div></td>
+                          <td>
+                            {p.image_url ? (
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, cursor: 'zoom-in' }}
+                                onClick={() => { setLightboxUrl(p.image_url); setLightboxAlt(p.name || 'Image'); }}
+                              />
+                            ) : (
+                              <span className="muted">No image</span>
+                            )}
+                          </td>
+                          <td>{p.name}</td>
+                          <td>{p.category || '-'}</td>
+                          <td>{Number(p.price).toFixed(2)}</td>
+                          <td>{p.quantity}</td>
+                          <td>{p.is_trending ? 'Yes' : 'No'}</td>
+                          <td style={{ textTransform:'capitalize' }}>{p.stock}</td>
+                          <td>{new Date(p.updated_at).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            )}
+
+            {activeSection === 'supplier-inventory' && (
+            <section id="supplier-inventory" className="widget" style={{ marginTop: 12 }}>
+              <div className="widget-head">
+                <h4>Supplier Inventory</h4>
+                <div className="controls" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                  <label className="muted">Availability</label>
+                  <select className="select" value={siAvailability} onChange={(e)=>setSiAvailability(e.target.value)}>
+                    <option value="">Any</option>
+                    <option value="available">Available</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                  </select>
+                  <input className="input" placeholder="Supplier ID" value={siSupplierId} onChange={e=>setSiSupplierId(e.target.value)} style={{ width:120 }} />
+                  <input className="input" placeholder="Category" value={siCategory} onChange={e=>setSiCategory(e.target.value)} style={{ width:160 }} />
+                  <input className="input" placeholder="Search (name, SKU, tags, brand)" value={siQuery} onChange={e=>setSiQuery(e.target.value)} />
+                  <button className="btn btn-emph" onClick={()=>fetchSupplierInventory()}>Refresh</button>
+                  <button className="btn" onClick={exportSupplierInventoryCSV}>Export CSV</button>
+                </div>
+              </div>
+              <div className="widget-body">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Supplier</th>
+                      <th>Image</th>
+                      <th>Name</th>
+                      <th>SKU</th>
+                      <th>Category</th>
+                      <th>Type</th>
+                      <th>Size</th>
+                      <th>Color</th>
+                      <th>Brand</th>
+                      <th>Qty</th>
+                      <th>Availability</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplierInventory.length === 0 ? (
+                      <tr><td colSpan={13} className="muted">No inventory</td></tr>
+                    ) : (
+                      supplierInventory.map(m => (
+                        <tr key={m.id}>
+                          <td>{m.id}</td>
+                          <td>{m.supplier_name} <div className="muted" style={{fontSize:12}}>#{m.supplier_id}</div></td>
+                          <td>
+                            {m.image_url ? (
+                              <img
+                                src={m.image_url}
+                                alt={m.name}
+                                style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, cursor: 'zoom-in' }}
+                                onClick={() => { setLightboxUrl(m.image_url); setLightboxAlt(m.name || 'Image'); }}
+                              />
+                            ) : (
+                              <span className="muted">-</span>
+                            )}
+                          </td>
+                          <td>{m.name}</td>
+                          <td>{m.sku || '-'}</td>
+                          <td>{m.category || '-'}</td>
+                          <td>{m.type || '-'}</td>
+                          <td>{m.size || '-'}</td>
+                          <td>{m.color || '-'}</td>
+                          <td>{m.brand || '-'}</td>
+                          <td>{m.quantity}</td>
+                          <td style={{ textTransform:'capitalize' }}>{m.availability}</td>
+                          <td>{new Date(m.updated_at).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            )}
+
+            {activeSection === 'custom-requests' && (
             <section id="custom-requests" className="widget" style={{ marginTop: 12 }}>
               <div className="widget-head">
                 <h4>Custom Requests</h4>
@@ -393,6 +746,18 @@ export default function AdminDashboard() {
                               <button className="btn btn-soft tiny" onClick={() => updateRequestStatus(r.id, 'in_progress')} disabled={r.status==='in_progress'}>Start</button>
                               <button className="btn btn-soft tiny" onClick={() => updateRequestStatus(r.id, 'completed')} disabled={r.status==='completed'}>Complete</button>
                               <button className="btn btn-danger tiny" onClick={() => updateRequestStatus(r.id, 'cancelled')} disabled={r.status==='cancelled'}>Cancel</button>
+                              <label className="btn btn-outline tiny">
+                                Upload
+                                <input type="file" accept="image/*" style={{ display: 'none' }}
+                                  onChange={async (e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      await uploadAdminRequestImage(r.id, f);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                              </label>
                             </div>
                           </td>
                         </tr>
@@ -402,8 +767,11 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </section>
+            )}
 
-            {/* Artwork Gallery (Admin) */}
+
+
+            {activeSection === 'artworks' && (
             <section id="artworks" className="widget" style={{ marginTop: 12 }}>
               <div className="widget-head">
                 <h4>Artwork Gallery</h4>
@@ -423,6 +791,15 @@ export default function AdminDashboard() {
                     <label className="muted">Title</label>
                     <input className="input" value={artForm.title} onChange={e => setArtForm(f => ({...f, title: e.target.value}))} required />
                   </div>
+                  {imagePreview ? (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label className="muted">Preview</label>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <img src={imagePreview} alt="Preview" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,.1)' }} />
+                        <button type="button" className="btn btn-soft small" onClick={() => { if (imagePreview) URL.revokeObjectURL(imagePreview); setImagePreview(null); setArtForm(f => ({ ...f, image: null })); }}>Clear</button>
+                      </div>
+                    </div>
+                  ) : null}
                   <div>
                     <label className="muted">Price</label>
                     <input type="number" step="0.01" className="input" value={artForm.price} onChange={e => setArtForm(f => ({...f, price: e.target.value}))} required />
@@ -457,7 +834,26 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="muted">Image</label>
-                    <input type="file" accept="image/*" className="input" onChange={e => setArtForm(f => ({...f, image: e.target.files?.[0] || null}))} required />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="input"
+                      onChange={e => {
+                        const file = e.target.files?.[0] || null;
+                        setArtForm(f => ({ ...f, image: file }));
+                        if (file) {
+                          const url = URL.createObjectURL(file);
+                          setImagePreview(prev => {
+                            if (prev) URL.revokeObjectURL(prev); // cleanup previous
+                            return url;
+                          });
+                        } else {
+                          if (imagePreview) URL.revokeObjectURL(imagePreview);
+                          setImagePreview(null);
+                        }
+                      }}
+                      required
+                    />
                   </div>
                   <div>
                     <button disabled={uploading} className="btn btn-emph" type="submit">{uploading ? 'Uploading…' : 'Add Artwork'}</button>
@@ -484,7 +880,7 @@ export default function AdminDashboard() {
                         artworks.map(a => (
                           <tr key={a.id}>
                             <td>{a.id}</td>
-                            <td>{a.image_url ? <img src={a.image_url} alt={a.title} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6 }} /> : '-'}</td>
+                            <td>{a.image_url ? <img src={a.image_url} alt={a.title} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, cursor: 'zoom-in' }} onClick={() => { setLightboxUrl(a.image_url); setLightboxAlt(a.title || 'Artwork'); }} /> : '-'}</td>
                             <td>{a.title}</td>
                             <td>{a.category_name || '-'}</td>
                             <td>{a.price}</td>
@@ -500,9 +896,15 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </section>
+            )}
           </div>
         </div>
       </main>
+
+      {/* Customization Requests Modal */}
+      {showCustomizationRequests && (
+        <CustomizationRequests onClose={() => setShowCustomizationRequests(false)} />
+      )}
     </div>
   );
 }

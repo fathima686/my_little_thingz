@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
   
   // Check if current path is a protected route
   const isProtectedRoute = useCallback((path) => {
-    const protectedRoutes = ['/dashboard', '/admin', '/supplier'];
+    const protectedRoutes = ['/dashboard', '/admin', '/supplier', '/cart', '/profile'];
     return protectedRoutes.some(route => path.startsWith(route));
   }, []);
 

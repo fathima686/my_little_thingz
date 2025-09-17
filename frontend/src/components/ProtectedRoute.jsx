@@ -7,19 +7,9 @@ const ProtectedRoute = ({ children, requiredRoles = [], fallbackPath = '/login' 
   const location = useLocation();
 
   // Prevent browser caching of protected routes
+  // Allow normal browser back behavior; rely on auth guards for protection
   useEffect(() => {
-    // Disable back button functionality for protected routes
-    const disableBackButton = () => {
-      window.history.pushState(null, null, location.pathname);
-    };
-
-    // Push current state to prevent back navigation
-    window.history.pushState(null, null, location.pathname);
-    window.addEventListener('popstate', disableBackButton);
-
-    return () => {
-      window.removeEventListener('popstate', disableBackButton);
-    };
+    return () => {};
   }, [location.pathname]);
 
   // Show loading state while checking authentication

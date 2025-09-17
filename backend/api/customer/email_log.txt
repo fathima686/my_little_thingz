@@ -1,0 +1,86 @@
+[2025-09-12 10:34:31] EMAIL SENT
+To: shijin thomas <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250912-103402-777b98
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;...
+---
+
+[2025-09-12 12:14:13] EMAIL SENT
+To: shijin thomas <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250912-121347-6f44d8
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;...
+---
+
+[2025-09-12 12:18:40] EMAIL SENT
+To: shijin thomas <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250912-121736-dc99c9
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;...
+---
+
+[2025-09-13 06:15:53] EMAIL SENT
+To: shijin thomas <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250913-061526-12456c
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;...
+---
+
+[2025-09-13 07:11:51] EMAIL SENT
+To: shijin thomas <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250913-071058-60cbd7
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    ...
+---
+
+[2025-09-13 07:11:55] EMAIL SENT
+To: Store Admin <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250913-071058-60cbd7
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    ...
+---
+

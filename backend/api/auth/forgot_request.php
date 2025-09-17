@@ -28,23 +28,44 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS password_resets (
   UNIQUE KEY uq_token (token)
 ) ENGINE=InnoDB");
 
-// Verify user exists
+// Adjust indexes for OTP approach: allow same 6-digit tokens across different emails
+try { $mysqli->query("ALTER TABLE password_resets DROP INDEX uq_token"); } catch (Throwable $e) {}
+try { $mysqli->query("ALTER TABLE password_resets ADD UNIQUE KEY uq_email (email)"); } catch (Throwable $e) {}
+try { $mysqli->query("ALTER TABLE password_resets ADD INDEX idx_email_token (email, token)"); } catch (Throwable $e) { }
+
+// Check if user exists (do not reveal result later)
+$exists = false;
 $u = $mysqli->prepare('SELECT id FROM users WHERE email=? LIMIT 1');
 $u->bind_param('s', $email);
 $u->execute();
 $u->store_result();
-if ($u->num_rows === 0) { http_response_code(404); echo json_encode(['status'=>'error','message'=>'Email not found']); exit; }
+$exists = $u->num_rows > 0;
 $u->close();
 
-$token = bin2hex(random_bytes(16));
-$expires = (new DateTime('+30 minutes'))->format('Y-m-d H:i:s');
+if ($exists) {
+  // Generate 6-digit OTP and expire in 30 minutes
+  $otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+  $expires = (new DateTime('+30 minutes'))->format('Y-m-d H:i:s');
 
-// Upsert a token for this email
-$mysqli->query("DELETE FROM password_resets WHERE email='".$mysqli->real_escape_string($email)."'");
-$s = $mysqli->prepare('INSERT INTO password_resets (email, token, expires_at) VALUES (?,?,?)');
-$s->bind_param('sss', $email, $token, $expires);
-$s->execute();
-$s->close();
+  // Upsert OTP for this email (store in token column)
+  $mysqli->query("DELETE FROM password_resets WHERE email='".$mysqli->real_escape_string($email)."'");
+  $s = $mysqli->prepare('INSERT INTO password_resets (email, token, expires_at) VALUES (?,?,?)');
+  $s->bind_param('sss', $email, $otp, $expires);
+  $s->execute();
+  $s->close();
 
-// In production email the token; here we return it for testing
-echo json_encode(['status'=>'success','message'=>'Reset token generated','token'=>$token]);
+  // Send OTP email (best-effort)
+  try {
+    require_once __DIR__ . '/../../includes/AuthEmail.php';
+    $mailer = new AuthEmail();
+    $mailer->sendResetOtpEmail($email, '', $otp);
+    @file_put_contents(__DIR__ . '/../../../email_log.txt', '[RESET-OTP] Email: ' . $email . ' OTP: ' . $otp . "\n", FILE_APPEND);
+  } catch (Throwable $e) {
+    // Log silently; do not expose info
+    @file_put_contents(__DIR__ . '/../../../email_log.txt', '[RESET-EMAIL-ERROR] ' . $e->getMessage() . "\n", FILE_APPEND);
+  }
+}
+
+// Always respond success to avoid user enumeration
+http_response_code(200);
+echo json_encode(['status'=>'success','message'=>'If an account exists for this email, a reset code has been sent.']);

@@ -43,7 +43,7 @@ const CustomGiftRequest = ({ onClose }) => {
     const maxFiles = 5;
     
     if (imageFiles.length + files.length > maxFiles) {
-      alert(`You can only upload up to ${maxFiles} images`);
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: `You can only upload up to ${maxFiles} images` } }));
       return;
     }
 
@@ -105,14 +105,14 @@ const CustomGiftRequest = ({ onClose }) => {
       const data = await response.json();
       
       if (data.status === 'success') {
-        alert('Custom gift request submitted successfully! We will contact you soon.');
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Custom gift request submitted successfully! We will contact you soon.' } }));
         onClose();
       } else {
-        alert(data.message || 'Failed to submit request');
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to submit request' } }));
       }
     } catch (error) {
       console.error('Error submitting request:', error);
-      alert('Error submitting request. Please try again.');
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Error submitting request. Please try again.' } }));
     } finally {
       setLoading(false);
     }

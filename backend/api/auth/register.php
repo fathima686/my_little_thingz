@@ -54,11 +54,20 @@ function ensure_schema(mysqli $db) {
   // Supplier status table (pending approval by admin)
   $db->query("CREATE TABLE IF NOT EXISTS supplier_profiles (
     user_id INT UNSIGNED PRIMARY KEY,
+    shop_name VARCHAR(120) NOT NULL,
     status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB");
+
+  // Safe migration: ensure shop_name exists (for older DBs)
+  try {
+    $res = $db->query("SHOW COLUMNS FROM supplier_profiles LIKE 'shop_name'");
+    if ($res && $res->num_rows === 0) {
+      $db->query("ALTER TABLE supplier_profiles ADD COLUMN shop_name VARCHAR(120) NOT NULL DEFAULT '' AFTER user_id");
+    }
+  } catch (Throwable $e) { /* ignore */ }
 
   // Seed roles
   $db->query("INSERT IGNORE INTO roles (id, name) VALUES (1,'admin'),(2,'customer'),(3,'supplier')");
@@ -77,7 +86,17 @@ $first = trim($input['firstName'] ?? '');
 $last  = trim($input['lastName'] ?? '');
 $email = trim($input['email'] ?? '');
 $pass  = (string)($input['password'] ?? '');
-$role  = (int)($input['role'] ?? 2); // 2=customer (default), 3=supplier (admin=1 is blocked)
+// Accept role as number (2|3) or string ('customer'|'supplier'); default to customer
+$roleRaw = $input['role'] ?? 2;
+$roleId = 2; // default customer
+if (is_numeric($roleRaw)) {
+  $tmp = (int)$roleRaw;
+  if (in_array($tmp, [2,3], true)) { $roleId = $tmp; }
+} else {
+  $tmp = strtolower(trim((string)$roleRaw));
+  if ($tmp === 'supplier') { $roleId = 3; }
+}
+$isSupplier = ($roleId === 3);
 
 // Validation (server-side)
 // Names: allow letters, space, apostrophe, dot, hyphen; must start with a letter; length <= 30
@@ -109,6 +128,17 @@ if (
   exit;
 }
 
+// Require shop_name for suppliers
+$shop = '';
+if ($isSupplier) {
+  $shop = trim((string)($input['shop_name'] ?? ''));
+  if ($shop === '' || strlen($shop) > 120) {
+    http_response_code(422);
+    echo json_encode(["status" => "error", "message" => "Shop name is required (max 120 chars) for supplier"]);
+    exit;
+  }
+}
+
 // Unique email
 $stmt = $mysqli->prepare("SELECT id FROM users WHERE email=? LIMIT 1");
 $stmt->bind_param('s', $email);
@@ -135,8 +165,6 @@ try {
   $chkRole = $mysqli->query("SHOW COLUMNS FROM users LIKE 'role'");
   if ($chkRole && $chkRole->num_rows > 0) { $hasRole = true; }
 
-  $isSupplier = ($role === 3);
-
   if ($hasRole) {
     // Map numeric role to name; block admin=1
     $roleName = $isSupplier ? 'supplier' : 'customer';
@@ -153,21 +181,35 @@ try {
     $userId = $stmt->insert_id;
     $stmt->close();
 
-    // role: default to 2 (customer), allow 2 or 3 from client; block admin=1 in registration
-    $roleId = in_array($role, [2,3], true) ? $role : 2;
+    // Assign role using sanitized $roleId (2=customer, 3=supplier)
     $stmt = $mysqli->prepare("INSERT INTO user_roles(user_id, role_id) VALUES(?,?)");
     $stmt->bind_param('ii', $userId, $roleId);
     $stmt->execute();
     $stmt->close();
   }
 
-  // If supplier, create pending profile
+  // If supplier, create pending profile with shop_name
   if ($isSupplier) {
-    $mysqli->query("INSERT INTO supplier_profiles(user_id, status) VALUES ($userId, 'pending') ON DUPLICATE KEY UPDATE status=VALUES(status)");
+    // Ensure column exists (safety for older DBs)
+    try {
+      $chkCol = $mysqli->query("SHOW COLUMNS FROM supplier_profiles LIKE 'shop_name'");
+      if ($chkCol && $chkCol->num_rows === 0) {
+        $mysqli->query("ALTER TABLE supplier_profiles ADD COLUMN shop_name VARCHAR(120) NOT NULL DEFAULT '' AFTER user_id");
+      }
+    } catch (Throwable $e) {}
+
+    $stp = $mysqli->prepare("INSERT INTO supplier_profiles(user_id, shop_name, status) VALUES (?,?, 'pending') ON DUPLICATE KEY UPDATE shop_name=VALUES(shop_name), status=VALUES(status)");
+    $stp->bind_param('is', $userId, $shop);
+    $stp->execute();
+    $stp->close();
   }
 
   $mysqli->commit();
-  echo json_encode(["status" => "success", "user_id" => $userId, "role" => $isSupplier ? 'supplier' : 'customer', "supplier_status" => $isSupplier ? 'pending' : null]);
+  if ($isSupplier) {
+    echo json_encode(["status" => "pending", "message" => "Supplier account created and awaiting admin approval", "user_id" => $userId, "roles" => ["supplier"], "supplier_status" => "pending"]);
+  } else {
+    echo json_encode(["status" => "success", "user_id" => $userId, "roles" => ["customer"]]);
+  }
 } catch (Throwable $e) {
   $mysqli->rollback();
   http_response_code(500);

@@ -30,6 +30,7 @@ $input = json_decode(file_get_contents("php://input"), true) ?? [];
 $credential = $input['credential'] ?? '';
 $desiredRole = (int)($input['desired_role'] ?? 2); // 2=customer, 3=supplier
 if (!in_array($desiredRole, [2,3], true)) { $desiredRole = 2; }
+$shopName = isset($input['shop_name']) ? trim((string)$input['shop_name']) : '';
 
 if (!$credential) {
   http_response_code(400);
@@ -57,7 +58,7 @@ function verify_google_id_token($idToken, $expectedAudiences = []) {
 
 // Fill with your real client id(s). Keep this in sync with frontend .env VITE_GOOGLE_CLIENT_ID
 $EXPECTED_AUDS = [
-  "12668430306-udm380evbtupi81ns28s2u79peki6823.apps.googleusercontent.com",
+  "12668430306-fg4m3l8mh7hqb84m5s2j7qrtgk7naojm.apps.googleusercontent.com",
 ];
 
 $payload = verify_google_id_token($credential, $EXPECTED_AUDS);
@@ -136,10 +137,25 @@ try {
   $stmt->execute();
   $stmt->close();
 
-  // If supplier selected, ensure pending supplier profile exists
+  // If supplier selected, ensure pending supplier profile exists and store shop_name if provided
   if ($roleId === 3) {
-    $mysqli->query("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
-    $mysqli->query("INSERT INTO supplier_profiles(user_id, status) VALUES ($userId, 'pending') ON DUPLICATE KEY UPDATE status=status");
+    // Ensure table and shop_name column exist
+    $mysqli->query("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, shop_name VARCHAR(120) NOT NULL, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
+    try {
+      $resCol = $mysqli->query("SHOW COLUMNS FROM supplier_profiles LIKE 'shop_name'");
+      if ($resCol && $resCol->num_rows === 0) {
+        $mysqli->query("ALTER TABLE supplier_profiles ADD COLUMN shop_name VARCHAR(120) NOT NULL DEFAULT '' AFTER user_id");
+      }
+    } catch (Throwable $e) {}
+
+    if ($shopName !== '' && strlen($shopName) <= 120) {
+      $st = $mysqli->prepare("INSERT INTO supplier_profiles(user_id, shop_name, status) VALUES (?,?, 'pending') ON DUPLICATE KEY UPDATE shop_name=VALUES(shop_name), status=status");
+      $st->bind_param('is', $userId, $shopName);
+      $st->execute();
+      $st->close();
+    } else {
+      $mysqli->query("INSERT INTO supplier_profiles(user_id, status) VALUES ($userId, 'pending') ON DUPLICATE KEY UPDATE status=status");
+    }
   }
 
   // 3) Map provider
@@ -162,8 +178,15 @@ try {
 
   // Supplier approval check
   if (in_array('supplier', array_map('strtolower', $roles), true)) {
-    // ensure table
-    $mysqli->query("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
+    // ensure table & shop_name column
+    $mysqli->query("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, shop_name VARCHAR(120) NOT NULL, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
+    try {
+      $resCol = $mysqli->query("SHOW COLUMNS FROM supplier_profiles LIKE 'shop_name'");
+      if ($resCol && $resCol->num_rows === 0) {
+        $mysqli->query("ALTER TABLE supplier_profiles ADD COLUMN shop_name VARCHAR(120) NOT NULL DEFAULT '' AFTER user_id");
+      }
+    } catch (Throwable $e) {}
+
     $st = $mysqli->prepare("SELECT status FROM supplier_profiles WHERE user_id=? LIMIT 1");
     $st->bind_param('i', $userId);
     $st->execute();

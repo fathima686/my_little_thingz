@@ -1,0 +1,196 @@
+[2025-09-12 07:08:02] EMAIL SENT
+To: Fathima <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-TEST-20250912-070802
+Message: 
+        
+        
+        
+            
+            Payment Successful
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;...
+---
+
+[2025-09-12 07:08:04] EMAIL SENT
+To: Fathima <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Failed - Order #ORD-TEST-20250912-070802
+Message: 
+        
+        
+        
+            
+            Payment Failed
+            
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+...
+---
+
+[2025-09-13 07:19:58] QUEUE EMAIL
+To: John Doe <test@example.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #TEST-ORDER-001
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-13 07:20:01] QUEUE EMAIL
+To: John Doe <test@example.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Failed - Order #TEST-ORDER-001
+Preview: Payment Failedbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#dc3545;color:#fff;padding:20px;t...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-13 07:25:16] QUEUE EMAIL
+To: John Doe <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #TEST-ORDER-001
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-13 07:25:19] QUEUE EMAIL
+To: John Doe <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Failed - Order #TEST-ORDER-001
+Preview: Payment Failedbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#dc3545;color:#fff;padding:20px;t...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-13 07:53:39] QUEUE EMAIL
+To: shijin thomas <shijinthomas369@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250913-075311-390498
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-13 07:53:43] QUEUE EMAIL
+To: Store Admin <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250913-075311-390498
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-13 08:09:33] QUEUE EMAIL
+To: fathima shibu <fathimashibu0805@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your Supplier Account Has Been Approved!
+Preview: Supplier Approvedbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#28a745;color:#fff;padding:20p...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-15 10:23:58] QUEUE EMAIL
+To: VIJETHA JINU <vijethajinu@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250915-102334-53c51f
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-15 10:24:02] QUEUE EMAIL
+To: Store Admin <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250915-102334-53c51f
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-15 12:07:45] QUEUE EMAIL
+To: VIJETHA JINU <vijethajinu@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250915-120710-dbe9c0
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-15 12:07:49] QUEUE EMAIL
+To: Store Admin <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250915-120710-dbe9c0
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-17 06:10:28] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 773160
+[2025-09-17 06:15:09] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 695903
+[2025-09-17 06:19:16] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 186923
+[2025-09-17 06:25:07] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 224927
+[2025-09-17 06:29:33] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 448115
+[2025-09-17 06:37:20] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 525081
+[2025-09-17 06:37:53] QUEUE EMAIL
+To:  <kiranshibuthomas2026@mca.ajce.in>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Your password reset code
+Preview: Password Reset Codebody{font-family:Arial,sans-serif;background:#f6f7fb;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:24px}.card{background:#fff;border-radius:8px;box-...
+---
+[DEBUG] Attempting SMTP send (generic)...
+[INFO] Email sent successfully (generic).
+[RESET-OTP] Email: kiranshibuthomas2026@mca.ajce.in OTP: 148587
+[2025-09-17 08:26:05] QUEUE EMAIL
+To: Fathima <fathimashibu15@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250917-082534-7c7848
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2025-09-17 08:26:09] QUEUE EMAIL
+To: Store Admin <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20250917-082534-7c7848
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.

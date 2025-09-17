@@ -14,9 +14,33 @@ try {
     $database = new Database();
     $db = $database->getConnection();
 
-    // Get user ID from headers
-    $user_id = $_SERVER['HTTP_X_USER_ID'] ?? null;
-    
+    // Get user ID robustly from headers or query
+    $user_id = null;
+    if (isset($_SERVER['HTTP_X_USER_ID']) && $_SERVER['HTTP_X_USER_ID'] !== '') {
+        $user_id = $_SERVER['HTTP_X_USER_ID'];
+    }
+    if (!$user_id) {
+        $altKeys = ['REDIRECT_HTTP_X_USER_ID', 'X_USER_ID', 'HTTP_X_USERID'];
+        foreach ($altKeys as $k) {
+            if (isset($_SERVER[$k]) && $_SERVER[$k] !== '') {
+                $user_id = $_SERVER[$k];
+                break;
+            }
+        }
+    }
+    if (!$user_id && function_exists('getallheaders')) {
+        $headers = getallheaders();
+        foreach ($headers as $key => $value) {
+            if (strtolower(trim($key)) === 'x-user-id' && $value !== '') {
+                $user_id = $value;
+                break;
+            }
+        }
+    }
+    if (!$user_id && isset($_GET['user_id']) && $_GET['user_id'] !== '') {
+        $user_id = $_GET['user_id'];
+    }
+
     if (!$user_id) {
         echo json_encode([
             'status' => 'error',

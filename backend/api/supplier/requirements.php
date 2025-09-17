@@ -1,15 +1,8 @@
 <?php
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowed_origins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
-if (in_array($origin, $allowed_origins, true)) {
-  header("Access-Control-Allow-Origin: $origin");
-} else {
-  header("Access-Control-Allow-Origin: http://localhost:5173");
-}
-header("Vary: Origin");
+header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-SUPPLIER-ID");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(204);
@@ -42,6 +35,17 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS order_requirements (
   CONSTRAINT fk_req_supplier FOREIGN KEY (supplier_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB");
 
+// Messages for requirements (thread between admin and supplier)
+$mysqli->query("CREATE TABLE IF NOT EXISTS order_requirement_messages (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  requirement_id INT UNSIGNED NOT NULL,
+  sender ENUM('admin','supplier') NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX(requirement_id),
+  CONSTRAINT fk_req_msg FOREIGN KEY (requirement_id) REFERENCES order_requirements(id) ON DELETE CASCADE
+) ENGINE=InnoDB");
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 function body_json() { $d=json_decode(file_get_contents('php://input'), true); return is_array($d)?$d:[]; }
@@ -54,15 +58,76 @@ if ($supplier_id <= 0) {
   exit;
 }
 
+// Enforce supplier approval for write operations
+$isApproved = true;
+try {
+  $chk = $mysqli->prepare("SELECT sp.status FROM supplier_profiles sp WHERE sp.user_id=? LIMIT 1");
+  $chk->bind_param('i', $supplier_id);
+  $chk->execute();
+  $res = $chk->get_result();
+  if ($row = $res->fetch_assoc()) { $isApproved = ($row['status'] === 'approved'); }
+  $chk->close();
+} catch (Throwable $e) { /* ignore */ }
+
 try {
   if ($method === 'GET') {
+    // List requirements + include message thread
     $stmt = $mysqli->prepare("SELECT id, order_ref, material_name, required_qty, unit, due_date, status FROM order_requirements WHERE supplier_id=? ORDER BY due_date IS NULL, due_date, id DESC");
     $stmt->bind_param('i', $supplier_id);
     $stmt->execute();
     $res = $stmt->get_result();
-    echo json_encode(["status"=>"success","items"=>$res->fetch_all(MYSQLI_ASSOC)]);
+    $items = $res->fetch_all(MYSQLI_ASSOC);
+
+    // Fetch messages for these requirements
+    $ids = array_column($items, 'id');
+    $messagesByReq = [];
+    if (!empty($ids)) {
+      $placeholders = implode(',', array_fill(0, count($ids), '?'));
+      $types = str_repeat('i', count($ids));
+      $sql = "SELECT requirement_id, sender, message, created_at FROM order_requirement_messages WHERE requirement_id IN ($placeholders) ORDER BY created_at ASC";
+      $st2 = $mysqli->prepare($sql);
+      $st2->bind_param($types, ...$ids);
+      $st2->execute();
+      $rs2 = $st2->get_result();
+      while ($row = $rs2->fetch_assoc()) {
+        $rid = (int)$row['requirement_id'];
+        if (!isset($messagesByReq[$rid])) $messagesByReq[$rid] = [];
+        $messagesByReq[$rid][] = [
+          'sender' => $row['sender'],
+          'message' => $row['message'],
+          'created_at' => $row['created_at'],
+        ];
+      }
+    }
+    foreach ($items as &$it) { $it['messages'] = $messagesByReq[$it['id']] ?? []; }
+
+    echo json_encode(["status"=>"success","items"=>$items]);
   } elseif ($method === 'POST') {
+    // Block write if not approved
+    if (!$isApproved) { http_response_code(403); echo json_encode(["status"=>"error","message"=>"Supplier not approved"]); exit; }
+
     $b = body_json();
+
+    // Supplier reply to a requirement thread
+    if (!empty($b['message']) && !empty($b['requirement_id'])) {
+      $rid = (int)$b['requirement_id'];
+      $msg = s($b['message']);
+      if ($rid <= 0 || $msg === '') { http_response_code(422); echo json_encode(["status"=>"error","message"=>"requirement_id and message required"]); exit; }
+      // Ensure requirement belongs to supplier
+      $chk = $mysqli->prepare("SELECT 1 FROM order_requirements WHERE id=? AND supplier_id=?");
+      $chk->bind_param('ii', $rid, $supplier_id);
+      $chk->execute();
+      $chk->store_result();
+      if ($chk->num_rows === 0) { http_response_code(403); echo json_encode(["status"=>"error","message"=>"Not allowed"]); exit; }
+      $ins = $mysqli->prepare("INSERT INTO order_requirement_messages (requirement_id, sender, message) VALUES (?,?,?)");
+      $sender = 'supplier';
+      $ins->bind_param('iss', $rid, $sender, $msg);
+      $ins->execute();
+      echo json_encode(["status"=>"success","message_id"=>$ins->insert_id]);
+      exit;
+    }
+
+    // Create requirement (used by supplier self-only; admin uses admin endpoint)
     $order_ref = s($b['order_ref'] ?? '');
     $material  = s($b['material_name'] ?? '');
     $qty       = (int)($b['required_qty'] ?? 0);
@@ -91,5 +156,5 @@ try {
   }
 } catch (Throwable $e) {
   http_response_code(500);
-  echo json_encode(["status"=>"error","message"=>"Server error"]);
+  echo json_encode(["status"=>"error","message"=>"Server error: " . $e->getMessage()]);
 }

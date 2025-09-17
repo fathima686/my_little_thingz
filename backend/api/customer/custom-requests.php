@@ -57,6 +57,7 @@ function ensure_schema(mysqli $db) {
     budget_max DECIMAL(10,2) NULL,
     deadline DATE NULL,
     special_instructions TEXT NULL,
+    source ENUM('form','cart') NOT NULL DEFAULT 'form',
     status ENUM('pending','in_progress','completed','cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB");
@@ -76,6 +77,15 @@ function ensure_schema(mysqli $db) {
     }
   } catch (Throwable $e) {
     // ignore; we'll handle missing column dynamically below
+  }
+
+  // Ensure source column exists
+  try {
+    if (!hasColumn($db, 'custom_requests', 'source')) {
+      $db->query("ALTER TABLE custom_requests ADD COLUMN source ENUM('form','cart') NOT NULL DEFAULT 'form' AFTER special_instructions");
+    }
+  } catch (Throwable $e) {
+    // ignore; inserts will fallback if column missing
   }
 }
 
@@ -112,6 +122,29 @@ try {
     }
     $st->close();
 
+    // Attach images for each request so the frontend can render them
+    $ids = array_column($rows, 'id');
+    if (!empty($ids)) {
+      // Build a dynamic IN clause safely with prepared statement
+      $in = implode(',', array_fill(0, count($ids), '?'));
+      $types = str_repeat('i', count($ids));
+      $sqlImgs = "SELECT request_id, image_path FROM custom_request_images WHERE request_id IN ($in) ORDER BY uploaded_at ASC";
+      $stImgs = $mysqli->prepare($sqlImgs);
+      // Spread IDs as params
+      $stImgs->bind_param($types, ...$ids);
+      $stImgs->execute();
+      $rsImgs = $stImgs->get_result();
+      $byReq = [];
+      while ($im = $rsImgs->fetch_assoc()) {
+        $rid = (int)$im['request_id'];
+        if (!isset($byReq[$rid])) { $byReq[$rid] = []; }
+        $byReq[$rid][] = $im['image_path'];
+      }
+      $stImgs->close();
+      foreach ($rows as &$r) { $r['images'] = $byReq[$r['id']] ?? []; }
+      unset($r);
+    }
+
     echo json_encode(['status' => 'success', 'requests' => $rows]);
     exit;
   }
@@ -123,23 +156,63 @@ try {
     $description = $_POST['description'] ?? '';
     $budget = $_POST['budget'] ?? null; // map to budget_min
     $deadline = $_POST['date'] ?? ($_POST['deadline'] ?? null); // allow either 'date' or 'deadline'
-
-    if (trim($title) === '' || trim($description) === '') {
-      echo json_encode(['status' => 'error', 'message' => 'Title and description are required']);
-      exit;
+    $source = isset($_POST['source']) && strtolower((string)$_POST['source']) === 'cart' ? 'cart' : 'form';
+    
+    if ($source === 'cart') {
+      // Cart customization: require description, occasion, date, and at least one image
+      if (trim($description) === '') {
+        echo json_encode(['status' => 'error', 'message' => 'Description is required for cart customization']);
+        exit;
+      }
+      if ($occasion === null || trim((string)$occasion) === '') {
+        echo json_encode(['status' => 'error', 'message' => 'Occasion is required for cart customization']);
+        exit;
+      }
+      if ($deadline === null || trim((string)$deadline) === '') {
+        echo json_encode(['status' => 'error', 'message' => 'Date is required for cart customization']);
+        exit;
+      }
+      $hasImage = !empty($_FILES['reference_images']) && (
+        (is_array($_FILES['reference_images']['error']) && count(array_filter($_FILES['reference_images']['error'], function ($e) { return (int)$e === UPLOAD_ERR_OK; })) > 0)
+        || (!is_array($_FILES['reference_images']['error']) && (int)$_FILES['reference_images']['error'] === UPLOAD_ERR_OK)
+      );
+      if (!$hasImage) {
+        echo json_encode(['status' => 'error', 'message' => 'At least one reference image is required for cart customization']);
+        exit;
+      }
+      if (trim($title) === '') {
+        $when = $deadline && $deadline !== '' ? $deadline : date('Y-m-d');
+        $occ = $occasion && $occasion !== '' ? $occasion : 'General';
+        $title = 'Cart customization - ' . $occ . ' - ' . $when;
+      }
+    } else {
+      // Normal flow: require title and description
+      if (trim($title) === '' || trim($description) === '') {
+        echo json_encode(['status' => 'error', 'message' => 'Title and description are required']);
+        exit;
+      }
     }
 
-    // Insert minimal record, handle absence of 'occasion' column gracefully
+    // Insert minimal record, handle absence of columns gracefully
     $hasOccasionIns = hasColumn($mysqli, 'custom_requests', 'occasion');
-    if ($hasOccasionIns) {
+    $hasSourceIns = hasColumn($mysqli, 'custom_requests', 'source');
+    if ($hasOccasionIns && $hasSourceIns) {
+      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, source, status, created_at)
+              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, 'pending', NOW())";
+      $st = $mysqli->prepare($sql);
+    } elseif ($hasOccasionIns && !$hasSourceIns) {
       $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, status, created_at)
               VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', 'pending', NOW())";
       $st = $mysqli->prepare($sql);
+    } elseif (!$hasOccasionIns && $hasSourceIns) {
+      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, source, status, created_at)
+              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, 'pending', NOW())";
+      $st = $mysqli->prepare($sql);
+      $occasion = null;
     } else {
       $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, status, created_at)
               VALUES (?, ?, ?, NULL, ?, NULL, ?, '', 'pending', NOW())";
       $st = $mysqli->prepare($sql);
-      // If no occasion column, ignore it
       $occasion = null;
     }
 
@@ -152,12 +225,15 @@ try {
 
     // Bind using strings for nullable values to avoid type errors when NULL is passed
     $budgetStr = $budgetVal !== null ? (string)$budgetVal : null;
-    if ($hasOccasionIns) {
+    if ($hasOccasionIns && $hasSourceIns) {
+      $st->bind_param('issssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $source);
+      // types: i, s, s, s, s, s, s
+    } elseif ($hasOccasionIns && !$hasSourceIns) {
       $st->bind_param('isssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal);
-      // types: i (user_id), s, s, s, s (budget nullable), s (deadline nullable)
+    } elseif (!$hasOccasionIns && $hasSourceIns) {
+      $st->bind_param('isssss', $userId, $title, $description, $budgetStr, $deadlineVal, $source);
     } else {
       $st->bind_param('issss', $userId, $title, $description, $budgetStr, $deadlineVal);
-      // types: i (user_id), s, s, s (budget nullable), s (deadline nullable)
     }
     try {
       $st->execute();

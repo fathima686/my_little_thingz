@@ -52,12 +52,13 @@ const WishlistManager = ({ onClose }) => {
       const data = await response.json();
       if (data.status === 'success') {
         setWishlistItems(prev => prev.filter(item => item.artwork_id !== itemId));
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Removed from wishlist' } }));
       } else {
-        alert(data.message || 'Failed to remove item');
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to remove item' } }));
       }
     } catch (error) {
       console.error('Error removing from wishlist:', error);
-      alert('Error removing item from wishlist');
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Error removing item from wishlist' } }));
     }
   };
 
@@ -78,13 +79,30 @@ const WishlistManager = ({ onClose }) => {
 
       const data = await response.json();
       if (data.status === 'success') {
-        alert('Added to cart successfully!');
+        // Auto-remove from wishlist after successful add to cart
+        setWishlistItems(prev => prev.filter(item => item.artwork_id !== artworkId));
+        try {
+          const userIdQs = auth?.user_id ? `?user_id=${encodeURIComponent(auth.user_id)}` : '';
+          await fetch(`${API_BASE}/customer/wishlist.php${userIdQs}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${auth?.token}`,
+              'X-User-ID': auth?.user_id
+            },
+            body: JSON.stringify({ artwork_id: artworkId })
+          });
+        } catch (e) {
+          // If delete fails, refetch later; UI already moved
+          console.warn('Failed to remove from wishlist after moving to cart');
+        }
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Moved to cart' } }));
       } else {
-        alert(data.message || 'Failed to add to cart');
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to add to cart' } }));
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      alert('Error adding to cart');
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Error adding to cart' } }));
     }
   };
 
@@ -112,14 +130,14 @@ const WishlistManager = ({ onClose }) => {
         } else {
           // Fallback: copy to clipboard
           await navigator.clipboard.writeText(shareUrl);
-          alert('Wishlist link copied to clipboard!');
+          window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Wishlist link copied to clipboard' } }));
         }
       } else {
-        alert(data.message || 'Failed to generate share link');
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to generate share link' } }));
       }
     } catch (error) {
       console.error('Error sharing wishlist:', error);
-      alert('Error sharing wishlist');
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Error sharing wishlist' } }));
     }
   };
 

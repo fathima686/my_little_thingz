@@ -52,73 +52,91 @@ if ($hasRole) {
   $stmt->bind_param('s', $email);
   $stmt->execute();
   $stmt->bind_result($uid, $hash, $roleVal);
-  if ($stmt->fetch() && $hash && password_verify($pass, $hash)) {
+  if (!$stmt->fetch()) {
+    // Email not found -> clearly indicate not registered
     $stmt->close();
-    $roleName = strtolower((string)$roleVal);
-    // If supplier role, ensure approved before allowing login
-    if ($roleName === 'supplier') {
-      $st = $mysqli->prepare("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
-      $st->execute();
-      $st->close();
-      $st = $mysqli->prepare("SELECT status FROM supplier_profiles WHERE user_id=? LIMIT 1");
-      $st->bind_param('i', $uid);
-      $st->execute();
-      $st->bind_result($sstatus);
-      $status = 'pending';
-      if ($st->fetch()) { $status = $sstatus; }
-      $st->close();
-      if ($status !== 'approved') {
-        echo json_encode(["status" => "pending", "message" => "Supplier account awaiting approval", "user_id" => $uid, "roles" => [$roleName], "supplier_status" => $status]);
-        exit;
-      }
-    }
-    echo json_encode(["status" => "success", "user_id" => $uid, "roles" => [$roleName]]);
-  } else {
+    http_response_code(401);
+    echo json_encode(["status" => "error", "message" => "Not registered"]);
+    exit;
+  }
+  // User exists; verify password
+  if (!$hash || !password_verify($pass, $hash)) {
+    $stmt->close();
     http_response_code(401);
     echo json_encode(["status" => "error", "message" => "Invalid credentials"]);
+    exit;
   }
+  $stmt->close();
+  $roleName = strtolower((string)$roleVal);
+  // If supplier role, ensure approved before allowing login
+  if ($roleName === 'supplier') {
+    $st = $mysqli->prepare("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
+    $st->execute();
+    $st->close();
+    $st = $mysqli->prepare("SELECT status FROM supplier_profiles WHERE user_id=? LIMIT 1");
+    $st->bind_param('i', $uid);
+    $st->execute();
+    $st->bind_result($sstatus);
+    $status = 'pending';
+    if ($st->fetch()) { $status = $sstatus; }
+    $st->close();
+    if ($status !== 'approved') {
+      echo json_encode(["status" => "pending", "message" => "Supplier account awaiting approval", "user_id" => $uid, "roles" => [$roleName], "supplier_status" => $status]);
+      exit;
+    }
+  }
+  echo json_encode(["status" => "success", "user_id" => $uid, "roles" => [$roleName]]);
 } else {
   $query = "SELECT id, $col FROM users WHERE email=? LIMIT 1";
   $stmt = $mysqli->prepare($query);
   $stmt->bind_param('s', $email);
   $stmt->execute();
   $stmt->bind_result($uid, $hash);
-  if ($stmt->fetch() && $hash && password_verify($pass, $hash)) {
+  if (!$stmt->fetch()) {
+    // Email not found -> clearly indicate not registered
     $stmt->close();
-    // fetch roles from mapping tables
-    $roles = [];
-    $r = $mysqli->prepare("SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id=?");
-    $r->bind_param('i', $uid);
-    $r->execute();
-    $r->bind_result($rname);
-    while ($r->fetch()) { $roles[] = $rname; }
-    $r->close();
-
-    if (count($roles) === 0) {
-      $roles = ['customer'];
-    }
-
-    // If supplier in roles, ensure approved before allowing login
-    if (in_array('supplier', array_map('strtolower', $roles), true)) {
-      $st = $mysqli->prepare("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
-      $st->execute();
-      $st->close();
-      $st = $mysqli->prepare("SELECT status FROM supplier_profiles WHERE user_id=? LIMIT 1");
-      $st->bind_param('i', $uid);
-      $st->execute();
-      $st->bind_result($sstatus);
-      $status = 'pending';
-      if ($st->fetch()) { $status = $sstatus; }
-      $st->close();
-      if ($status !== 'approved') {
-        echo json_encode(["status" => "pending", "message" => "Supplier account awaiting approval", "user_id" => $uid, "roles" => $roles, "supplier_status" => $status]);
-        exit;
-      }
-    }
-    echo json_encode(["status" => "success", "user_id" => $uid, "roles" => $roles]);
-  } else {
+    http_response_code(401);
+    echo json_encode(["status" => "error", "message" => "Not registered"]);
+    exit;
+  }
+  // User exists; verify password
+  if (!$hash || !password_verify($pass, $hash)) {
+    $stmt->close();
     http_response_code(401);
     echo json_encode(["status" => "error", "message" => "Invalid credentials"]);
+    exit;
   }
+  $stmt->close();
+  // fetch roles from mapping tables
+  $roles = [];
+  $r = $mysqli->prepare("SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id=?");
+  $r->bind_param('i', $uid);
+  $r->execute();
+  $r->bind_result($rname);
+  while ($r->fetch()) { $roles[] = $rname; }
+  $r->close();
+
+  if (count($roles) === 0) {
+    $roles = ['customer'];
+  }
+
+  // If supplier in roles, ensure approved before allowing login
+  if (in_array('supplier', array_map('strtolower', $roles), true)) {
+    $st = $mysqli->prepare("CREATE TABLE IF NOT EXISTS supplier_profiles (user_id INT UNSIGNED PRIMARY KEY, status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT fk_supplier_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB");
+    $st->execute();
+    $st->close();
+    $st = $mysqli->prepare("SELECT status FROM supplier_profiles WHERE user_id=? LIMIT 1");
+    $st->bind_param('i', $uid);
+    $st->execute();
+    $st->bind_result($sstatus);
+    $status = 'pending';
+    if ($st->fetch()) { $status = $sstatus; }
+    $st->close();
+    if ($status !== 'approved') {
+      echo json_encode(["status" => "pending", "message" => "Supplier account awaiting approval", "user_id" => $uid, "roles" => $roles, "supplier_status" => $status]);
+      exit;
+    }
+  }
+  echo json_encode(["status" => "success", "user_id" => $uid, "roles" => $roles]);
 }
 ?>

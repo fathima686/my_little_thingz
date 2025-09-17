@@ -38,6 +38,15 @@ function ensure_schema(mysqli $db) {
   if ((int)$row['c'] === 0) {
     try { $db->query("ALTER TABLE custom_requests ADD COLUMN occasion VARCHAR(100) NULL AFTER category_id"); } catch (Throwable $e) {}
   }
+
+  // Ensure custom_requests has 'source' column
+  try {
+    $rs = $db->query("SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='custom_requests' AND COLUMN_NAME='source'");
+    $rw = $rs->fetch_assoc();
+    if ((int)$rw['c'] === 0) {
+      $db->query("ALTER TABLE custom_requests ADD COLUMN source ENUM('form','cart') NOT NULL DEFAULT 'form' AFTER special_instructions");
+    }
+  } catch (Throwable $e) {}
 }
 
 try { ensure_schema($mysqli); } catch (Throwable $e) {}
@@ -71,12 +80,13 @@ try {
     $status = isset($_GET['status']) ? strtolower(trim($_GET['status'])) : 'pending';
     $allowed = ['pending','in_progress','completed','cancelled','all'];
     if (!in_array($status, $allowed, true)) { $status = 'pending'; }
+    $split = isset($_GET['split']) && (int)$_GET['split'] === 1;
 
     $sql = "SELECT cr.id, cr.user_id, u.first_name, u.last_name, u.email,
                    cr.title, cr.occasion, cr.description,
                    cr.category_id, c.name AS category_name,
                    cr.budget_min, cr.budget_max, cr.deadline,
-                   cr.special_instructions, cr.status, cr.created_at,
+                   cr.special_instructions, cr.source, cr.status, cr.created_at,
                    (
                      SELECT COUNT(*) FROM custom_request_images cri WHERE cri.request_id=cr.id
                    ) AS images_count
@@ -98,7 +108,17 @@ try {
     while ($row = $res->fetch_assoc()) { $rows[] = $row; }
     $st->close();
 
-    echo json_encode(["status" => "success", "requests" => $rows]);
+    if ($split) {
+      $normal = [];
+      $fromCart = [];
+      foreach ($rows as $r) {
+        if (($r['source'] ?? 'form') === 'cart') { $fromCart[] = $r; }
+        else { $normal[] = $r; }
+      }
+      echo json_encode(["status" => "success", "normal_requests" => $normal, "cart_requests" => $fromCart]);
+    } else {
+      echo json_encode(["status" => "success", "requests" => $rows]);
+    }
     exit;
   }
 

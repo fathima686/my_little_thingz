@@ -69,6 +69,21 @@ try {
   $stmt->execute();
   $stmt->close();
 
+  // If supplier, ensure a pending supplier profile exists for admin verification
+  if ($roleId === 3) {
+    $conn->query("CREATE TABLE IF NOT EXISTS supplier_profiles (
+      user_id INT UNSIGNED PRIMARY KEY,
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB");
+
+    $st2 = $conn->prepare("INSERT IGNORE INTO supplier_profiles (user_id, status) VALUES (?, 'pending')");
+    $st2->bind_param("i", $uid);
+    $st2->execute();
+    $st2->close();
+  }
+
   $conn->commit();
   echo json_encode(["status" => "success", "user_id" => $uid]);
 } catch (Throwable $e) {
