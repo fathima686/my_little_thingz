@@ -13,6 +13,8 @@ export default function AdminDashboard() {
   const [suppliersAll, setSuppliersAll] = useState([]);
   const [filter, setFilter] = useState("pending");
 
+
+
   // Custom Requests state
   const [requests, setRequests] = useState([]);
   const [reqFilter, setReqFilter] = useState("pending");
@@ -21,12 +23,21 @@ export default function AdminDashboard() {
   const [artworks, setArtworks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [uploading, setUploading] = useState(false);
+
+  // Requirements state
+  const [requirements, setRequirements] = useState([]);
+  const [reqForm, setReqForm] = useState({ supplier_id: '', order_ref: '', material_name: '', required_qty: '', unit: 'pcs', due_date: '' });
   const [showCustomizationRequests, setShowCustomizationRequests] = useState(false);
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | settings
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | settings
   const [artForm, setArtForm] = useState({
     title: "",
     description: "",
     price: "",
+    offer_price: "",
+    offer_percent: "",
+    offer_starts_at: "",
+    offer_ends_at: "",
+    force_offer_badge: false,
     category_id: "",
     availability: "in_stock",
     status: "active",
@@ -43,6 +54,28 @@ export default function AdminDashboard() {
   const [spAvailability, setSpAvailability] = useState("");
   const [spSupplierId, setSpSupplierId] = useState("");
 
+  // Admin procurement cart state
+  const [adminCart, setAdminCart] = useState([]); // [{id, name, price, quantity, colors?: [{color, qty}]}]
+  const [warehouseAddress, setWarehouseAddress] = useState('');
+  const [warehouseAddressFields, setWarehouseAddressFields] = useState(null); // {name, address_line1, address_line2, city, state, pincode, country, phone}
+
+  // Color breakdown modal state for "Buy"
+  const [showColorModal, setShowColorModal] = useState(false);
+  const [colorModalProduct, setColorModalProduct] = useState(null); // {id, name, price}
+  const [colorRows, setColorRows] = useState([{ color: '', qty: 1 }]);
+  const [editingColorsForId, setEditingColorsForId] = useState(null);
+
+  const openBuyModal = (p) => {
+    setEditingColorsForId(null);
+    setColorModalProduct({ id: p.id, name: p.name, price: Number(p.price) });
+    setColorRows([{ color: '', qty: 1 }]);
+    setShowColorModal(true);
+  };
+
+
+
+
+
   // Supplier Inventory view state (view-only)
   const [supplierInventory, setSupplierInventory] = useState([]);
   const [siQuery, setSiQuery] = useState("");
@@ -50,15 +83,123 @@ export default function AdminDashboard() {
   const [siSupplierId, setSiSupplierId] = useState("");
   const [siCategory, setSiCategory] = useState("");
 
+  // Admin promotional offers (banners/cards)
+  const [offers, setOffers] = useState([]); // [{id, title, image_url}]
+  const [offerForm, setOfferForm] = useState({ title: "", image: null });
+  const [offerNotice, setOfferNotice] = useState({ type: "", text: "" });
+
   // Lightbox for images
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [lightboxAlt, setLightboxAlt] = useState("");
+  // Message thread modal state (shows history + send box)
+  const [messageModal, setMessageModal] = useState({ open: false, requirement: null, text: '' });
 
   // Derive admin header for simple authorization to backend admin endpoints
   const adminHeader = useMemo(() => {
     const id = auth?.user_id ? Number(auth.user_id) : 0;
     return id > 0 ? { "X-Admin-User-Id": String(id) } : {};
   }, [auth]);
+
+  // Sidebar cart drawer state and helpers
+  const [showCartDrawer, setShowCartDrawer] = useState(false);
+  const cartSubtotal = useMemo(() => adminCart.reduce((s,x)=> s + x.price * x.quantity, 0), [adminCart]);
+
+  // Admin offers: list/create/delete
+  const fetchOffers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/offers-promos.php`, { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') { setOffers(data.offers || []); }
+    } catch {}
+  };
+
+  const uploadOffer = async () => {
+    try {
+      if (!offerForm.title || !offerForm.image) { setOfferNotice({ type:'error', text:'Title and image are required' }); return; }
+      const fd = new FormData();
+      fd.append('title', offerForm.title);
+      fd.append('image', offerForm.image);
+      const res = await fetch(`${API_BASE}/admin/offers-promos.php`, { method:'POST', headers: { ...adminHeader }, body: fd });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setOfferNotice({ type:'success', text:'Offer created' });
+        setOfferForm({ title:'', image:null });
+        fetchOffers();
+      } else {
+        setOfferNotice({ type:'error', text: data.message || 'Failed to create offer' });
+      }
+    } catch {
+      setOfferNotice({ type:'error', text:'Network error uploading offer' });
+    }
+  };
+
+  const deleteOffer = async (id) => {
+    if (!id) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/offers-promos.php?id=${encodeURIComponent(id)}`, { method:'DELETE', headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') { fetchOffers(); }
+      else { alert(data.message || 'Failed to delete offer'); }
+    } catch {
+      alert('Network error deleting offer');
+    }
+  };
+
+  const checkoutAdminCart = async () => {
+    try {
+      // Validate color-wise quantities equal quantity
+      for (const x of adminCart) {
+        if (Array.isArray(x.colors) && x.colors.length) {
+          const sum = x.colors.reduce((a,c)=> a + (parseInt(c.qty||0,10)||0), 0);
+          if (sum !== x.quantity) { alert(`Color quantities must sum to total for ${x.name}`); return; }
+        }
+      }
+      // Lazy-load Razorpay if needed
+      if (!window.Razorpay) {
+        await new Promise((resolve,reject)=>{
+          const s=document.createElement('script');
+          s.src='https://checkout.razorpay.com/v1/checkout.js';
+          s.onload=resolve; s.onerror=()=>reject(new Error('Failed to load Razorpay'));
+          document.body.appendChild(s);
+        });
+      }
+      const res = await fetch(`${API_BASE}/admin/procurement-create-order.php`, {
+        method:'POST',
+        headers: { 'Content-Type':'application/json', ...adminHeader },
+        body: JSON.stringify({ items: adminCart.map(x=>({ id:x.id, quantity:x.quantity, colors: x.colors || [], type: x.type || x.source || 'product' })) })
+      });
+      const data = await res.json();
+      if (data.status !== 'success') { alert(data.message || 'Failed to create order'); return; }
+      const { key_id, order } = data;
+      const rzp = new window.Razorpay({
+        key: key_id,
+        amount: Math.round(order.amount * 100),
+        currency: order.currency || 'INR',
+        name: 'My Little Thingz (Admin PO)',
+        description: `PO ${order.order_number}`,
+        order_id: order.razorpay_order_id,
+        theme: { color: '#6b46c1' },
+        handler: async function (response) {
+          try {
+            const vres = await fetch(`${API_BASE}/admin/procurement-verify.php`, {
+              method:'POST',
+              headers: { 'Content-Type':'application/json', ...adminHeader },
+              body: JSON.stringify({
+                purchase_order_id: order.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const vdata = await vres.json();
+            if (vdata.status==='success') { alert('Payment successful'); setAdminCart([]); setShowCartDrawer(false); }
+            else { alert(vdata.message || 'Payment verification failed'); }
+          } catch(e) { alert('Network error during verification'); }
+        }
+      });
+      rzp.open();
+    } catch(e) { alert(e.message || 'Unable to initialize payment'); }
+  };
 
   const fetchSuppliers = async (st = filter) => {
     try {
@@ -175,6 +316,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchRequirements = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/requirements.php`, { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setRequirements(data.items || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Supplier Products: list and approve/reject
   const fetchSupplierProducts = async (opts = {}) => {
     const { q = spQuery, supplier_id = spSupplierId, availability = spAvailability } = opts;
@@ -182,6 +335,7 @@ export default function AdminDashboard() {
     if (q) url.searchParams.set('q', q);
     if (supplier_id) url.searchParams.set('supplier_id', supplier_id);
     if (availability) url.searchParams.set('availability', availability);
+    url.searchParams.set('trending', '1'); // show only trending products
     try {
       const res = await fetch(url.toString(), { headers: { ...adminHeader } });
       const data = await res.json();
@@ -191,7 +345,7 @@ export default function AdminDashboard() {
     } catch {}
   };
 
-  // Supplier Inventory: view-only list
+  // Supplier Inventory: list with price and bulk-buy helpers
   const fetchSupplierInventory = async (opts = {}) => {
     const { q = siQuery, supplier_id = siSupplierId, availability = siAvailability, category = siCategory } = opts;
     const url = new URL(`${API_BASE}/admin/supplier-inventory.php`);
@@ -206,6 +360,53 @@ export default function AdminDashboard() {
         setSupplierInventory(data.items || []);
       }
     } catch {}
+  };
+
+  // Add inventory material to Admin Cart with color-wise quantities
+  const addInventoryToCart = (m) => {
+    setColorModalProduct({ ...m, type: 'material' });
+    setEditingColorsForId(m.id);
+    // Default one row
+    setColorRows([{ color: '', qty: 1 }]);
+    setShowColorModal(true);
+  };
+
+  // Confirm colors for either product or material
+  const confirmColorModal = () => {
+    if (!colorModalProduct) { setShowColorModal(false); return; }
+    const rows = (colorRows || []).filter(r => (r.qty||0) > 0).map(r => ({ color: (r.color||'').trim() || '-', qty: Number(r.qty)||0 }));
+    const totalQty = rows.reduce((a,c)=>a + (c.qty||0), 0) || 0;
+    if (totalQty <= 0) { alert('Please enter at least one color quantity'); return; }
+    const item = {
+      id: colorModalProduct.id,
+      name: colorModalProduct.name,
+      price: Number(colorModalProduct.price||0),
+      quantity: totalQty,
+      colors: rows,
+      type: colorModalProduct.type || 'product',
+      supplier_id: colorModalProduct.supplier_id
+    };
+    setAdminCart(prev => {
+      // merge by id and type
+      const idx = prev.findIndex(x => x.id === item.id && (x.type||'product') === (item.type||'product'));
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], quantity: item.quantity, colors: item.colors, price: item.price, name: item.name, supplier_id: item.supplier_id };
+        return copy;
+      }
+      return [...prev, item];
+    });
+    setShowColorModal(false);
+    setEditingColorsForId(null);
+    setColorRows([]);
+    setColorModalProduct(null);
+  };
+
+  const openEditColors = (it) => {
+    setColorModalProduct({ ...it });
+    setEditingColorsForId(it.id);
+    setColorRows(it.colors && it.colors.length ? it.colors.map(c=>({ color: c.color || '', qty: c.qty || 0 })) : [{ color: '', qty: it.quantity || 1 }]);
+    setShowColorModal(true);
   };
 
   // Export current Supplier Inventory table to CSV (respects current list in state)
@@ -292,6 +493,11 @@ export default function AdminDashboard() {
       fd.append('title', artForm.title);
       fd.append('description', artForm.description || '');
       fd.append('price', String(artForm.price));
+      if (artForm.offer_price) fd.append('offer_price', String(artForm.offer_price));
+      if (artForm.offer_percent) fd.append('offer_percent', String(artForm.offer_percent));
+      if (artForm.offer_starts_at) fd.append('offer_starts_at', artForm.offer_starts_at);
+      if (artForm.offer_ends_at) fd.append('offer_ends_at', artForm.offer_ends_at);
+      if (artForm.force_offer_badge) fd.append('force_offer_badge', '1');
       if (artForm.category_id) fd.append('category_id', String(artForm.category_id));
       fd.append('availability', artForm.availability);
       fd.append('status', artForm.status);
@@ -304,7 +510,7 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (res.ok && data.status === 'success') {
-        setArtForm({ title: '', description: '', price: '', category_id: '', availability: 'in_stock', status: 'active', image: null });
+        setArtForm({ title: '', description: '', price: '', offer_price: '', offer_percent: '', offer_starts_at: '', offer_ends_at: '', force_offer_badge: false, category_id: '', availability: 'in_stock', status: 'active', image: null });
         if (imagePreview) URL.revokeObjectURL(imagePreview);
         setImagePreview(null);
         await fetchArtworks();
@@ -343,6 +549,17 @@ export default function AdminDashboard() {
       fetchCategories();
       fetchSupplierProducts();
       fetchSupplierInventory();
+      // Load fixed warehouse address
+      (async ()=>{
+        try{
+          const res = await fetch(`${API_BASE}/admin/warehouse.php`, { headers: { ...adminHeader }});
+          const data = await res.json();
+          if (res.ok && data.status==='success') {
+            setWarehouseAddress(data.address||'');
+            if (data.address_fields) setWarehouseAddressFields(data.address_fields);
+          }
+        }catch{}
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, adminHeader]);
@@ -421,15 +638,99 @@ export default function AdminDashboard() {
         <nav className="nav">
           <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => setActiveSection('overview')}>Overview</button>
           <button className={activeSection === 'suppliers' ? 'active' : ''} onClick={() => { setActiveSection('suppliers'); fetchSuppliers(filter); fetchAll(); }}>Suppliers</button>
-          <button className={activeSection === 'supplier-products' ? 'active' : ''} onClick={() => { setActiveSection('supplier-products'); fetchSupplierProducts(); }}>Supplier Products</button>
+          <button className={activeSection === 'supplier-products' ? 'active' : ''} onClick={() => { setActiveSection('supplier-products'); fetchSupplierProducts(); }}>Supplier Trending Products</button>
           <button className={activeSection === 'supplier-inventory' ? 'active' : ''} onClick={() => { setActiveSection('supplier-inventory'); fetchSupplierInventory(); }}>Supplier Inventory</button>
           <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }}>Custom Requests</button>
           <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }}>Artworks</button>
-          <button className="btn btn-soft small" onClick={logout}>Logout</button>
+          <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }}>Order Requirements</button>
+          {/* Promotional Offers removed as requested */}
+          <div className="cart-mini" style={{marginTop:12, padding:'10px 8px', background:'#f8f7ff', borderRadius:8}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div style={{fontWeight:600}}>Cart</div>
+              <button className="btn btn-soft tiny" onClick={()=> setShowCartDrawer(true)}>Open Cart</button>
+            </div>
+            <div className="muted" style={{marginTop:4, fontSize:12}}>{adminCart.length} items • Rs {cartSubtotal.toFixed(2)}</div>
+          </div>
+          <button className="btn btn-soft small" onClick={logout} style={{marginTop:10}}>Logout</button>
         </nav>
       </aside>
 
       <main className="admin-main">
+        {/* Full-screen cart overlay */}
+        {showCartDrawer && (
+          <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:1600, display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <div className="box" style={{ width:'min(980px, 95vw)', maxHeight:'88vh', overflow:'auto', background:'#fff', padding:16, borderRadius:12 }}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                <h3 style={{margin:0}}>Admin Cart</h3>
+                <button className="btn" onClick={()=> setShowCartDrawer(false)}>Close</button>
+              </div>
+
+              {/* Fixed delivery address */}
+              {(warehouseAddressFields || warehouseAddress) ? (
+                <div className="muted" style={{marginBottom:8, lineHeight:1.4}}>
+                  <div style={{fontWeight:600}}>Deliver to (fixed):</div>
+                  {warehouseAddressFields ? (
+                    <div style={{whiteSpace:'pre-wrap'}}>
+                      {[warehouseAddressFields.name, warehouseAddressFields.address_line1, warehouseAddressFields.address_line2]
+                        .filter(Boolean).join(', ')}
+                      {"\n"}
+                      {[warehouseAddressFields.city, warehouseAddressFields.state, warehouseAddressFields.pincode]
+                        .filter(Boolean).join(', ')}
+                      {"\n"}
+                      {warehouseAddressFields.country}
+                      {warehouseAddressFields.phone ? `\nPhone: ${warehouseAddressFields.phone}` : ''}
+                    </div>
+                  ) : (
+                    <div style={{whiteSpace:'pre-wrap'}}>{warehouseAddress}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="muted" style={{marginBottom:8}}>No warehouse address set.</div>
+              )}
+
+              {adminCart.length===0 ? (
+                <div className="muted">No items in cart.</div>
+              ) : (
+                <>
+                  <table className="table">
+                    <thead>
+                      <tr><th>Name</th><th>Qty</th><th>Colors</th><th>Price</th><th>Total</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {adminCart.map(it=> (
+                        <tr key={it.id}>
+                          <td>{it.name}</td>
+                          <td>
+                            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                              <span className="muted" style={{minWidth:50, display:'inline-block', textAlign:'center'}}>{it.quantity}</span>
+                              <button className="btn btn-soft tiny" onClick={()=> openEditColors(it)}>Edit colors</button>
+                            </div>
+                          </td>
+                          <td>
+                            {(it.colors && it.colors.length>0) ? (
+                              <span className="muted" style={{fontSize:12}}>
+                                {it.colors.map(c=>`${c.color}:${c.qty}`).join(', ')}
+                              </span>
+                            ) : (
+                              <span className="muted">-</span>
+                            )}
+                          </td>
+                          <td>{Number(it.price).toFixed(2)}</td>
+                          <td>{(Number(it.price)*Number(it.quantity)).toFixed(2)}</td>
+                          <td><button className="btn btn-soft tiny" onClick={()=> setAdminCart(prev=>prev.filter(x=>x.id!==it.id))}>Remove</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center', marginTop:8}}>
+                    <div className="muted">Subtotal: Rs {cartSubtotal.toFixed(2)}</div>
+                    <button className="btn btn-emph" onClick={checkoutAdminCart}>Proceed to Payment</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <div className="admin-topbar">
           <div className="topbar-inner container">
             <div className="topbar-title">Admin Dashboard</div>
@@ -487,7 +788,7 @@ export default function AdminDashboard() {
                     </button>
                     <button className="action-card" onClick={() => setActiveSection('supplier-products')}>
                       <div className="action-icon">📦</div>
-                      <h3>Supplier Products</h3>
+                      <h3>Supplier Trending Products</h3>
                       <p>Moderate supplier submissions</p>
                     </button>
                     <button className="action-card" onClick={() => setActiveSection('artworks')}>
@@ -554,7 +855,7 @@ export default function AdminDashboard() {
             {activeSection === 'supplier-products' && (
             <section id="supplier-products" className="widget" style={{ marginTop: 12 }}>
               <div className="widget-head">
-                <h4>Supplier Products</h4>
+                <h4>Supplier Trending Products</h4>
                 <div className="controls" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
 
                   <label className="muted">Availability</label>
@@ -579,14 +880,15 @@ export default function AdminDashboard() {
                       <th>Category</th>
                       <th>Price</th>
                       <th>Qty</th>
-                      <th>Trend</th>
+                      <th>Trending</th>
                       <th>Stock</th>
                       <th>Updated</th>
+                      <th style={{width:120}}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {supplierProducts.length === 0 ? (
-                      <tr><td colSpan={10} className="muted">No products</td></tr>
+                      <tr><td colSpan={11} className="muted">No trending products</td></tr>
                     ) : (
                       supplierProducts.map(p => (
                         <tr key={p.id}>
@@ -611,13 +913,223 @@ export default function AdminDashboard() {
                           <td>{p.is_trending ? 'Yes' : 'No'}</td>
                           <td style={{ textTransform:'capitalize' }}>{p.stock}</td>
                           <td>{new Date(p.updated_at).toLocaleString()}</td>
+                          <td>
+                            <button className="btn btn-soft tiny" onClick={()=> openBuyModal(p)}>Add to Cart</button>
+                          </td>
                         </tr>
                       ))
                     )}
                   </tbody>
                 </table>
+
+                {/* Admin cart panel */}
+                <div className="box hide-admin-cart-items" style={{marginTop:12}}>
+                  <h5>Admin Cart</h5>
+                  <div className="muted" style={{margin:'6px 0 10px'}}>Use Add to Cart for Trending and Inventory. Click Create Purchase Order to pay.</div>
+                  {(warehouseAddressFields || warehouseAddress) ? (
+                    <div className="muted" style={{marginBottom:8, lineHeight:1.4}}>
+                      <div style={{fontWeight:600}}>Deliver to (fixed):</div>
+                      {warehouseAddressFields ? (
+                        <div style={{whiteSpace:'pre-wrap'}}>
+                          {[warehouseAddressFields.name, warehouseAddressFields.address_line1, warehouseAddressFields.address_line2]
+                            .filter(Boolean).join(', ')}
+                          {"\n"}
+                          {[warehouseAddressFields.city, warehouseAddressFields.state, warehouseAddressFields.pincode]
+                            .filter(Boolean).join(', ')}
+                          {"\n"}
+                          {warehouseAddressFields.country}
+                          {warehouseAddressFields.phone ? `\nPhone: ${warehouseAddressFields.phone}` : ''}
+                        </div>
+                      ) : (
+                        <div style={{whiteSpace:'pre-wrap'}}>{warehouseAddress}</div>
+                      )}
+                    </div>
+                  ) : null}
+                  {adminCart.length===0 ? (
+                    <div className="muted">No items added.</div>
+                  ) : (
+                    <>
+                      <table className="table compact">
+                        <thead>
+                          <tr><th>Name</th><th>Qty</th><th>Colors</th><th>Price</th><th>Total</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                          {adminCart.map(it=> (
+                            <tr key={it.id}>
+                              <td>{it.name}</td>
+                              <td>
+                                <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                                  <span className="muted" style={{minWidth:50, display:'inline-block', textAlign:'center'}}>{it.quantity}</span>
+                                  <button className="btn btn-soft tiny" onClick={()=> openEditColors(it)}>Edit colors</button>
+                                </div>
+                              </td>
+                              <td>
+                                {(it.colors && it.colors.length>0) ? (
+                                  <span className="muted" style={{fontSize:12}}>
+                                    {it.colors.map(c=>`${c.color}:${c.qty}`).join(', ')}
+                                  </span>
+                                ) : (
+                                  <span className="muted">-</span>
+                                )}
+                              </td>
+                              <td>{it.price.toFixed(2)}</td>
+                              <td>{(it.price*it.quantity).toFixed(2)}</td>
+                              <td><button className="btn btn-soft tiny" onClick={()=> setAdminCart(prev=>prev.filter(x=>x.id!==it.id))}>Remove</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <div className="muted">Subtotal: Rs {adminCart.reduce((s,x)=>s + x.price*x.quantity, 0).toFixed(2)}</div>
+                        <button className="btn btn-emph" onClick={async()=>{
+                          try {
+                            // Validate color-wise quantities equal quantity
+                            for (const x of adminCart) {
+                              if (Array.isArray(x.colors) && x.colors.length) {
+                                const sum = x.colors.reduce((a,c)=>a + (parseInt(c.qty||0,10)||0), 0);
+                                if (sum !== x.quantity) { alert(`Color quantities must sum to total for ${x.name}`); return; }
+                              }
+                            }
+                            // Lazy-load Razorpay
+                            if (!window.Razorpay) {
+                              await new Promise((resolve,reject)=>{
+                                const s=document.createElement('script');
+                                s.src='https://checkout.razorpay.com/v1/checkout.js';
+                                s.onload=resolve; s.onerror=()=>reject(new Error('Failed to load Razorpay'));
+                                document.body.appendChild(s);
+                              });
+                            }
+                            const res = await fetch(`${API_BASE}/admin/procurement-create-order.php`, {
+                              method:'POST',
+                              headers: { 'Content-Type':'application/json', ...adminHeader },
+                              body: JSON.stringify({ items: adminCart.map(x=>({ id:x.id, quantity:x.quantity, colors: x.colors || [], type: x.type || x.source || 'product' })) })
+                            });
+                            const data = await res.json();
+                            if (data.status !== 'success') { alert(data.message || 'Failed to create order'); return; }
+                            const { key_id, order } = data;
+                            const rzp = new window.Razorpay({
+                              key: key_id,
+                              amount: Math.round(order.amount * 100),
+                              currency: order.currency || 'INR',
+                              name: 'My Little Thingz (Admin PO)',
+                              description: `PO ${order.order_number}`,
+                              order_id: order.razorpay_order_id,
+                              theme: { color: '#6b46c1' },
+                              handler: async function (response) {
+                                try {
+                                  const vres = await fetch(`${API_BASE}/admin/procurement-verify.php`, {
+                                    method:'POST',
+                                    headers: { 'Content-Type':'application/json', ...adminHeader },
+                                    body: JSON.stringify({
+                                      purchase_order_id: order.id,
+                                      razorpay_order_id: response.razorpay_order_id,
+                                      razorpay_payment_id: response.razorpay_payment_id,
+                                      razorpay_signature: response.razorpay_signature
+                                    })
+                                  });
+                                  const vdata = await vres.json();
+                                  if (vdata.status==='success') { alert('Payment successful'); setAdminCart([]); }
+                                  else { alert(vdata.message || 'Payment verification failed'); }
+                                } catch(e) { alert('Network error during verification'); }
+                              }
+                            });
+                            rzp.open();
+                          } catch(e) { alert(e.message || 'Unable to initialize payment'); }
+                        }}>Create Purchase Order</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
               </div>
             </section>
+            )}
+
+            {/* Color & quantity modal */}
+            {showColorModal && (
+              <div className="modal-backdrop" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <div className="box" style={{ width:'min(520px, 92vw)', background:'#fff', padding:16, borderRadius:8 }}>
+                  <h5>Enter colors and quantities</h5>
+                  <div className="muted" style={{marginBottom:8}}>{colorModalProduct?.name}</div>
+                  <table className="table compact">
+                    <thead>
+                      <tr><th>Color</th><th style={{width:120}}>Qty</th><th style={{width:80}}></th></tr>
+                    </thead>
+                    <tbody>
+                      {colorRows.map((row, idx)=> (
+                        <tr key={idx}>
+                          <td>
+                            <input className="input" placeholder="e.g. Red" value={row.color}
+                              onChange={e=>{
+                                const v = e.target.value;
+                                setColorRows(prev=>prev.map((r,i)=> i===idx ? {...r, color:v} : r));
+                              }} />
+                          </td>
+                          <td>
+                            <input type="number" className="input" min={0} value={row.qty}
+                              onChange={e=>{
+                                const v = Math.max(0, parseInt(e.target.value||'0',10));
+                                setColorRows(prev=>prev.map((r,i)=> i===idx ? {...r, qty:v} : r));
+                              }} style={{width:110}} />
+                          </td>
+                          <td>
+                            <button className="btn btn-soft tiny" onClick={()=> setColorRows(prev=> prev.filter((_,i)=>i!==idx))}>Remove</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{display:'flex',gap:8,justifyContent:'space-between',alignItems:'center'}}>
+                    <button className="btn" onClick={()=> setColorRows(prev=> [...prev, {color:'', qty:1}])}>Add color</button>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="btn" onClick={()=> { setShowColorModal(false); setEditingColorsForId(null); }}>Cancel</button>
+                      <button className="btn btn-emph" onClick={confirmColorModal}>Confirm</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Message thread modal */}
+            {messageModal.open && (
+              <div className="modal-backdrop" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1100, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <div className="box" style={{ width:'min(620px, 96vw)', background:'#fff', padding:16, borderRadius:8, maxHeight:'80vh', display:'flex', flexDirection:'column' }}>
+                  <h5>Messages • #{messageModal.requirement?.id} · {messageModal.requirement?.supplier_name}</h5>
+                  <div className="muted" style={{marginBottom:8}}>Order: {messageModal.requirement?.order_ref} • Material: {messageModal.requirement?.material_name}</div>
+                  <div style={{flex:'1 1 auto', overflow:'auto', border:'1px solid #eee', borderRadius:6, padding:8, marginBottom:8}}>
+                    {(messageModal.requirement?.messages||[]).length === 0 ? (
+                      <div className="muted">No messages yet</div>
+                    ) : (
+                      messageModal.requirement.messages.map((m,idx)=> (
+                        <div key={idx} style={{marginBottom:8}}>
+                          <div style={{fontSize:12, color:'#666'}}>{m.sender} • {new Date(m.created_at).toLocaleString()}</div>
+                          <div>{m.message}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <textarea className="input" rows={3} placeholder="Type your message..." value={messageModal.text} onChange={e=> setMessageModal(mm=> ({ ...mm, text: e.target.value }))} />
+                  <div style={{display:'flex',gap:8, justifyContent:'flex-end', marginTop:8}}>
+                    <button className="btn" onClick={()=> setMessageModal({ open:false, requirement:null, text:'' })}>Close</button>
+                    <button className="btn btn-emph" onClick={async ()=>{
+                      const text = (messageModal.text||'').trim();
+                      if (!text) return;
+                      try {
+                        await fetch(`${API_BASE}/admin/requirements.php`, {
+                          method:'POST',
+                          headers: { 'Content-Type':'application/json', ...adminHeader },
+                          body: JSON.stringify({ requirement_id: messageModal.requirement?.id, message: text })
+                        });
+                        setMessageModal(mm=> ({ ...mm, text:'' }));
+                        await fetchRequirements();
+                        // refresh the requirement in the modal with fresh messages
+                        const updated = requirements.find(x=> x.id === messageModal.requirement?.id);
+                        if (updated) setMessageModal(mm=> ({ ...mm, requirement: updated }));
+                      } catch {}
+                    }}>Send</button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeSection === 'supplier-inventory' && (
@@ -653,13 +1165,15 @@ export default function AdminDashboard() {
                       <th>Color</th>
                       <th>Brand</th>
                       <th>Qty</th>
+                      <th>Price</th>
                       <th>Availability</th>
                       <th>Updated</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {supplierInventory.length === 0 ? (
-                      <tr><td colSpan={13} className="muted">No inventory</td></tr>
+                      <tr><td colSpan={15} className="muted">No inventory</td></tr>
                     ) : (
                       supplierInventory.map(m => (
                         <tr key={m.id}>
@@ -685,8 +1199,12 @@ export default function AdminDashboard() {
                           <td>{m.color || '-'}</td>
                           <td>{m.brand || '-'}</td>
                           <td>{m.quantity}</td>
+                          <td>{Number(m.price||0).toFixed(2)}</td>
                           <td style={{ textTransform:'capitalize' }}>{m.availability}</td>
                           <td>{new Date(m.updated_at).toLocaleString()}</td>
+                          <td>
+                            <button className="btn btn-soft tiny" onClick={()=> addInventoryToCart(m)}>Add to Cart</button>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -717,6 +1235,7 @@ export default function AdminDashboard() {
                   <thead>
                     <tr>
                       <th>ID</th>
+                      <th>Image</th>
                       <th>Customer</th>
                       <th>Title</th>
                       <th>Occasion</th>
@@ -729,11 +1248,23 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody>
                     {requests.length === 0 ? (
-                      <tr><td colSpan={9} className="muted">No records</td></tr>
+                      <tr><td colSpan={10} className="muted">No records</td></tr>
                     ) : (
                       requests.map((r) => (
                         <tr key={r.id}>
                           <td>{r.id}</td>
+                          <td>
+                            {Array.isArray(r.images) && r.images.length ? (
+                              <img
+                                src={r.images[0]}
+                                alt={r.title || 'Reference'}
+                                style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, cursor: 'zoom-in' }}
+                                onClick={() => { setLightboxUrl(r.images[0]); setLightboxAlt(r.title || 'Reference'); }}
+                              />
+                            ) : (
+                              <span className="muted">-</span>
+                            )}
+                          </td>
                           <td>{r.first_name} {r.last_name}<div className="muted" style={{fontSize:12}}>{r.email}</div></td>
                           <td>{r.title}</td>
                           <td>{r.occasion || '-'}</td>
@@ -803,6 +1334,36 @@ export default function AdminDashboard() {
                   <div>
                     <label className="muted">Price</label>
                     <input type="number" step="0.01" className="input" value={artForm.price} onChange={e => setArtForm(f => ({...f, price: e.target.value}))} required />
+                  </div>
+                  <div>
+                    <label className="muted">Offer Price (optional)</label>
+                    <input type="number" step="0.01" className="input" value={artForm.offer_price}
+                      onChange={e => setArtForm(f => ({...f, offer_price: e.target.value, offer_percent: ''}))}
+                      placeholder="e.g., 199.99" />
+                  </div>
+                  <div>
+                    <label className="muted">Offer Percent (optional)</label>
+                    <input type="number" step="0.01" min="0" max="100" className="input" value={artForm.offer_percent}
+                      onChange={e => setArtForm(f => ({...f, offer_percent: e.target.value, offer_price: ''}))}
+                      placeholder="e.g., 20 for 20% off" />
+                  </div>
+                  <div>
+                    <label className="muted">Offer Starts</label>
+                    <input type="datetime-local" className="input" value={artForm.offer_starts_at}
+                      onChange={e => setArtForm(f => ({...f, offer_starts_at: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="muted">Offer Ends</label>
+                    <input type="datetime-local" className="input" value={artForm.offer_ends_at}
+                      onChange={e => setArtForm(f => ({...f, offer_ends_at: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="muted">Force Offer Badge</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" id="force_offer_badge" checked={!!artForm.force_offer_badge}
+                        onChange={e => setArtForm(f => ({ ...f, force_offer_badge: e.target.checked }))} />
+                      <label htmlFor="force_offer_badge">Show OFFER ribbon without changing price</label>
+                    </div>
                   </div>
                   <div>
                     <label className="muted">Category</label>
@@ -897,6 +1458,114 @@ export default function AdminDashboard() {
               </div>
             </section>
             )}
+
+            {activeSection === 'requirements' && (
+            <section id="requirements" className="widget" style={{ marginTop: 12 }}>
+              <div className="widget-head">
+                <h4>Order Requirements</h4>
+                <div className="controls">
+                  <button className="btn btn-emph" onClick={fetchRequirements}>Refresh</button>
+                </div>
+              </div>
+              <div className="widget-body">
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!reqForm.supplier_id || !reqForm.order_ref.trim() || !reqForm.material_name.trim()) { alert('Supplier, Order Ref, and Material are required'); return; }
+                  try {
+                    const res = await fetch(`${API_BASE}/admin/requirements.php`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', ...adminHeader },
+                      body: JSON.stringify(reqForm)
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.status === 'success') {
+                      setReqForm({ supplier_id: '', order_ref: '', material_name: '', required_qty: '', unit: 'pcs', due_date: '' });
+                      fetchRequirements();
+                    } else {
+                      alert(data.message || 'Failed to add requirement');
+                    }
+                  } catch (err) {
+                    alert('Network error');
+                  }
+                }} className="grid" style={{ gap: 12, alignItems: 'end', marginBottom: 16 }}>
+                  <div>
+                    <label className="muted">Supplier ID</label>
+                    <select className="select" required value={String(reqForm.supplier_id)} onChange={e => setReqForm(f => ({ ...f, supplier_id: Number(e.target.value) || '' }))}>
+                      <option value="">— Select Supplier —</option>
+                      {suppliersAll.filter(s => s.status === 'approved').map(s => (
+                        <option key={s.id} value={s.id}>{s.first_name} {s.last_name} (ID: {s.id})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="muted">Order Reference</label>
+                    <input className="input" value={reqForm.order_ref} onChange={e => setReqForm(f => ({ ...f, order_ref: e.target.value }))} required />
+                  </div>
+                  <div>
+                    <label className="muted">Material Name</label>
+                    <input className="input" value={reqForm.material_name} onChange={e => setReqForm(f => ({ ...f, material_name: e.target.value }))} required />
+                  </div>
+                  <div>
+                    <label className="muted">Required Qty</label>
+                    <input type="number" className="input" value={reqForm.required_qty} onChange={e => setReqForm(f => ({ ...f, required_qty: e.target.value }))} min="0" />
+                  </div>
+                  <div>
+                    <label className="muted">Unit</label>
+                    <select className="select" value={reqForm.unit} onChange={e => setReqForm(f => ({ ...f, unit: e.target.value }))}>
+                      <option value="pcs">pcs</option>
+                      <option value="kg">kg</option>
+                      <option value="m">m</option>
+                      <option value="l">l</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="muted">Due Date</label>
+                    <input type="date" className="input" value={reqForm.due_date} onChange={e => setReqForm(f => ({ ...f, due_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <button className="btn btn-emph" type="submit">Add Requirement</button>
+                  </div>
+                </form>
+
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Supplier</th>
+                      <th>Order Ref</th>
+                      <th>Material</th>
+                      <th>Required</th>
+                      <th>Due</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {requirements.length === 0 ? (
+                      <tr><td colSpan={8} className="muted">No requirements</td></tr>
+                    ) : (
+                      requirements.map(r => (
+                        <tr key={r.id}>
+                          <td>{r.id}</td>
+                          <td>{r.supplier_name}</td>
+                          <td>{r.order_ref}</td>
+                          <td>{r.material_name}</td>
+                          <td>{r.required_qty} {r.unit}</td>
+                          <td>{r.due_date || 'TBD'}</td>
+                          <td style={{ textTransform: 'capitalize' }}>{r.status}</td>
+                          <td>
+                            <button className="btn btn-soft tiny" onClick={() => setMessageModal({ open: true, requirement: r, text: '' })}>Message</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            )}
+
+            {/* Promotional Offers section removed as requested */}
           </div>
         </div>
       </main>

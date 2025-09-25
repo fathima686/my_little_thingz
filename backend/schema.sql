@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 14, 2025 at 01:37 PM
+-- Generation Time: Sep 23, 2025 at 06:58 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -61,7 +61,18 @@ INSERT INTO `artworks` (`id`, `title`, `description`, `price`, `image_url`, `cat
 (13, 'Micro frame', 'micro frame', 90.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/micro_frame_20250909_164926_56f796.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:49:26', '2025-09-09 14:49:26'),
 (14, 'mini frame', 'mini frame', 149.99, 'http://localhost/my_little_thingz/backend/uploads/artworks/mini_frame_20250909_165028_7eaa02.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:50:28', '2025-09-09 14:50:28'),
 (15, 'album', '20  photos 150', 150.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid__2__20250909_165107_4ac16f.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:51:07', '2025-09-09 14:51:07'),
-(16, 'Hamper', 'wedding hamper', 2000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Wedding_hamper_20250909_165223_b117bb.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-09 14:52:23', '2025-09-09 14:52:23');
+(16, 'Hamper', 'wedding hamper', 2000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Wedding_hamper_20250909_165223_b117bb.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-09 14:52:23', '2025-09-09 14:52:23'),
+(17, 'chocolate hamper', 'chocolates', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Chocolate_Hamper_20250921_153359_68c977.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:33:59', '2025-09-21 13:33:59'),
+(18, 'wedding set', 'set in wedding', 6000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Celebrate_life_s_special_moments_with____20250921_153611_602073.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:36:11', '2025-09-21 13:36:11'),
+(19, 'boquetes', 'pink flowers', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/_artsybaken_20250921_153825_9108f6.jpg', 2, 5, 'in_stock', 0, 'active', '2025-09-21 13:38:25', '2025-09-21 13:38:25'),
+(20, 'trolly hamper', 'birthday hamper', 1000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Birthday_hamper_20250921_153957_58a57d.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:39:57', '2025-09-21 13:39:57'),
+(21, 'shirt box', 'shirt hamper', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/_trousseau__weddingpackaging__giftboxforhim__hamperbox__sliderbox__birthdayhamper__hamperforher__hamperforhim__nammasalem_hamper__hampers__giftbox__instagramreels_r_20250921_154121_26dfde.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:41:21', '2025-09-21 13:41:21'),
+(22, 'nutt box', 'nuts box', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__3__20250923_162849_9b1084.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-23 14:28:49', '2025-09-23 14:28:49'),
+(23, 'perfume box', 'perfume+watch', 1000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Perfume_Gift_ideas_watch_gift_ideas_20250923_163345_8fe78d.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-23 14:33:45', '2025-09-23 14:33:45'),
+(24, 'poloroid boquetes', 'boquestes with poloroid', 500.04, 'http://localhost/my_little_thingz/backend/uploads/artworks/beautiful_photos_bouquet______20250923_163516_fd2fb9.jpg', 2, 5, 'in_stock', 0, 'active', '2025-09-23 14:35:16', '2025-09-23 14:35:16'),
+(25, 'kinderjoy boquetes', 'kinderjoy boquetes', 600.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__6__20250923_163633_52f745.jpg', 2, 5, 'in_stock', 0, 'active', '2025-09-23 14:36:33', '2025-09-23 14:36:33'),
+(26, 'chocolate tower', 'chocolate tower', 1999.99, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__7__20250923_163827_9b978d.jpg', 5, 5, 'in_stock', 0, 'active', '2025-09-23 14:38:27', '2025-09-23 14:38:27'),
+(27, 'custom chocoltes', 'choocoo', 25.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/mschocoworld_-_9952979286_20250923_164331_87efb6.jpg', 5, 5, 'in_stock', 0, 'active', '2025-09-23 14:43:31', '2025-09-23 14:43:31');
 
 -- --------------------------------------------------------
 
@@ -85,7 +96,12 @@ INSERT INTO `auth_providers` (`id`, `user_id`, `provider`, `provider_user_id`, `
 (2, 1, 'google', '102325132871747177182', '2025-08-16 04:39:32'),
 (3, 2, 'google', '104067605047026890772', '2025-08-16 04:40:07'),
 (4, 5, 'google', '107043815178028470916', '2025-09-09 10:39:25'),
-(7, 8, 'google', '106031145699305807929', '2025-09-13 06:08:52');
+(7, 8, 'google', '106031145699305807929', '2025-09-13 06:08:52'),
+(8, 9, 'google', '115496851249528699969', '2025-09-15 08:22:24'),
+(9, 11, 'google', '110350776552417646009', '2025-09-17 06:22:37'),
+(10, 12, 'google', '114542462885540925445', '2025-09-22 08:50:48'),
+(11, 13, 'google', '116968811920977241300', '2025-09-22 14:18:56'),
+(12, 14, 'google', '104464372294846036228', '2025-09-22 14:24:05');
 
 -- --------------------------------------------------------
 
@@ -106,8 +122,7 @@ CREATE TABLE `cart` (
 --
 
 INSERT INTO `cart` (`id`, `user_id`, `artwork_id`, `quantity`, `added_at`) VALUES
-(17, 1, 8, 1, '2025-09-13 17:51:41'),
-(18, 1, 12, 1, '2025-09-14 11:22:19');
+(26, 1, 21, 1, '2025-09-22 15:21:01');
 
 -- --------------------------------------------------------
 
@@ -155,6 +170,8 @@ CREATE TABLE `custom_requests` (
   `deadline` date DEFAULT NULL,
   `special_instructions` text DEFAULT NULL,
   `source` enum('form','cart') NOT NULL DEFAULT 'form',
+  `artwork_id` int(11) DEFAULT NULL,
+  `requested_quantity` int(11) NOT NULL DEFAULT 1,
   `status` enum('pending','in_progress','completed','cancelled') DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -163,21 +180,31 @@ CREATE TABLE `custom_requests` (
 -- Dumping data for table `custom_requests`
 --
 
-INSERT INTO `custom_requests` (`id`, `user_id`, `title`, `description`, `category_id`, `occasion`, `budget_min`, `budget_max`, `deadline`, `special_instructions`, `source`, `status`, `created_at`) VALUES
-(1, 1, 'gift box for birthday', 'gift box consist of chocolates', NULL, 'Birthday', 500.00, NULL, '2025-09-15', '', 'form', 'completed', '2025-09-11 08:16:30'),
-(2, 1, 'bjksjkds', 'kd ndjk', NULL, 'wedding', 39.98, NULL, '2025-09-26', '', 'form', 'completed', '2025-09-12 06:09:13'),
-(3, 1, 'Cart customization - wedding - 2025-09-19', 'red flower ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'cart', 'completed', '2025-09-12 08:15:05'),
-(4, 1, 'Cart customization - christmas - 2025-09-30', 'vft', NULL, 'christmas', NULL, NULL, '2025-09-30', '', 'cart', 'completed', '2025-09-12 08:17:26'),
-(5, 1, 'Cart customization - wedding - 2025-09-18', 'purple theme', NULL, 'wedding', NULL, NULL, '2025-09-18', '', 'cart', 'completed', '2025-09-12 08:23:37'),
-(6, 1, 'Cart customization - baby_shower - 2025-09-30', 'bh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'cart', 'completed', '2025-09-12 08:27:06'),
-(7, 1, 'Cart customization - baby_shower - 2025-09-30', 'jhhh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'cart', 'completed', '2025-09-12 08:30:34'),
-(8, 1, 'Cart customization - valentine - 2025-09-30', 'kbhxbh', NULL, 'valentine', NULL, NULL, '2025-09-30', '', 'cart', 'completed', '2025-09-12 08:33:21'),
-(9, 1, 'Cart customization - birthday - 2025-09-14', 'poloroids with 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-14', '', 'cart', 'completed', '2025-09-12 10:12:12'),
-(10, 1, 'Cart customization - birthday - 2025-09-15', 'frame', NULL, 'birthday', NULL, NULL, '2025-09-15', '', 'cart', 'completed', '2025-09-12 10:16:53'),
-(11, 1, 'anniversary gift', 'gift box consist of chocolates', NULL, 'Anniversary', 2000.00, NULL, '2025-09-15', '', 'form', 'completed', '2025-09-12 10:35:32'),
-(12, 1, 'Cart customization - wedding - 2025-09-17', 'wedding card', NULL, 'wedding', NULL, NULL, '2025-09-17', '', 'cart', 'completed', '2025-09-13 04:29:21'),
-(13, 1, 'Cart customization - birthday - 2025-09-20', 'gift set', NULL, 'birthday', NULL, NULL, '2025-09-20', '', 'cart', 'completed', '2025-09-13 05:50:19'),
-(14, 1, 'Cart customization - birthday - 2025-09-18', 'red rosses', NULL, 'birthday', NULL, NULL, '2025-09-18', '', 'cart', 'completed', '2025-09-13 17:51:41');
+INSERT INTO `custom_requests` (`id`, `user_id`, `title`, `description`, `category_id`, `occasion`, `budget_min`, `budget_max`, `deadline`, `special_instructions`, `source`, `artwork_id`, `requested_quantity`, `status`, `created_at`) VALUES
+(1, 1, 'gift box for birthday', 'gift box consist of chocolates', NULL, 'Birthday', 500.00, NULL, '2025-09-15', '', 'form', NULL, 1, 'completed', '2025-09-11 08:16:30'),
+(2, 1, 'bjksjkds', 'kd ndjk', NULL, 'wedding', 39.98, NULL, '2025-09-26', '', 'form', NULL, 1, 'completed', '2025-09-12 06:09:13'),
+(3, 1, 'Cart customization - wedding - 2025-09-19', 'red flower ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:15:05'),
+(4, 1, 'Cart customization - christmas - 2025-09-30', 'vft', NULL, 'christmas', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:17:26'),
+(5, 1, 'Cart customization - wedding - 2025-09-18', 'purple theme', NULL, 'wedding', NULL, NULL, '2025-09-18', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:23:37'),
+(6, 1, 'Cart customization - baby_shower - 2025-09-30', 'bh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:27:06'),
+(7, 1, 'Cart customization - baby_shower - 2025-09-30', 'jhhh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:30:34'),
+(8, 1, 'Cart customization - valentine - 2025-09-30', 'kbhxbh', NULL, 'valentine', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:33:21'),
+(9, 1, 'Cart customization - birthday - 2025-09-14', 'poloroids with 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-14', '', 'cart', NULL, 1, 'completed', '2025-09-12 10:12:12'),
+(10, 1, 'Cart customization - birthday - 2025-09-15', 'frame', NULL, 'birthday', NULL, NULL, '2025-09-15', '', 'cart', NULL, 1, 'completed', '2025-09-12 10:16:53'),
+(11, 1, 'anniversary gift', 'gift box consist of chocolates', NULL, 'Anniversary', 2000.00, NULL, '2025-09-15', '', 'form', NULL, 1, 'completed', '2025-09-12 10:35:32'),
+(12, 1, 'Cart customization - wedding - 2025-09-17', 'wedding card', NULL, 'wedding', NULL, NULL, '2025-09-17', '', 'cart', NULL, 1, 'completed', '2025-09-13 04:29:21'),
+(13, 1, 'Cart customization - birthday - 2025-09-20', 'gift set', NULL, 'birthday', NULL, NULL, '2025-09-20', '', 'cart', NULL, 1, 'completed', '2025-09-13 05:50:19'),
+(14, 1, 'Cart customization - birthday - 2025-09-18', 'red rosses', NULL, 'birthday', NULL, NULL, '2025-09-18', '', 'cart', NULL, 1, 'completed', '2025-09-13 17:51:41'),
+(15, 9, 'birthday  gift', 'golden theme gift box', NULL, 'Birthday', 2000.00, NULL, '2025-09-18', '', 'form', NULL, 1, 'completed', '2025-09-15 10:20:45'),
+(16, 9, 'wedding card', 'photo card', NULL, 'Wedding', 200.00, NULL, '2025-09-17', '', 'form', NULL, 1, 'cancelled', '2025-09-15 10:57:00'),
+(17, 10, 'wedding', 'yff', NULL, 'Wedding', 2000.00, NULL, '2025-09-30', '', 'form', NULL, 1, 'completed', '2025-09-17 04:45:11'),
+(18, 11, 'Cart customization - other - 2025-09-18', 'rfrrf4434443', NULL, 'other', NULL, NULL, '2025-09-18', '', 'cart', NULL, 1, 'completed', '2025-09-18 08:12:04'),
+(19, 11, 'Cart customization - wedding - 2025-09-19', '                                         ttttttttttttttttt            \r\n                                     \r\n                         ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'cart', NULL, 1, 'completed', '2025-09-18 08:14:00'),
+(20, 11, 'Cart customization - birthday - 2025-09-23', 'i need 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-23', '', 'cart', NULL, 1, 'cancelled', '2025-09-20 13:43:12'),
+(21, 1, 'Cart customization - birthday - 2025-09-24', 'blue theme', NULL, 'birthday', NULL, NULL, '2025-09-24', '', 'cart', NULL, 1, 'pending', '2025-09-20 14:34:03'),
+(22, 11, 'bd', 'yghjjkh', NULL, 'Birthday', 200.00, NULL, '2025-09-25', '', 'form', NULL, 1, 'pending', '2025-09-23 06:05:35'),
+(23, 11, 'Cart customization - birthday - 2025-10-02', 'need a micro frame', NULL, 'birthday', NULL, NULL, '2025-10-02', '', 'cart', NULL, 1, 'in_progress', '2025-09-23 14:29:50'),
+(24, 11, 'Cart customization - baby_shower - 2025-10-02', 'fhghhj', NULL, 'baby_shower', NULL, NULL, '2025-10-02', '', 'cart', 27, 1, 'completed', '2025-09-23 14:45:45');
 
 -- --------------------------------------------------------
 
@@ -214,7 +241,17 @@ INSERT INTO `custom_request_images` (`id`, `request_id`, `image_path`, `uploaded
 (15, 12, 'uploads/custom-requests/cart_68c4f321f10f91.48701177_Screenshot_2025-08-13_194304.png', '2025-09-13 04:29:21'),
 (16, 13, 'uploads/custom-requests/cart_68c5061b7f7669.76286331_Screenshot_2025-08-13_195837.png', '2025-09-13 05:50:19'),
 (17, 14, 'uploads/custom-requests/cart_68c5af2dc7ebb9.90802846_Screenshot_2025-08-13_200022.png', '2025-09-13 17:51:41'),
-(18, 14, 'uploads/custom-requests/admin_68c5af609b2450.52810488_Screenshot_2025-08-13_200022.png', '2025-09-13 17:52:32');
+(18, 14, 'uploads/custom-requests/admin_68c5af609b2450.52810488_Screenshot_2025-08-13_200022.png', '2025-09-13 17:52:32'),
+(19, 15, 'uploads/custom-requests/68c7e87d755500.73900552_giftbox.png', '2025-09-15 10:20:45'),
+(20, 16, 'uploads/custom-requests/68c7f0fc6e88c9.85452840_Screenshot_2025-08-13_194304.png', '2025-09-15 10:57:00'),
+(21, 17, 'uploads/custom-requests/68ca3cd7935c03.43426036_Screenshot_2024-07-26_193102.png', '2025-09-17 04:45:11'),
+(22, 18, 'uploads/custom-requests/cart_68cbbed4b19772.52544926_adb.jpg', '2025-09-18 08:12:04'),
+(23, 19, 'uploads/custom-requests/cart_68cbbf488ca693.53268668_adb.jpg', '2025-09-18 08:14:00'),
+(24, 20, 'uploads/custom-requests/cart_68ceaf701e2720.84443167_adb.jpg', '2025-09-20 13:43:12'),
+(25, 21, 'uploads/custom-requests/cart_68cebb5b62a1e1.92658194_adb.jpg', '2025-09-20 14:34:03'),
+(26, 22, 'uploads/custom-requests/68d238af659946.33631684_admin_dashboard.png', '2025-09-23 06:05:35'),
+(27, 23, 'uploads/custom-requests/cart_68d2aede511337.17953082_Butterfly_candle_holder.jpg', '2025-09-23 14:29:50'),
+(28, 24, 'uploads/custom-requests/cart_68d2b2990846c8.97585563_download__6_.jpg', '2025-09-23 14:45:45');
 
 -- --------------------------------------------------------
 
@@ -241,15 +278,41 @@ CREATE TABLE `materials` (
   `quantity` int(11) NOT NULL DEFAULT 0,
   `unit` varchar(32) NOT NULL DEFAULT 'pcs',
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `price` decimal(10,2) NOT NULL DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `materials`
 --
 
-INSERT INTO `materials` (`id`, `supplier_id`, `name`, `category`, `type`, `size`, `color`, `grade`, `brand`, `tags`, `location`, `availability`, `image_url`, `attributes_json`, `sku`, `quantity`, `unit`, `updated_at`, `created_at`) VALUES
-(1, 8, 'flower', 'Flowers', '', '', '', '', '', '', '', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250914_113430_9c357c15a96b.jpg', NULL, 'yellow flowers for boqutes', 50, 'pcs', '2025-09-14 09:34:32', '2025-09-14 09:34:32');
+INSERT INTO `materials` (`id`, `supplier_id`, `name`, `category`, `type`, `size`, `color`, `grade`, `brand`, `tags`, `location`, `availability`, `image_url`, `attributes_json`, `sku`, `quantity`, `unit`, `updated_at`, `created_at`, `price`) VALUES
+(1, 8, 'flower', 'Flowers', '', '', '', '', '', '', '', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250914_113430_9c357c15a96b.jpg', NULL, 'yellow flowers for boqutes', 50, 'pcs', '2025-09-14 09:34:32', '2025-09-14 09:34:32', 0.00),
+(2, 8, 'frame', 'frames', '', '', '', '', '', '', '', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250921_152436_8e491e286334.jpg', NULL, '6*4 frame', 30, 'pcs', '2025-09-21 13:24:38', '2025-09-21 13:24:38', 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `offers_promos`
+--
+
+CREATE TABLE `offers_promos` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `title` varchar(180) NOT NULL,
+  `image_url` varchar(500) NOT NULL,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `offers_promos`
+--
+
+INSERT INTO `offers_promos` (`id`, `title`, `image_url`, `status`, `sort_order`, `created_at`, `updated_at`) VALUES
+(1, 'onam offer', 'http://localhost/my_little_thingz/backend/uploads/offers/offer_20250923_181914_9b8121.jpg', 'active', 0, '2025-09-23 16:19:14', '2025-09-23 16:19:14'),
+(2, 'special offfer', 'http://localhost/my_little_thingz/backend/uploads/offers/offer_20250923_185404_ccb62b.jpg', 'active', 0, '2025-09-23 16:54:04', '2025-09-23 16:54:04');
 
 -- --------------------------------------------------------
 
@@ -298,7 +361,15 @@ INSERT INTO `orders` (`id`, `user_id`, `order_number`, `status`, `payment_method
 (13, 1, 'ORD-20250912-122449-a40eff', 'pending', 'razorpay', 'pending', 'order_RGekdJLtU2RAX0', NULL, NULL, 2000.00, 2000.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 10:24:49', NULL, NULL),
 (14, 1, 'ORD-20250913-061526-12456c', 'processing', 'razorpay', 'paid', 'order_RGwzav8Gn2aqaZ', 'pay_RGwznsPSJHnM9y', '2d16e571c7d5fceb0b5ccfa9dcdae196d3423f6bbd42468b92a189b16c0909c9', 2000.00, 2000.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-13 04:15:26', NULL, NULL),
 (15, 1, 'ORD-20250913-071058-60cbd7', 'processing', 'razorpay', 'paid', 'order_RGxwG25tCUcwDh', 'pay_RGxwwO79h0QoTa', 'ba00aeaeb86242faa5940bc46e77cb8aa4c91efa6f97a79fb5a3fac56178ebbd', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-13 05:10:58', NULL, NULL),
-(16, 1, 'ORD-20250913-075311-390498', 'processing', 'razorpay', 'paid', 'order_RGyeqcfJ05WOD2', 'pay_RGyf5n0arwrKc0', '85af2064c2880c081dc4fa93fb9a99ff888a1603dba24a7cb0625daf219514a8', 3000.00, 3000.00, 0.00, 0.00, 'purathel,anakkal kanjirapally 686598,8765457889', NULL, NULL, '2025-09-13 05:53:11', NULL, NULL);
+(16, 1, 'ORD-20250913-075311-390498', 'processing', 'razorpay', 'paid', 'order_RGyeqcfJ05WOD2', 'pay_RGyf5n0arwrKc0', '85af2064c2880c081dc4fa93fb9a99ff888a1603dba24a7cb0625daf219514a8', 3000.00, 3000.00, 0.00, 0.00, 'purathel,anakkal kanjirapally 686598,8765457889', NULL, NULL, '2025-09-13 05:53:11', NULL, NULL),
+(17, 9, 'ORD-20250915-102334-53c51f', 'processing', 'razorpay', 'paid', 'order_RHoHtfe5EAfVBz', 'pay_RHoI4lQmpiAz1w', 'c106ce2b5c40cd9e41b647029c0943f934175264f06099419a966344c1b4ac88', 2000.00, 2000.00, 0.00, 0.00, 'elemashery,kottyam', NULL, NULL, '2025-09-15 08:23:34', NULL, NULL),
+(18, 9, 'ORD-20250915-120710-dbe9c0', 'processing', 'razorpay', 'paid', 'order_RHq3JxbBKgi47N', 'pay_RHq3fwRdV36i5l', 'f5c7811a4a59f13e5bec075714af01f5e7fb2a7fd46b119d7041f8afac617f37', 5000.00, 5000.00, 0.00, 0.00, 'vijetha jinu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nVizhikkathodu, Kottayam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, '2025-09-15 10:07:10', NULL, NULL),
+(19, 11, 'ORD-20250917-082534-7c7848', 'processing', 'razorpay', 'paid', 'order_RIZLX71USIKr5P', 'pay_RIZLnX25ZDWYbV', 'd13d6f9b2e0764fe13c40a6cdf6eb18485722af378d748e1a88c0b0c54dff216', 2000.00, 2000.00, 0.00, 0.00, 'fathima shibu\nMDR\nThoppumpady, Ernakulam\nKochi, Kerala, 682005\nPhone: 9495470077', NULL, NULL, '2025-09-17 06:25:34', NULL, NULL),
+(20, 11, 'ORD-20250918-101700-a9109b', 'processing', 'razorpay', 'paid', 'order_RIzmIerATMwLuP', 'pay_RIzmx2C2bOXE1H', 'b4c50d2acc2e21660f1717aefb0b9e25583a020fb5c370f399e7c87d51feaac6', 3400.00, 3400.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, '2025-09-18 08:17:00', NULL, NULL),
+(21, 1, 'ORD-20250921-151803-e85fbc', 'processing', 'razorpay', 'paid', 'order_RKGVjxclYpiV2l', 'pay_RKGVucYc1R1yVc', '1142036924fd5675d1b433a1806b7d27a69c80ec2f6350277ce736f4a26ef939', 2400.00, 2400.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, '2025-09-21 13:18:03', NULL, NULL),
+(22, 1, 'ORD-20250922-172224-a16dcb', 'pending', 'razorpay', 'pending', 'order_RKhAFZtDXBSYu1', NULL, NULL, 500.00, 500.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nNorth Paravur, Ernakulam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495402077', NULL, NULL, '2025-09-22 15:22:24', NULL, NULL),
+(23, 11, 'ORD-20250923-163030-6d671b', 'pending', 'razorpay', 'pending', 'order_RL4oTN9rVwMl9t', NULL, NULL, 90.00, 90.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nThalassery, Kannur\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495430077', NULL, NULL, '2025-09-23 14:30:30', NULL, NULL),
+(24, 11, 'ORD-20250923-165018-0265ec', 'processing', 'razorpay', 'paid', 'order_RL59MuPwACZ92h', 'pay_RL59fZQUI2o08Y', '375535169f7d71b728e042aead556c67700f896995e4c83aa8f1f375466fbb0f', 25.00, 25.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495400773', NULL, NULL, '2025-09-23 14:50:18', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -336,7 +407,18 @@ INSERT INTO `order_items` (`id`, `order_id`, `artwork_id`, `quantity`, `price`) 
 (19, 13, 12, 1, 2000.00),
 (20, 14, 12, 1, 2000.00),
 (21, 15, 2, 1, 50.00),
-(22, 16, 11, 1, 3000.00);
+(22, 16, 11, 1, 3000.00),
+(23, 17, 12, 1, 2000.00),
+(24, 18, 11, 1, 3000.00),
+(25, 18, 16, 1, 2000.00),
+(26, 19, 16, 1, 2000.00),
+(27, 20, 8, 1, 400.00),
+(28, 20, 11, 1, 3000.00),
+(29, 21, 8, 1, 400.00),
+(30, 21, 12, 1, 2000.00),
+(31, 22, 21, 1, 500.00),
+(32, 23, 13, 1, 90.00),
+(33, 24, 27, 1, 25.00);
 
 -- --------------------------------------------------------
 
@@ -377,6 +459,13 @@ CREATE TABLE `order_requirements` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `order_requirements`
+--
+
+INSERT INTO `order_requirements` (`id`, `supplier_id`, `order_ref`, `material_name`, `required_qty`, `unit`, `due_date`, `status`, `created_at`, `updated_at`) VALUES
+(1, 8, 'clip', 'poloroid clip', 21, 'pcs', '2025-09-23', 'packed', '2025-09-21 14:48:00', '2025-09-21 14:49:00');
+
 -- --------------------------------------------------------
 
 --
@@ -390,6 +479,124 @@ CREATE TABLE `order_requirement_messages` (
   `message` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `order_requirement_messages`
+--
+
+INSERT INTO `order_requirement_messages` (`id`, `requirement_id`, `sender`, `message`, `created_at`) VALUES
+(1, 1, 'admin', 'it is very very arjent', '2025-09-21 14:48:34'),
+(2, 1, 'admin', 'is it available', '2025-09-21 14:59:55'),
+(3, 1, 'supplier', 'yes available', '2025-09-21 15:07:27'),
+(4, 1, 'supplier', 'do you needed', '2025-09-21 15:30:01'),
+(5, 1, 'supplier', 'do you needed', '2025-09-21 15:30:19'),
+(6, 1, 'supplier', 'hloo', '2025-09-21 15:34:33'),
+(7, 1, 'admin', 'okk', '2025-09-21 15:35:10');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `password_resets`
+--
+
+CREATE TABLE `password_resets` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `email` varchar(191) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `password_resets`
+--
+
+INSERT INTO `password_resets` (`id`, `email`, `token`, `expires_at`, `created_at`) VALUES
+(7, 'kiranshibuthomas2026@mca.ajce.in', '148587', '2025-09-17 07:07:53', '2025-09-17 04:37:53');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `purchase_orders`
+--
+
+CREATE TABLE `purchase_orders` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `admin_id` int(10) UNSIGNED NOT NULL,
+  `order_number` varchar(64) NOT NULL,
+  `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `currency` char(3) NOT NULL DEFAULT 'INR',
+  `payment_method` varchar(32) DEFAULT 'razorpay',
+  `payment_status` enum('pending','paid','failed') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','processing','completed','cancelled') NOT NULL DEFAULT 'pending',
+  `razorpay_order_id` varchar(64) DEFAULT NULL,
+  `razorpay_payment_id` varchar(64) DEFAULT NULL,
+  `razorpay_signature` varchar(128) DEFAULT NULL,
+  `shipping_address` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `purchase_orders`
+--
+
+INSERT INTO `purchase_orders` (`id`, `admin_id`, `order_number`, `total_amount`, `currency`, `payment_method`, `payment_status`, `status`, `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`, `shipping_address`, `created_at`, `updated_at`) VALUES
+(1, 5, 'PO-20250921-121203-0a8b9f', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKDLGe1WmPiJbq', NULL, NULL, 'My Little Thingz Warehouse, 123 Main Street, City, State 000000, India', '2025-09-21 10:12:03', '2025-09-21 10:12:04'),
+(2, 5, 'PO-20250921-121203-f32b3a', 9000.00, 'INR', 'razorpay', 'paid', 'processing', 'order_RKDLH0kzQl1oa6', 'pay_RKDML96tI9uhLN', '0d761420f5ff9466460812e7e7ab468a4a4aa09460fb8975a028e1c5055a39bb', 'My Little Thingz Warehouse, 123 Main Street, City, State 000000, India', '2025-09-21 10:12:03', '2025-09-21 10:13:17'),
+(3, 5, 'PO-20250921-121853-69c3c5', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKDSTSzGtqr0zW', NULL, NULL, 'My Little Thingz Warehouse, 123 Main Street, City, State 000000, India', '2025-09-21 10:18:53', '2025-09-21 10:18:53'),
+(4, 5, 'PO-20250921-122722-b4e491', 918000.00, 'INR', 'razorpay', 'pending', 'pending', NULL, NULL, NULL, 'My Little Thingz Warehouse, 123 Main Street, City, State 000000, India', '2025-09-21 10:27:22', '2025-09-21 10:27:22'),
+(5, 5, 'PO-20250921-123722-52d34e', 36000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKDlzfW251YpPE', NULL, NULL, 'My Little Thingz Warehouse, 123 Main Street, City, State 000000, India', '2025-09-21 10:37:22', '2025-09-21 10:37:22'),
+(6, 5, 'PO-20250921-135515-765beb', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKF6IDs3n0apm0', NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 11:55:15', '2025-09-21 11:55:16'),
+(7, 5, 'PO-20250921-140106-06d6a4', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKFCSYhociG9TM', NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:01:06', '2025-09-21 12:01:07'),
+(8, 5, 'PO-20250921-140137-dd87dd', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKFCzZjSFwh3Mr', NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:01:37', '2025-09-21 12:01:37'),
+(9, 5, 'PO-20250921-140951-9f5fc7', 0.00, 'INR', 'razorpay', 'pending', 'pending', NULL, NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:09:51', '2025-09-21 12:09:51'),
+(10, 5, 'PO-20250921-141020-8a34dc', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKFMCkNfvT195s', NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:10:20', '2025-09-21 12:10:20'),
+(11, 5, 'PO-20250921-141045-68613f', 9000.00, 'INR', 'razorpay', 'paid', 'processing', 'order_RKFMennITtuAMq', 'pay_RKFMlqIOqCwrOq', '54040c0b6500e5650ddbdd592ef9c12b6c80d6090b853b9172d2f5dfc6c9f080', 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:10:45', '2025-09-21 12:11:05'),
+(12, 5, 'PO-20250921-145848-888f99', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKGBPrdIgQ06DH', NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:58:48', '2025-09-21 12:58:49'),
+(13, 5, 'PO-20250921-150129-99449a', 9000.00, 'INR', 'razorpay', 'paid', 'processing', 'order_RKGEEcXnzRpJVm', 'pay_RKGERtnyLKaBrM', '769a597d0e97cfd5b4662d8513a22b2913ff793742f83679f43defc9802f0ad1', 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 13:01:29', '2025-09-21 13:01:55'),
+(14, 5, 'PO-20250923-170930-3ea50c', 600.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RL5Tdpv5FMekIP', NULL, NULL, 'Purathel\nAnakkal PO\nKanjirapally, Kerala, 686508\nIndia\nPhone: 9495470077', '2025-09-23 15:09:30', '2025-09-23 15:09:30');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `purchase_order_items`
+--
+
+CREATE TABLE `purchase_order_items` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `purchase_order_id` int(10) UNSIGNED NOT NULL,
+  `supplier_product_id` int(10) UNSIGNED DEFAULT NULL,
+  `materials_id` int(10) UNSIGNED DEFAULT NULL,
+  `name` varchar(200) NOT NULL,
+  `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `quantity` int(11) NOT NULL DEFAULT 1,
+  `supplier_id` int(10) UNSIGNED NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `colors_json` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `purchase_order_items`
+--
+
+INSERT INTO `purchase_order_items` (`id`, `purchase_order_id`, `supplier_product_id`, `materials_id`, `name`, `price`, `quantity`, `supplier_id`, `created_at`, `colors_json`) VALUES
+(1, 1, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 10:12:03', NULL),
+(2, 2, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 10:12:03', NULL),
+(3, 3, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 10:18:53', NULL),
+(4, 4, 3, NULL, 'gift box', 9000.00, 102, 8, '2025-09-21 10:27:22', '[{\"color\":\"blue\",\"qty\":12},{\"color\":\"green\",\"qty\":90}]'),
+(5, 5, 3, NULL, 'gift box', 9000.00, 4, 8, '2025-09-21 10:37:22', '[{\"color\":\"green\",\"qty\":4}]'),
+(6, 6, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 11:55:15', '[{\"color\":\"red\",\"qty\":1}]'),
+(7, 7, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 12:01:06', '[{\"color\":\"red\",\"qty\":1}]'),
+(8, 8, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 12:01:37', '[{\"color\":\"red\",\"qty\":1}]'),
+(9, 8, NULL, 1, 'flower', 0.00, 1, 8, '2025-09-21 12:01:37', '[{\"color\":\"red\",\"qty\":1}]'),
+(10, 9, NULL, 1, 'flower', 0.00, 1, 8, '2025-09-21 12:09:51', '[{\"color\":\"red\",\"qty\":1}]'),
+(11, 10, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 12:10:20', '[{\"color\":\"red\",\"qty\":1}]'),
+(12, 11, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 12:10:45', '[{\"color\":\"red\",\"qty\":1}]'),
+(13, 11, NULL, 1, 'flower', 0.00, 1, 8, '2025-09-21 12:10:45', '[{\"color\":\"red\",\"qty\":1}]'),
+(14, 12, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 12:58:48', '[{\"color\":\"grren\",\"qty\":1}]'),
+(15, 13, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 13:01:29', '[{\"color\":\"grren\",\"qty\":1}]'),
+(16, 14, 7, NULL, 'nuts box', 600.00, 1, 8, '2025-09-23 15:09:30', '[{\"color\":\"red\",\"qty\":1}]');
 
 -- --------------------------------------------------------
 
@@ -441,7 +648,12 @@ CREATE TABLE `supplier_products` (
 
 INSERT INTO `supplier_products` (`id`, `supplier_id`, `name`, `description`, `category`, `sku`, `price`, `quantity`, `unit`, `availability`, `image_url`, `is_trending`, `status`, `created_at`, `updated_at`) VALUES
 (2, 7, 'gift box', 'trending one', 'Gift box', NULL, 1000.00, 0, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/7/sp_20250910_124402_b8014cb9564e.jpg', 1, 'pending', '2025-09-10 10:44:02', '2025-09-10 10:44:02'),
-(3, 8, 'gift box', 'trending gift box', 'Gift box', NULL, 9000.00, 20, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250914_123124_547bee2dfc4b.jpg', 1, 'pending', '2025-09-14 10:31:24', '2025-09-14 10:31:24');
+(3, 8, 'gift box', 'trending gift box', 'Gift box', NULL, 9000.00, 20, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250914_123124_547bee2dfc4b.jpg', 1, 'pending', '2025-09-14 10:31:24', '2025-09-14 10:31:24'),
+(4, 8, 'gift box', 'glass typ material', 'Gift box', NULL, 1000.00, 10, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250921_150821_861843afed99.jpg', 1, 'pending', '2025-09-21 13:08:21', '2025-09-21 13:08:21'),
+(5, 8, 'round box', 'red theme', 'Gift box', NULL, 700.00, 10, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250921_151034_6c8cc5f7a2f9.jpg', 1, 'pending', '2025-09-21 13:10:34', '2025-09-21 13:10:34'),
+(6, 8, 'wedding hamper', 'weeding hamper', 'Gift box', NULL, 1000.00, 5, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250921_151306_072915aa4609.jpg', 1, 'pending', '2025-09-21 13:13:06', '2025-09-21 13:13:06'),
+(7, 8, 'nuts box', 'nuts box', 'Gift box', NULL, 600.00, 5, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250921_151454_b3f32bf0d7d0.jpg', 1, 'pending', '2025-09-21 13:14:54', '2025-09-21 13:14:54'),
+(8, 8, 'ring holder', 'ring', 'Gift box', NULL, 600.00, 10, 'pcs', 'available', 'http://localhost/my_little_thingz/backend/uploads/supplier-products/8/sp_20250921_160839_13a80d5e0b13.jpg', 1, 'pending', '2025-09-21 14:08:39', '2025-09-21 14:08:39');
 
 -- --------------------------------------------------------
 
@@ -451,6 +663,7 @@ INSERT INTO `supplier_products` (`id`, `supplier_id`, `name`, `description`, `ca
 
 CREATE TABLE `supplier_profiles` (
   `user_id` int(10) UNSIGNED NOT NULL,
+  `shop_name` varchar(120) NOT NULL DEFAULT '',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -460,9 +673,9 @@ CREATE TABLE `supplier_profiles` (
 -- Dumping data for table `supplier_profiles`
 --
 
-INSERT INTO `supplier_profiles` (`user_id`, `status`, `created_at`, `updated_at`) VALUES
-(7, 'approved', '2025-09-10 08:48:27', '2025-09-10 08:49:18'),
-(8, 'approved', '2025-09-13 06:08:52', '2025-09-13 06:09:33');
+INSERT INTO `supplier_profiles` (`user_id`, `shop_name`, `status`, `created_at`, `updated_at`) VALUES
+(7, '', 'approved', '2025-09-10 08:48:27', '2025-09-10 08:49:18'),
+(8, '', 'approved', '2025-09-13 06:08:52', '2025-09-13 06:09:33');
 
 -- --------------------------------------------------------
 
@@ -488,7 +701,13 @@ INSERT INTO `users` (`id`, `first_name`, `last_name`, `email`, `password_hash`, 
 (1, 'shijin', 'thomas', 'shijinthomas369@gmail.com', '$2y$10$i7sKI1aenMGqrzx7SWQU0eSx1XScN2YAX22TQsJFdjImNt8yIqT5e', '2025-08-15 15:50:09', '2025-08-15 15:50:09'),
 (2, 'shijin', 'thomas', 'shijinthomas248@gmail.com', '$2y$10$86CWTt86VyN9kgHzHK9JaujQhfFCdE40uykQylM4UDWw2vlH2LvCq', '2025-08-15 15:59:21', '2025-08-15 15:59:21'),
 (5, 'Admin', 'User', 'fathima470077@gmail.com', '$2y$10$9RO.o7wA3NcbRmB74Nt9qeH6h84xT3c05pbXqjtIPfLD383m4aGfi', '2025-08-16 04:28:13', '2025-08-16 04:28:13'),
-(8, 'fathima', 'shibu', 'fathimashibu0805@gmail.com', NULL, '2025-09-13 06:08:52', '2025-09-13 06:08:52');
+(8, 'fathima', 'shibu', 'fathimashibu0805@gmail.com', NULL, '2025-09-13 06:08:52', '2025-09-13 06:08:52'),
+(9, 'VIJETHA', 'JINU', 'vijethajinu@gmail.com', NULL, '2025-09-15 08:22:24', '2025-09-15 08:22:24'),
+(10, 'kiran', 'shibu', 'kiranshibuthomas2026@mca.ajce.in', '$2y$10$WBFKmNJe0lnpMiKcrBmm3Oe4YJPNhlJKXoqpzMVYqIF9fLXJV2rpS', '2025-09-17 04:09:49', '2025-09-17 04:25:37'),
+(11, 'Fathima', '', 'fathimashibu15@gmail.com', NULL, '2025-09-17 06:22:37', '2025-09-17 06:22:37'),
+(12, 'FATHIMA SHIBU', 'MCA2024-2026', 'fathimashibu2026@mca.ajce.in', NULL, '2025-09-22 08:50:48', '2025-09-22 08:50:48'),
+(13, 'Sera', 'Mol', 'seramol1508@gmail.com', NULL, '2025-09-22 14:18:56', '2025-09-22 14:18:56'),
+(14, 'Fathima', 'Shibu', 'fathima686231@gmail.com', NULL, '2025-09-22 14:24:05', '2025-09-22 14:24:05');
 
 -- --------------------------------------------------------
 
@@ -511,7 +730,13 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 (2, 3),
 (5, 1),
 (5, 2),
-(8, 3);
+(8, 3),
+(9, 2),
+(10, 2),
+(11, 2),
+(12, 2),
+(13, 2),
+(14, 2);
 
 -- --------------------------------------------------------
 
@@ -525,6 +750,14 @@ CREATE TABLE `wishlist` (
   `artwork_id` int(10) UNSIGNED NOT NULL,
   `added_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `wishlist`
+--
+
+INSERT INTO `wishlist` (`id`, `user_id`, `artwork_id`, `added_at`) VALUES
+(14, 11, 16, '2025-09-18 07:27:05'),
+(15, 1, 2, '2025-09-21 13:17:35');
 
 --
 -- Indexes for dumped tables
@@ -582,6 +815,14 @@ ALTER TABLE `materials`
   ADD KEY `supplier_id` (`supplier_id`);
 
 --
+-- Indexes for table `offers_promos`
+--
+ALTER TABLE `offers_promos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `status` (`status`),
+  ADD KEY `sort_order` (`sort_order`);
+
+--
 -- Indexes for table `orders`
 --
 ALTER TABLE `orders`
@@ -614,6 +855,29 @@ ALTER TABLE `order_requirements`
 ALTER TABLE `order_requirement_messages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `requirement_id` (`requirement_id`);
+
+--
+-- Indexes for table `password_resets`
+--
+ALTER TABLE `password_resets`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_email` (`email`),
+  ADD KEY `email` (`email`),
+  ADD KEY `idx_email_token` (`email`,`token`);
+
+--
+-- Indexes for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `order_number` (`order_number`);
+
+--
+-- Indexes for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `purchase_order_id` (`purchase_order_id`);
 
 --
 -- Indexes for table `roles`
@@ -669,55 +933,61 @@ ALTER TABLE `wishlist`
 -- AUTO_INCREMENT for table `artworks`
 --
 ALTER TABLE `artworks`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `auth_providers`
 --
 ALTER TABLE `auth_providers`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1105;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2913;
 
 --
 -- AUTO_INCREMENT for table `custom_requests`
 --
 ALTER TABLE `custom_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `custom_request_images`
 --
 ALTER TABLE `custom_request_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `materials`
 --
 ALTER TABLE `materials`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `offers_promos`
+--
+ALTER TABLE `offers_promos`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `order_payments`
@@ -729,13 +999,31 @@ ALTER TABLE `order_payments`
 -- AUTO_INCREMENT for table `order_requirements`
 --
 ALTER TABLE `order_requirements`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `order_requirement_messages`
 --
 ALTER TABLE `order_requirement_messages`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `password_resets`
+--
+ALTER TABLE `password_resets`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -747,19 +1035,19 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `supplier_products`
 --
 ALTER TABLE `supplier_products`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `wishlist`
 --
 ALTER TABLE `wishlist`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- Constraints for dumped tables

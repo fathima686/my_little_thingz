@@ -149,8 +149,7 @@ try {
     echo json_encode(["status"=>"success","items"=>$rows]);
 
   } elseif ($method === 'POST') {
-    // Block write if not approved
-    if (!$isApproved) { http_response_code(403); echo json_encode(["status"=>"error","message"=>"Supplier not approved"]); exit; }
+    // Allow adding products without approval - they start as pending
 
     // Create new product (status defaults to pending)
     $b = body_json();

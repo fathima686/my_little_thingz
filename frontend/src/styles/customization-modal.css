@@ -121,12 +121,20 @@
   gap: 8px;
   padding: 12px 24px;
   background: #6b46c1;
-  color: white;
+  color: #ffffff !important; /* ensure white text */
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
   transition: background-color 0.2s ease;
+}
+
+/* Force icon/text inside to render white even if overridden elsewhere */
+.upload-button svg,
+.upload-button span,
+.upload-button * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
 }
 
 .upload-button:hover {

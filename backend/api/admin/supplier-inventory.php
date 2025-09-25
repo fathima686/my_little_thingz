@@ -48,6 +48,7 @@ function ensure_schema(mysqli $db) {
     name VARCHAR(120) NOT NULL,
     sku VARCHAR(80) NULL,
     quantity INT NOT NULL DEFAULT 0,
+    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     unit VARCHAR(32) NOT NULL DEFAULT 'pcs',
     category VARCHAR(60) NOT NULL DEFAULT '',
     type VARCHAR(60) NOT NULL DEFAULT '',
@@ -62,6 +63,8 @@ function ensure_schema(mysqli $db) {
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX(supplier_id)
   ) ENGINE=InnoDB");
+  // Best-effort add price column if table already exists
+  try { $db->query("ALTER TABLE materials ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00"); } catch (Throwable $e) {}
 }
 
 try { ensure_schema($mysqli); } catch (Throwable $e) {}
@@ -93,7 +96,7 @@ try {
 
     $sql = "SELECT m.id, m.supplier_id, CONCAT(u.first_name,' ',u.last_name) AS supplier_name,
                    m.name, m.sku, m.category, m.type, m.size, m.color, m.brand, m.tags, m.location,
-                   m.quantity, m.unit, m.availability, m.image_url, m.updated_at
+                   m.quantity, m.price, m.unit, m.availability, m.image_url, m.updated_at
             FROM materials m JOIN users u ON u.id=m.supplier_id WHERE 1=1";
     $types = '';
     $params = [];

@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     // Relax COOP/COEP for OAuth popups and cross-origin postMessage in dev
     headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Cross-Origin-Opener-Policy': 'unsafe-none',
       'Cross-Origin-Embedder-Policy': 'unsafe-none',
     },
   },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createKeydownHandler } from '../../utils/validation';
 import { LuX, LuUpload, LuCalendar, LuDollarSign, LuMessageCircle, LuImagePlus } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -142,6 +143,7 @@ const CustomGiftRequest = ({ onClose }) => {
                 name="title"
                 value={formData.title}
                 onChange={handleInputChange}
+                onKeyDown={createKeydownHandler(true)}
                 placeholder="e.g., Custom Wedding Anniversary Gift"
                 required
               />
@@ -169,6 +171,7 @@ const CustomGiftRequest = ({ onClose }) => {
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
+                onKeyDown={createKeydownHandler(true)}
                 placeholder="Describe your custom gift idea in detail..."
                 rows="4"
                 required
@@ -240,6 +243,7 @@ const CustomGiftRequest = ({ onClose }) => {
                 name="special_instructions"
                 value={formData.special_instructions}
                 onChange={handleInputChange}
+                onKeyDown={createKeydownHandler(true)}
                 placeholder="Any special requirements, materials, colors, sizes, etc."
                 rows="3"
               />

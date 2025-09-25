@@ -31,6 +31,7 @@ $credential = $input['credential'] ?? '';
 $desiredRole = (int)($input['desired_role'] ?? 2); // 2=customer, 3=supplier
 if (!in_array($desiredRole, [2,3], true)) { $desiredRole = 2; }
 $shopName = isset($input['shop_name']) ? trim((string)$input['shop_name']) : '';
+$isRegisterFlow = array_key_exists('desired_role', $input); // presence indicates Register tab
 
 if (!$credential) {
   http_response_code(400);
@@ -73,7 +74,7 @@ $sub   = $payload['sub']; // Google user id
 $first = $payload['given_name'] ?? '';
 $last  = $payload['family_name'] ?? '';
 
-// Upsert user
+// Upsert user (but only create on Register flow)
 $mysqli->begin_transaction();
 try {
   // 1) Check if provider mapping exists
@@ -118,15 +119,25 @@ try {
   $stmt->bind_param('s', $email);
   $stmt->execute();
   $stmt->bind_result($existingId);
+  $wasNewUser = false;
   if ($stmt->fetch()) {
     $userId = $existingId;
   } else {
-    // create new user
+    if (!$isRegisterFlow) {
+      // Login flow must not auto-register
+      $stmt->close();
+      $mysqli->rollback();
+      http_response_code(403);
+      echo json_encode(["status" => "error", "message" => "Email not registered. Please sign up first."]);
+      exit;
+    }
+    // Register flow: create new user
     $stmt->close();
     $stmt = $mysqli->prepare("INSERT INTO users(first_name,last_name,email) VALUES(?,?,?)");
     $stmt->bind_param('sss', $first, $last, $email);
     $stmt->execute();
     $userId = $stmt->insert_id;
+    $wasNewUser = true;
   }
   $stmt->close();
 
@@ -200,7 +211,11 @@ try {
     }
   }
 
-  echo json_encode(["status" => "success", "user_id" => $userId, "roles" => $roles]);
+  if ($wasNewUser) {
+    echo json_encode(["status" => "registered", "message" => "Registration successful. Please sign in.", "user_id" => $userId, "roles" => $roles]);
+  } else {
+    echo json_encode(["status" => "success", "user_id" => $userId, "roles" => $roles]);
+  }
 } catch (Throwable $e) {
   $mysqli->rollback();
   http_response_code(500);

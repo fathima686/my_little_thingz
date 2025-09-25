@@ -29,7 +29,11 @@ export default function CartDrawer({ open, onClose, onCartCountChange }) {
   }, [open]);
 
   const subtotal = useMemo(() => {
-    return items.reduce((sum, it) => sum + (parseFloat(String(it.price).replace(/[^0-9.]/g,'')) || 0) * it.quantity, 0);
+    return items.reduce((sum, it) => {
+      const base = parseFloat(String(it.price).replace(/[^0-9.]/g,'')) || 0;
+      const eff = (it?.effective_price != null) ? parseFloat(it.effective_price) : base;
+      return sum + eff * it.quantity;
+    }, 0);
   }, [items]);
 
   const updateQty = async (item, next) => {
@@ -102,7 +106,17 @@ export default function CartDrawer({ open, onClose, onCartCountChange }) {
               <img src={item.image_url || '/api/placeholder/56/56'} alt={item.title} className="thumb" />
               <div className="info">
                 <div className="title">{item.title}</div>
-                <div className="price">₹{String(item.price).replace(/[^0-9.]/g,'')}</div>
+                <div className="price">
+                  {item?.effective_price != null && parseFloat(item.effective_price) < (parseFloat(String(item.price).replace(/[^0-9.]/g,'')) || 0) ? (
+                    <>
+                      <span style={{ color: '#16a34a', fontWeight: 700 }}>₹{parseFloat(item.effective_price).toFixed(2)}</span>
+                      <span style={{ marginLeft: 6, color: '#6b7280', textDecoration: 'line-through' }}>₹{String(item.price).replace(/[^0-9.]/g,'')}</span>
+                      <span className="badge" style={{ marginLeft: 6, background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: 6, fontSize: 11 }}>Offer</span>
+                    </>
+                  ) : (
+                    <>₹{String(item.price).replace(/[^0-9.]/g,'')}</>
+                  )}
+                </div>
                 <div className="qty">
                   <button onClick={() => updateQty(item, item.quantity - 1)}><LuMinus /></button>
                   <span>{item.quantity}</span>

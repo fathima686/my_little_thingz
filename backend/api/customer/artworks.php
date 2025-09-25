@@ -22,18 +22,25 @@ try {
         $maxPrice    = isset($_GET['max_price']) && $_GET['max_price'] !== '' ? (float)$_GET['max_price'] : null;
         $sort        = isset($_GET['sort']) ? strtolower(trim($_GET['sort'])) : '';
 
-        // Base query
-        $sql = "SELECT 
-                    a.id,
-                    a.title,
-                    a.description,
-                    a.price,
-                    a.image_url,
-                    a.category_id,
-                    a.availability,
-                    a.created_at,
-                    CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name,
-                    c.name as category_name
+        // Base query (include offer columns if present)
+        $hasOfferCols = false;
+        try {
+            $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
+            if ($col && $col->rowCount() > 0) { $hasOfferCols = true; }
+        } catch (Throwable $e) { $hasOfferCols = false; }
+
+        $selectCols = "a.id, a.title, a.description, a.price, a.image_url, a.category_id, a.availability, a.created_at, CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name, c.name as category_name";
+        if ($hasOfferCols) {
+            $selectCols .= ", a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at";
+            try {
+                $col2 = $db->query("SHOW COLUMNS FROM artworks LIKE 'force_offer_badge'");
+                if ($col2 && $col2->rowCount() > 0) {
+                    $selectCols .= ", a.force_offer_badge";
+                }
+            } catch (Throwable $e) {}
+        }
+
+        $sql = "SELECT $selectCols
                 FROM artworks a
                 LEFT JOIN users u ON a.artist_id = u.id
                 LEFT JOIN categories c ON a.category_id = c.id
@@ -86,13 +93,40 @@ try {
         $stmt->execute();
         $artworks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Keep price numeric (float) and format dates consistently
+        // Keep price numeric and compute effective offer price + flags if columns exist
+        $now = new DateTime('now');
         foreach ($artworks as &$artwork) {
             if (isset($artwork['price'])) {
                 $artwork['price'] = (float)$artwork['price'];
             }
             if (isset($artwork['created_at'])) {
                 $artwork['created_at'] = date('Y-m-d H:i:s', strtotime($artwork['created_at']));
+            }
+
+            $offerPrice = isset($artwork['offer_price']) && $artwork['offer_price'] !== null ? (float)$artwork['offer_price'] : null;
+            $offerPercent = isset($artwork['offer_percent']) && $artwork['offer_percent'] !== null ? (float)$artwork['offer_percent'] : null;
+            $startsAt = isset($artwork['offer_starts_at']) && $artwork['offer_starts_at'] ? new DateTime($artwork['offer_starts_at']) : null;
+            $endsAt = isset($artwork['offer_ends_at']) && $artwork['offer_ends_at'] ? new DateTime($artwork['offer_ends_at']) : null;
+
+            $isWindowOk = true;
+            if ($startsAt && $now < $startsAt) $isWindowOk = false;
+            if ($endsAt && $now > $endsAt) $isWindowOk = false;
+
+            $effective = $artwork['price'];
+            if ($isWindowOk) {
+                if ($offerPrice !== null && $offerPrice > 0 && $offerPrice < $effective) {
+                    $effective = $offerPrice;
+                } elseif ($offerPercent !== null && $offerPercent > 0 && $offerPercent <= 100) {
+                    $disc = round($artwork['price'] * ($offerPercent / 100), 2);
+                    $candidate = max(0, $artwork['price'] - $disc);
+                    if ($candidate < $effective) $effective = $candidate;
+                }
+            }
+            $artwork['effective_price'] = (float)$effective;
+            $artwork['is_on_offer'] = $isWindowOk && ($effective < (float)$artwork['price']);
+            // If force flag present, show banner regardless of price change
+            if (isset($artwork['force_offer_badge']) && (int)$artwork['force_offer_badge'] === 1) {
+                $artwork['is_on_offer'] = true;
             }
         }
 

@@ -15,7 +15,7 @@ if ($mysqli->connect_error) { http_response_code(500); echo json_encode(['status
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $email = trim($input['email'] ?? '');
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { http_response_code(422); echo json_encode(['status'=>'error','message'=>'Invalid email']); exit; }
+if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { http_response_code(422); echo json_encode(['status'=>'error','message'=>'Invalid email']); exit; }
 
 // Ensure table for reset tokens
 $mysqli->query("CREATE TABLE IF NOT EXISTS password_resets (

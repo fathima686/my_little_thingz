@@ -138,7 +138,20 @@ try {
       while ($im = $rsImgs->fetch_assoc()) {
         $rid = (int)$im['request_id'];
         if (!isset($byReq[$rid])) { $byReq[$rid] = []; }
-        $byReq[$rid][] = $im['image_path'];
+
+        // Construct full URL for image (similar to profile images)
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $imagePath = $im['image_path'];
+        $fullImageUrl = $scheme . '://' . $host . '/my_little_thingz/backend/' . $imagePath;
+
+        // Add cache busting parameter
+        $fullPath = __DIR__ . '/../../' . $imagePath;
+        if (file_exists($fullPath)) {
+          $fullImageUrl .= '?v=' . filemtime($fullPath);
+        }
+
+        $byReq[$rid][] = $fullImageUrl;
       }
       $stImgs->close();
       foreach ($rows as &$r) { $r['images'] = $byReq[$r['id']] ?? []; }

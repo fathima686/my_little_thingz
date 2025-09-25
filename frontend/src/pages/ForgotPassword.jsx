@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createKeydownHandler } from "../utils/validation";
 import { Link } from "react-router-dom";
 import blue from "../assets/blue.png";
 import logo from "../assets/logo.png";
@@ -118,7 +119,7 @@ export default function ForgotPassword() {
             <form className="form" onSubmit={requestReset}>
               <div className="field">
                 <label>Email</label>
-                <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required />
+                <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} onKeyDown={createKeydownHandler(false)} required />
               </div>
               <button className="btn primary glossy" type="submit" disabled={loading}>
                 {loading ? "Requesting..." : "Send reset code"}
@@ -132,6 +133,7 @@ export default function ForgotPassword() {
                 <input
                   value={token}
                   onChange={(e)=> setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={createKeydownHandler(false)}
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   pattern="^[0-9]{6}$"
@@ -143,7 +145,7 @@ export default function ForgotPassword() {
               {otpVerified && (
                 <div className="field">
                   <label>New password</label>
-                  <input type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} required />
+                  <input type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} onKeyDown={createKeydownHandler(false)} required />
                 </div>
               )}
               <button className="btn primary glossy" type="submit" disabled={loading}>

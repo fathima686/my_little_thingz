@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LuHeart, LuShoppingCart, LuEye, LuSettings, LuSearch, LuX, LuWand } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import CustomizationModal from './CustomizationModal';
 import '../../styles/customization-modal.css';
 
@@ -21,7 +22,6 @@ import frame44AltImg from '../../assets/4 4 frame (2).png';
 import frame64Img from '../../assets/6 4 frame.png';
 import frameMicroImg from '../../assets/micro frame.png';
 import frameMiniImg from '../../assets/mini frame.png';
-import weddingCardImg from '../../assets/wedding card.png';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
@@ -31,12 +31,24 @@ const FALLBACK_CATEGORIES = [
   { id: 'chocolates', name: 'Chocolates' },
   { id: 'frames', name: 'Frames' },
   { id: 'albums', name: 'Albums' },
-  { id: 'wedding_cards', name: 'Wedding Cards' },
   { id: 'birthday_theme_boxes', name: 'Birthday Theme Boxes' },
   { id: 'wedding_hampers', name: 'Wedding Hampers' },
   { id: 'gift_boxes', name: 'Gift Boxes' },
   { id: 'bouquets', name: 'Bouquets' }
 ];
+
+// Exclude unwanted categories from UI regardless of backend data
+const EXCLUDE_CATEGORY_IDS = new Set(['wedding_cards']);
+const EXCLUDE_CATEGORY_NAMES = new Set(['wedding cards', 'wedding card']);
+const sanitizeCategories = (list) => (
+  Array.isArray(list)
+    ? list.filter(cat => {
+        const id = String(cat.id || '').toLowerCase().trim();
+        const name = String(cat.name || '').toLowerCase().trim();
+        return !EXCLUDE_CATEGORY_IDS.has(id) && !EXCLUDE_CATEGORY_NAMES.has(name);
+      })
+    : []
+);
 
 const FALLBACK_ARTWORKS = [
   // Polaroids
@@ -58,9 +70,6 @@ const FALLBACK_ARTWORKS = [
   // Albums
   { id: 'a1', title: 'Photo Album', description: 'Handmade photo album', price: 400, image_url: albumImg, category_id: 'albums', category_name: 'Albums', artist_name: 'Store' },
 
-  // Wedding Cards
-  { id: 'wc1', title: 'Wedding Card Classic', description: 'Classic themed invitation', price: 50, image_url: weddingCardImg, category_id: 'wedding_cards', category_name: 'Wedding Cards', artist_name: 'Store' },
-
   // Birthday Theme Boxes
   { id: 'bt1', title: 'Birthday Theme Box', description: 'Curated birthday theme gift box', price: 350, image_url: giftBoxSetImg, category_id: 'birthday_theme_boxes', category_name: 'Birthday Theme Boxes', artist_name: 'Store' },
 
@@ -73,6 +82,7 @@ const FALLBACK_ARTWORKS = [
 
 const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
   const { auth } = useAuth();
+  const navigate = useNavigate();
   const [artworks, setArtworks] = useState([]);
   const [filteredArtworks, setFilteredArtworks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,13 +133,13 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
       const response = await fetch(`${API_BASE}/customer/categories.php`);
       const data = await response.json();
       if (data.status === 'success' && Array.isArray(data.categories) && data.categories.length > 0) {
-        setCategories(data.categories);
+        setCategories(sanitizeCategories(data.categories));
       } else {
-        setCategories(FALLBACK_CATEGORIES);
+        setCategories(sanitizeCategories(FALLBACK_CATEGORIES));
       }
     } catch (error) {
       console.warn('Using fallback categories due to fetch error:', error);
-      setCategories(FALLBACK_CATEGORIES);
+      setCategories(sanitizeCategories(FALLBACK_CATEGORIES));
     }
   };
 
@@ -316,10 +326,36 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
   };
 
   const addToCart = async (artworkId) => {
-    // First show customization modal instead of directly adding to cart
-    const artwork = artworks.find(a => a.id === artworkId);
-    if (artwork) {
-      handleCustomizationRequest(artwork);
+    try {
+      const response = await fetch(`${API_BASE}/customer/cart.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth?.token}`,
+          'X-User-ID': auth?.user_id
+        },
+        body: JSON.stringify({
+          artwork_id: artworkId,
+          quantity: 1
+        })
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        // Close gallery modal if open and navigate to cart page
+        if (typeof onClose === 'function') onClose();
+        if (typeof onOpenCart === 'function') {
+          // Use existing drawer if provided by dashboard
+          onOpenCart();
+        } else {
+          // Fallback: navigate to dedicated cart page
+          navigate('/cart');
+        }
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Added to cart' } }));
+      } else {
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to add to cart' } }));
+      }
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Network error adding to cart' } }));
     }
   };
 
@@ -362,7 +398,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
               value={filters.category}
               onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
             >
-              <option value="">All Categories</option>
+              <option value="">Select Category</option>
               {categories.map(category => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -371,35 +407,29 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
             </select>
           </div>
 
-          {/* Category chips */}
-          <div className="filter-group chips">
-            <button className={`chip ${filters.category === '' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, category: ''}))}>All</button>
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                className={`chip ${String(cat.id) === String(filters.category) ? 'active' : ''}`}
-                onClick={() => setFilters(p => ({...p, category: String(cat.id)}))}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
 
-          {/* Price chips */}
-          <div className="filter-group chips">
-            <button className={`chip ${filters.priceChip === 'lte-100' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-100' ? '' : 'lte-100', minPrice: '', maxPrice: ''}))}>≤ ₹100</button>
-            <button className={`chip ${filters.priceChip === 'lte-200' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-200' ? '' : 'lte-200', minPrice: '', maxPrice: ''}))}>≤ ₹200</button>
-            <button className={`chip ${filters.priceChip === 'lte-300' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-300' ? '' : 'lte-300', minPrice: '', maxPrice: ''}))}>≤ ₹300</button>
-            <button className={`chip ${filters.priceChip === 'lte-400' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-400' ? '' : 'lte-400', minPrice: '', maxPrice: ''}))}>≤ ₹400</button>
-            <button className={`chip ${filters.priceChip === 'lte-500' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-500' ? '' : 'lte-500', minPrice: '', maxPrice: ''}))}>≤ ₹500</button>
-            <button className={`chip ${filters.priceChip === 'lte-1000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-1000' ? '' : 'lte-1000', minPrice: '', maxPrice: ''}))}>≤ ₹1000</button>
-            <button className={`chip ${filters.priceChip === 'lte-2000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-2000' ? '' : 'lte-2000', minPrice: '', maxPrice: ''}))}>≤ ₹2000</button>
-            <button className={`chip ${filters.priceChip === 'lte-3000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-3000' ? '' : 'lte-3000', minPrice: '', maxPrice: ''}))}>≤ ₹3000</button>
-            <button className={`chip ${filters.priceChip === 'lte-5000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'lte-5000' ? '' : 'lte-5000', minPrice: '', maxPrice: ''}))}>≤ ₹5000</button>
-            <button className={`chip ${filters.priceChip === 'gte-1000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'gte-1000' ? '' : 'gte-1000', minPrice: '', maxPrice: ''}))}>≥ ₹1000</button>
-            <button className={`chip ${filters.priceChip === 'gte-2000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'gte-2000' ? '' : 'gte-2000', minPrice: '', maxPrice: ''}))}>≥ ₹2000</button>
-            <button className={`chip ${filters.priceChip === 'gte-3000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'gte-3000' ? '' : 'gte-3000', minPrice: '', maxPrice: ''}))}>≥ ₹3000</button>
-            <button className={`chip ${filters.priceChip === 'gte-5000' ? 'active' : ''}`} onClick={() => setFilters(p => ({...p, priceChip: p.priceChip === 'gte-5000' ? '' : 'gte-5000', minPrice: '', maxPrice: ''}))}>≥ ₹5000</button>
+
+          {/* Price dropdown */}
+          <div className="filter-group">
+            <select
+              value={filters.priceChip}
+              onChange={(e) => setFilters(p => ({...p, priceChip: e.target.value, minPrice: '', maxPrice: ''}))}
+            >
+              <option value="">All Prices</option>
+              <option value="lte-100">≤ ₹100</option>
+              <option value="lte-200">≤ ₹200</option>
+              <option value="lte-300">≤ ₹300</option>
+              <option value="lte-400">≤ ₹400</option>
+              <option value="lte-500">≤ ₹500</option>
+              <option value="lte-1000">≤ ₹1000</option>
+              <option value="lte-2000">≤ ₹2000</option>
+              <option value="lte-3000">≤ ₹3000</option>
+              <option value="lte-5000">≤ ₹5000</option>
+              <option value="gte-1000">≥ ₹1000</option>
+              <option value="gte-2000">≥ ₹2000</option>
+              <option value="gte-3000">≥ ₹3000</option>
+              <option value="gte-5000">≥ ₹5000</option>
+            </select>
           </div>
 
           {/* Custom Min/Max */}
@@ -430,6 +460,11 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                   alt={artwork.title}
                   onClick={() => setSelectedArtwork(artwork)}
                 />
+                {artwork.is_on_offer && (
+                  <>
+                    <div className="offer-ribbon">OFFER</div>
+                  </>
+                )}
                 <div className="artwork-overlay">
                   <button 
                     className="btn-icon"
@@ -467,7 +502,23 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                   {artwork.category_name && <span className="badge">{artwork.category_name}</span>}
                 </div>
                 <p className="artwork-artist">by {artwork.artist_name}</p>
-                <p className="artwork-price">₹{artwork.price}</p>
+                <p className="artwork-price">
+                  {artwork.is_on_offer ? (
+                    <>
+                      {Number(artwork.effective_price) < Number(artwork.price) ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', color: '#999', marginRight: 8 }}>₹{artwork.price}</span>
+                          <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{artwork.effective_price}</span>
+                        </>
+                      ) : (
+                        <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{artwork.price}</span>
+                      )}
+                      <span style={{ marginLeft: 8, background: '#ffedd5', color: '#9a3412', borderRadius: 6, padding: '2px 6px', fontSize: 12 }}>Offer</span>
+                    </>
+                  ) : (
+                    <>₹{artwork.price}</>
+                  )}
+                </p>
               </div>
             </div>
           ))}
@@ -495,11 +546,32 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                     src={selectedArtwork.image_url || '/api/placeholder/400/400'} 
                     alt={selectedArtwork.title}
                   />
+                  {selectedArtwork?.is_on_offer && (
+                    <>
+                      <div className="offer-ribbon modal">OFFER</div>
+                    </>
+                  )}
                 </div>
                 <div className="artwork-detail-info">
                   <h3>{selectedArtwork.title}</h3>
                   <p className="artist">by {selectedArtwork.artist_name}</p>
-                  <p className="price">₹{selectedArtwork.price}</p>
+                  <p className="price">
+                    {selectedArtwork?.is_on_offer ? (
+                      <>
+                        {Number(selectedArtwork.effective_price) < Number(selectedArtwork.price) ? (
+                          <>
+                            <span style={{ textDecoration: 'line-through', color: '#999', marginRight: 8 }}>₹{selectedArtwork.price}</span>
+                            <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{selectedArtwork.effective_price}</span>
+                          </>
+                        ) : (
+                          <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{selectedArtwork.price}</span>
+                        )}
+                        <span style={{ marginLeft: 8, background: '#ffedd5', color: '#9a3412', borderRadius: 6, padding: '2px 6px', fontSize: 12 }}>Offer</span>
+                      </>
+                    ) : (
+                      <>₹{selectedArtwork?.price}</>
+                    )}
+                  </p>
                   <p className="description">{selectedArtwork.description}</p>
                   
                   <div className="artwork-actions">
@@ -689,6 +761,47 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           height: 100%;
           object-fit: cover;
           cursor: pointer;
+        }
+
+        /* Corner ribbon shown when item is on offer */
+        /* Image banner overlay positioning */
+        .offer-banner-img {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          height: 56px; /* scale as needed */
+          width: auto;
+          border-radius: 4px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+          pointer-events: none; /* do not block clicks */
+        }
+        .offer-banner-img.modal {
+          top: 12px;
+          left: 12px;
+          height: 72px;
+        }
+
+        /* Corner ribbon shown when item is on offer (fallback) */
+        .offer-ribbon {
+          position: absolute;
+          top: 12px;
+          left: -40px;
+          background: #e11d48; /* red */
+          color: #fff;
+          padding: 6px 50px;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          transform: rotate(-45deg);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          pointer-events: none; /* keep overlay buttons clickable */
+          text-transform: uppercase;
+        }
+        .offer-ribbon.modal {
+          top: 16px;
+          left: -52px;
+          padding: 8px 60px;
+          font-size: 13px;
         }
 
         .artwork-overlay {

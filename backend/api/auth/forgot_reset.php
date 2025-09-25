@@ -18,7 +18,7 @@ $email = trim($input['email'] ?? '');
 $token = trim($input['token'] ?? '');
 $newPassword = (string)($input['newPassword'] ?? '');
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($token) < 6 || strlen($newPassword) < 8) {
+if ($email === '' || $token === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($token) < 6 || strlen($newPassword) < 8) {
   http_response_code(422);
   echo json_encode(['status'=>'error','message'=>'Invalid input']);
   exit;

@@ -89,38 +89,36 @@ try {
   }
   $stmt->close();
 
-  // 2) Try find by email
+  // 2) Strict: Only allow if email already exists; do NOT create new user
   $stmt = $mysqli->prepare("SELECT id FROM users WHERE email=? LIMIT 1");
   $stmt->bind_param('s', $email);
   $stmt->execute();
   $stmt->bind_result($existingId);
   if ($stmt->fetch()) {
     $userId = $existingId;
-  } else {
-    // Create new user (no password needed for Google)
     $stmt->close();
-    $stmt = $mysqli->prepare("INSERT INTO users(first_name,last_name,email) VALUES(?,?,?)");
-    $stmt->bind_param('sss', $first, $last, $email);
+
+    // Optional: link provider for future logins
+    $stmt = $mysqli->prepare("INSERT INTO auth_providers(user_id, provider, provider_user_id) VALUES(?, 'google', ?)");
+    $stmt->bind_param('is', $userId, $sub);
     $stmt->execute();
-    $userId = $stmt->insert_id;
+    $stmt->close();
+
+    // Ensure default role (customer = 2)
+    $roleId = 2;
+    $stmt = $mysqli->prepare("INSERT IGNORE INTO user_roles(user_id, role_id) VALUES(?,?)");
+    $stmt->bind_param('ii', $userId, $roleId);
+    $stmt->execute();
+    $stmt->close();
+
+    $mysqli->commit();
+    echo json_encode(["status" => "success", "user_id" => $userId, "mode" => "login_linked"]);
+  } else {
+    $stmt->close();
+    $mysqli->rollback();
+    http_response_code(403);
+    echo json_encode(["status" => "error", "message" => "Email not registered. Please sign up first."]);
   }
-  $stmt->close();
-
-  // 3) Ensure default role (customer = 2)
-  $roleId = 2;
-  $stmt = $mysqli->prepare("INSERT IGNORE INTO user_roles(user_id, role_id) VALUES(?,?)");
-  $stmt->bind_param('ii', $userId, $roleId);
-  $stmt->execute();
-  $stmt->close();
-
-  // 4) Link provider
-  $stmt = $mysqli->prepare("INSERT INTO auth_providers(user_id, provider, provider_user_id) VALUES(?, 'google', ?)");
-  $stmt->bind_param('is', $userId, $sub);
-  $stmt->execute();
-  $stmt->close();
-
-  $mysqli->commit();
-  echo json_encode(["status" => "success", "user_id" => $userId, "mode" => "register_or_link"]);
 } catch (Throwable $e) {
   $mysqli->rollback();
   http_response_code(500);

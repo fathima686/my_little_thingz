@@ -19,6 +19,48 @@ import weddingHamper from "../assets/Wedding hamper.jpg";
 import customChocolate from "../assets/custom chocolate.png";
 import "../styles/dashboard.css";
 
+// Simple offers strip for dashboard (fetches active offers and displays banners)
+// onSelect(offer) opens the clicked offer in full view
+const OffersStrip = ({ onSelect }) => {
+  const [offers, setOffers] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("http://localhost/my_little_thingz/backend/api/customer/offers-promos.php");
+        const data = await res.json();
+        if (!alive) return;
+        if (res.ok && data.status === 'success') {
+          const list = data.offers || [];
+          setOffers(list);
+          // Auto-select first offer for full-view if consumer wants it
+          if (onSelect && list.length > 0) {
+            onSelect(list[0]);
+          }
+        }
+      } catch {}
+      finally { if (alive) setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  if (loading || offers.length === 0) return null;
+
+  return (
+    <section className="offers-strip" aria-label="Promotional Offers">
+      <div className="container offers-scroller">
+        {offers.map((o) => (
+          <div key={o.id} className="offer-card" onClick={() => onSelect?.(o)}>
+            <img src={o.image_url} alt={o.title || 'Offer banner'} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 export default function CustomerDashboard() {
   const { auth, logout, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -27,6 +69,10 @@ export default function CustomerDashboard() {
   const [cartOpen, setCartOpen] = useState(false);
   const [showCustomizationModal, setShowCustomizationModal] = useState(false);
   const [customizationArtwork, setCustomizationArtwork] = useState(null);
+  const [fullOffer, setFullOffer] = useState(null); // selected offer for full image view
+  // On-offer artworks for OFFERS modal
+  const [offerArtworks, setOfferArtworks] = useState([]);
+  const [offerItemsLoading, setOfferItemsLoading] = useState(false);
   // Recent orders state
   const [recentOrders, setRecentOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -95,6 +141,22 @@ export default function CustomerDashboard() {
 
   const openModal = (modalType) => {
     setActiveModal(modalType);
+    if (modalType === 'offers') {
+      // Fetch artworks and filter on-offer for the modal grid
+      setOfferItemsLoading(true);
+      fetch('http://localhost/my_little_thingz/backend/api/customer/artworks.php')
+        .then(r => r.json())
+        .then(data => {
+          if (data?.status === 'success' && Array.isArray(data.artworks)) {
+            const items = data.artworks.filter(a => a?.is_on_offer);
+            setOfferArtworks(items);
+          } else {
+            setOfferArtworks([]);
+          }
+        })
+        .catch(() => setOfferArtworks([]))
+        .finally(() => setOfferItemsLoading(false));
+    }
   };
 
   const closeModal = () => {
@@ -150,13 +212,10 @@ export default function CustomerDashboard() {
             <span className="brand-name">My Little Thingz</span>
           </div>
 
-          {/* Search */}
-          <div className="searchbar">
-            <span className="icon" aria-hidden>
-              <LuSearch />
-            </span>
-            <input placeholder="Search gifts, makers, categories…" aria-label="Search" />
-          </div>
+          {/* Offers button (replaces search) */}
+          <button type="button" className="nav-item offers-btn" onClick={() => openModal('offers')}>
+            OFFERS
+          </button>
 
           {/* Right actions */}
           <div className="dash-actions-right">
@@ -331,6 +390,107 @@ export default function CustomerDashboard() {
       </section>
 
       {/* Modal Components */}
+      {activeModal === 'offers' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" style={{width: 'min(1024px, 96%)'}} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center'}}>
+              {/* Highlighted OFFERS title (no small picture) */}
+              <h2 className="offers-title">OFFERS</h2>
+              <button className="modal-close" onClick={closeModal}>×</button>
+            </div>
+            <div className="modal-body" style={{display:'grid', gap:14}}>
+              {/* Horizontal strip; clicking opens full view */}
+              <OffersStrip onSelect={(offer) => setFullOffer(offer)} />
+
+              {/* On-offer products grid */}
+              <div style={{display:'grid', gap:12}}>
+                <h3 style={{margin:'8px 0'}}>Products on Offer</h3>
+                {offerItemsLoading ? (
+                  <div>Loading offers…</div>
+                ) : offerArtworks.length === 0 ? (
+                  <div>No active offers right now.</div>
+                ) : (
+                  <div style={{
+                    display:'grid',
+                    gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))',
+                    gap:12
+                  }}>
+                    {offerArtworks.map((a) => (
+                      <div key={a.id} style={{
+                        border:'1px solid var(--line)', borderRadius:12, overflow:'hidden', background:'#fff'
+                      }}>
+                        <div style={{position:'relative'}}>
+                          <img src={a.image_url} alt={a.title} style={{width:'100%', height:180, objectFit:'cover', display:'block'}} />
+                          {a.is_on_offer && (
+                            <div style={{
+                              position:'absolute', top:12, left:-40,
+                              background:'#e11d48', color:'#fff', padding:'6px 50px', fontSize:12,
+                              fontWeight:800, letterSpacing:'0.5px', transform:'rotate(-45deg)',
+                              boxShadow:'0 2px 6px rgba(0,0,0,0.2)', textTransform:'uppercase', pointerEvents:'none'
+                            }}>OFFER</div>
+                          )}
+                        </div>
+                        <div style={{padding:12}}>
+                          <div style={{fontWeight:700, marginBottom:4}}>{a.title}</div>
+                          <div style={{color:'#64748b', fontSize:14, marginBottom:6}}>by {a.artist_name}</div>
+                          <div style={{display:'flex', alignItems:'center', gap:8}}>
+                            {a.is_on_offer ? (
+                              <>
+                                <span style={{ textDecoration:'line-through', color:'#9ca3af' }}>₹{a.price}</span>
+                                <span style={{ color:'#c2410c', fontWeight:700 }}>₹{a.effective_price}</span>
+                                <span style={{ marginLeft: 8, background: '#ffedd5', color: '#9a3412', borderRadius: 6, padding: '2px 6px', fontSize: 12 }}>Offer</span>
+                              </>
+                            ) : (
+                              <span>₹{a.price}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Full image viewer when an offer is selected */}
+              {fullOffer && (
+                <div style={{ position:'relative', border:'1px solid var(--line)', borderRadius:12, overflow:'hidden', background:'#000' }}>
+                  {/* Small red corner ribbon */}
+                  <div style={{
+                    position:'absolute',
+                    top:16,
+                    left:-52,
+                    background:'#e11d48',
+                    color:'#fff',
+                    padding:'8px 60px',
+                    fontSize:13,
+                    fontWeight:800,
+                    letterSpacing:'0.5px',
+                    transform:'rotate(-45deg)',
+                    boxShadow:'0 2px 6px rgba(0,0,0,0.2)',
+                    textTransform:'uppercase',
+                    pointerEvents:'none',
+                    zIndex:2
+                  }}>OFFER</div>
+
+                  {/* Full image: edge-to-edge, constrained by viewport height */}
+                  <img
+                    src={fullOffer.image_url}
+                    alt={fullOffer.title || 'Offer'}
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      maxHeight: '70vh',
+                      display: 'block',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeModal === 'gallery' && (
         <ArtworkGallery 
           onClose={closeModal} 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createKeydownHandler } from "../utils/validation";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import logo from "../assets/logo.png";
@@ -172,6 +173,7 @@ export default function Login() {
                 value={formData.email}
                 onChange={handleChange}
                 autoComplete="email"
+                onKeyDown={createKeydownHandler(false)}
                 required
               />
             </div>
@@ -185,6 +187,7 @@ export default function Login() {
                   value={formData.password}
                   onChange={handleChange}
                   autoComplete="current-password"
+                  onKeyDown={createKeydownHandler(false)}
                   required
                 />
                 <button type="button" className="pwbtn" onClick={() => setShowPw((s) => !s)}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import AOS from "aos";
@@ -35,6 +35,45 @@ const picks = {
   bouquets: pickBy(["boq", "bouquet", "boaq", "boaquet"]),
   wedding: pickBy(["wedding", "wedding card", "card"]),
   album: pickBy(["album", "photobook"]),
+};
+
+// Top promotional offers strip
+const OffersStrip = () => {
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch("http://localhost/my_little_thingz/backend/api/customer/offers-promos.php");
+        const data = await res.json();
+        if (!alive) return;
+        if (data?.status === "success" && Array.isArray(data.offers)) {
+          setOffers(data.offers);
+        }
+      } catch (_) {}
+      finally { if (alive) setLoading(false); }
+    };
+    load();
+    return () => { alive = false; };
+  }, []);
+
+  if (loading) return null;
+  if (!offers.length) return null;
+
+  return (
+    <section className="offers-strip" aria-label="Promotional Offers">
+      <div className="container offers-scroller" data-aos="fade-up">
+        {offers.map((o) => (
+          <div key={o.id} className="offer-card">
+            <img src={o.image_url} alt={o.title || "Promotional banner"} />
+            {o.title ? <div className="offer-title">{o.title}</div> : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 };
 
 const Header = () => (
@@ -261,6 +300,7 @@ export default function Index() {
   return (
     <main>
       <Header />
+      {/* OffersStrip removed */}
       <Hero />
 
       <section id="about" className="section narrow" data-aos="fade-up">

@@ -56,8 +56,8 @@ try {
     // Begin transaction
     $db->beginTransaction();
 
-    // Fetch cart items with latest artwork data
-    $cartQuery = "SELECT c.id as cart_id, c.artwork_id, c.quantity, a.price, a.title, a.image_url
+    // Fetch cart items with latest artwork data and offer columns
+    $cartQuery = "SELECT c.id as cart_id, c.artwork_id, c.quantity, a.price, a.title, a.image_url, a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at
                   FROM cart c
                   JOIN artworks a ON c.artwork_id = a.id
                   WHERE c.user_id = ? AND a.status = 'active'";
@@ -71,11 +71,33 @@ try {
         exit;
     }
 
-    // Compute totals
+    // Compute totals with effective offer prices
+    $now = new DateTime('now');
     $subtotal = 0.0;
-    foreach ($cartItems as $item) {
-        $subtotal += ((float)$item['price']) * ((int)$item['quantity']);
+    foreach ($cartItems as &$item) {
+        $base = (float)$item['price'];
+        $effective = $base;
+        $offerPrice   = isset($item['offer_price']) && $item['offer_price'] !== null ? (float)$item['offer_price'] : null;
+        $offerPercent = isset($item['offer_percent']) && $item['offer_percent'] !== null ? (float)$item['offer_percent'] : null;
+        $startsAt = isset($item['offer_starts_at']) && $item['offer_starts_at'] ? new DateTime($item['offer_starts_at']) : null;
+        $endsAt   = isset($item['offer_ends_at']) && $item['offer_ends_at'] ? new DateTime($item['offer_ends_at']) : null;
+        $isWindowOk = true;
+        if ($startsAt && $now < $startsAt) $isWindowOk = false;
+        if ($endsAt && $now > $endsAt) $isWindowOk = false;
+        if ($isWindowOk) {
+            if ($offerPrice !== null && $offerPrice > 0 && $offerPrice < $effective) {
+                $effective = $offerPrice;
+            } elseif ($offerPercent !== null && $offerPercent > 0 && $offerPercent <= 100) {
+                $disc = round($base * ($offerPercent / 100), 2);
+                $candidate = max(0, $base - $disc);
+                if ($candidate < $effective) $effective = $candidate;
+            }
+        }
+        $item['effective_price'] = $effective;
+        $subtotal += $effective * ((int)$item['quantity']);
     }
+    unset($item);
+
     $tax = 0.0; // extend later if needed
     $shipping = 0.0; // extend later if needed
     $total = $subtotal + $tax + $shipping;
@@ -93,7 +115,8 @@ try {
     // Insert order items
     $itemInsert = $db->prepare("INSERT INTO order_items (order_id, artwork_id, quantity, price) VALUES (?, ?, ?, ?)");
     foreach ($cartItems as $item) {
-        $itemInsert->execute([$order_id, $item['artwork_id'], $item['quantity'], $item['price']]);
+        $priceToUse = isset($item['effective_price']) ? $item['effective_price'] : $item['price'];
+        $itemInsert->execute([$order_id, $item['artwork_id'], $item['quantity'], $priceToUse]);
     }
 
     // Clear cart

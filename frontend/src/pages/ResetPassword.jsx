@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createKeydownHandler } from "../utils/validation";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import blue from "../assets/blue.png";
 import logo from "../assets/logo.png";
@@ -70,15 +71,15 @@ export default function ResetPassword() {
           <form className="form" onSubmit={submitReset}>
             <div className="field">
               <label>Email</label>
-              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required />
+              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} onKeyDown={createKeydownHandler(false)} required />
             </div>
             <div className="field">
               <label>Reset token</label>
-              <input value={token} onChange={(e)=>setToken(e.target.value)} required />
+              <input value={token} onChange={(e)=>setToken(e.target.value)} onKeyDown={createKeydownHandler(false)} required />
             </div>
             <div className="field">
               <label>New password</label>
-              <input type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} required />
+              <input type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} onKeyDown={createKeydownHandler(false)} required />
             </div>
             <button className="btn primary glossy" type="submit" disabled={loading}>
               {loading ? "Updating..." : "Reset password"}

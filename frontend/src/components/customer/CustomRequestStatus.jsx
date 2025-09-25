@@ -103,8 +103,7 @@ export default function CustomRequestStatus({ onClose }) {
                   {/* Inline preview of images if any */}
                   {Array.isArray(req.images) && req.images.length > 0 && (
                     <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {req.images.slice(0, 4).map((p, i) => {
-                        const url = `http://localhost/my_little_thingz/backend/${p}`;
+                      {req.images.slice(0, 4).map((url, i) => {
                         return <img key={i} src={url} alt={`attachment ${i+1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />
                       })}
                     </div>
@@ -142,8 +141,7 @@ export default function CustomRequestStatus({ onClose }) {
                   <div style={{ marginTop: 8 }}>
                     <p><strong>Images:</strong></p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {selected.images.map((p, i) => {
-                        const url = `http://localhost/my_little_thingz/backend/${p}`;
+                      {selected.images.map((url, i) => {
                         return (
                           <a key={i} href={url} target="_blank" rel="noreferrer">
                             <img src={url} alt={`attachment ${i+1}`} style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />

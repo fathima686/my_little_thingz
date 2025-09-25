@@ -3,11 +3,18 @@
 // Methods: GET (list), POST (create), DELETE (delete)
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowed_origins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
-if (in_array($origin, $allowed_origins, true)) {
+$allowed_origins = [
+  'http://localhost',
+  'http://127.0.0.1',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:8080'
+];
+if ($origin && in_array($origin, $allowed_origins, true)) {
   header("Access-Control-Allow-Origin: $origin");
 } else {
-  header("Access-Control-Allow-Origin: http://localhost:5173");
+  // Fallback for same-origin Apache served frontend
+  header("Access-Control-Allow-Origin: *");
 }
 header("Vary: Origin");
 header("Content-Type: application/json");
@@ -34,6 +41,46 @@ function ensure_schema(mysqli $db) {
 
   $db->query("CREATE TABLE IF NOT EXISTS artworks (\n    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n    title VARCHAR(180) NOT NULL,\n    description TEXT NULL,\n    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,\n    image_url VARCHAR(255) NOT NULL,\n    category_id INT UNSIGNED NULL,\n    artist_id INT UNSIGNED NULL,\n    availability ENUM('in_stock','out_of_stock','made_to_order') NOT NULL DEFAULT 'in_stock',\n    status ENUM('active','inactive') NOT NULL DEFAULT 'active',\n    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    KEY idx_artworks_category (category_id),\n    KEY idx_artworks_status (status)\n  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+  // Ensure optional offer/combo columns exist
+  try {
+    $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
+    if (!$col || $col->num_rows === 0) {
+      $db->query("ALTER TABLE artworks ADD COLUMN offer_price DECIMAL(10,2) NULL AFTER price");
+    }
+  } catch (Throwable $e) { /* ignore */ }
+  try {
+    $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_percent'");
+    if (!$col || $col->num_rows === 0) {
+      $db->query("ALTER TABLE artworks ADD COLUMN offer_percent DECIMAL(5,2) NULL AFTER offer_price");
+    }
+  } catch (Throwable $e) { /* ignore */ }
+  try {
+    $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_starts_at'");
+    if (!$col || $col->num_rows === 0) {
+      $db->query("ALTER TABLE artworks ADD COLUMN offer_starts_at DATETIME NULL AFTER offer_percent");
+    }
+  } catch (Throwable $e) { /* ignore */ }
+  try {
+    $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_ends_at'");
+    if (!$col || $col->num_rows === 0) {
+      $db->query("ALTER TABLE artworks ADD COLUMN offer_ends_at DATETIME NULL AFTER offer_starts_at");
+    }
+  } catch (Throwable $e) { /* ignore */ }
+  // Force offer badge (show banner without discount)
+  try {
+    $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'force_offer_badge'");
+    if (!$col || $col->num_rows === 0) {
+      $db->query("ALTER TABLE artworks ADD COLUMN force_offer_badge TINYINT(1) NOT NULL DEFAULT 0 AFTER offer_ends_at");
+    }
+  } catch (Throwable $e) { /* ignore */ }
+  // ensure combo flag if used anywhere
+  try {
+    $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'is_combo'");
+    if (!$col || $col->num_rows === 0) {
+      $db->query("ALTER TABLE artworks ADD COLUMN is_combo TINYINT(1) NOT NULL DEFAULT 0 AFTER artist_id");
+    }
+  } catch (Throwable $e) { /* ignore */ }
+
   // roles/user_roles for admin check
   $db->query("CREATE TABLE IF NOT EXISTS roles (id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL UNIQUE) ENGINE=InnoDB");
   $db->query("INSERT IGNORE INTO roles (id, name) VALUES (1,'admin'),(2,'customer'),(3,'supplier')");
@@ -51,12 +98,31 @@ if ($adminUserId <= 0) {
 }
 
 $isAdmin = false;
-$chk = $mysqli->prepare("SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id=r.id WHERE ur.user_id=? AND r.name='admin' LIMIT 1");
-$chk->bind_param('i', $adminUserId);
-$chk->execute();
-$chk->store_result();
-if ($chk->num_rows > 0) { $isAdmin = true; }
-$chk->close();
+try {
+  $chk = $mysqli->prepare("SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id=r.id WHERE ur.user_id=? AND r.name='admin' LIMIT 1");
+  $chk->bind_param('i', $adminUserId);
+  $chk->execute();
+  $chk->store_result();
+  if ($chk->num_rows > 0) { $isAdmin = true; }
+  $chk->close();
+} catch (Throwable $e) {
+  // table may not exist yet; fallback below
+}
+
+// Fallback: if users table has a 'role' column and it's 'admin'
+if (!$isAdmin) {
+  try {
+    $col = $mysqli->query("SHOW COLUMNS FROM users LIKE 'role'");
+    if ($col && $col->num_rows > 0) {
+      $q2 = $mysqli->prepare("SELECT 1 FROM users WHERE id=? AND role='admin' LIMIT 1");
+      $q2->bind_param('i', $adminUserId);
+      $q2->execute();
+      $q2->store_result();
+      if ($q2->num_rows > 0) { $isAdmin = true; }
+      $q2->close();
+    }
+  } catch (Throwable $e) {}
+}
 
 if (!$isAdmin) {
   http_response_code(403);
@@ -75,7 +141,23 @@ try {
     $allowed = ['active','inactive','all'];
     if (!in_array($status, $allowed, true)) { $status = 'all'; }
 
-    $sql = "SELECT a.id, a.title, a.description, a.price, a.image_url, a.category_id, a.availability, a.status, a.created_at,\n                   CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name,\n                   c.name AS category_name\n            FROM artworks a\n            LEFT JOIN users u ON u.id=a.artist_id\n            LEFT JOIN categories c ON c.id=a.category_id";
+    // Build select with optional offer/combo columns (not all DBs may have them yet)
+    $baseCols = "a.id, a.title, a.description, a.price, a.image_url, a.category_id, a.availability, a.status, a.created_at";
+    $extraCols = "a.is_combo, a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at, a.force_offer_badge";
+    // Try to detect a sample column; if it doesn't exist, omit extras
+    $hasOfferCols = true;
+    try {
+      $colCheck = $mysqli->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
+      if (!$colCheck || $colCheck->num_rows === 0) { $hasOfferCols = false; }
+    } catch (Throwable $e) { $hasOfferCols = false; }
+    $selectCols = $hasOfferCols ? ($baseCols . ", " . $extraCols) : $baseCols;
+
+    $sql = "SELECT $selectCols,
+                   CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name,
+                   c.name AS category_name
+            FROM artworks a
+            LEFT JOIN users u ON u.id=a.artist_id
+            LEFT JOIN categories c ON c.id=a.category_id";
     if ($status !== 'all') { $sql .= " WHERE a.status=?"; }
     $sql .= " ORDER BY a.created_at DESC";
 
@@ -155,12 +237,40 @@ try {
     $artist_id = $adminUserId; // store admin user as the artist/uploader
 
     $cid = $category_id; // can be null
+    // Optional offer fields (only if columns exist)
+    $offer_price = null; $offer_percent = null; $offer_starts_at = null; $offer_ends_at = null; $force_offer_badge = 0;
+    try {
+      $offer_price = isset($_POST['offer_price']) ? (($_POST['offer_price'] === '' ) ? null : (float)$_POST['offer_price']) : (isset($input['offer_price']) ? (float)$input['offer_price'] : null);
+      $offer_percent = isset($_POST['offer_percent']) ? (($_POST['offer_percent'] === '' ) ? null : (float)$_POST['offer_percent']) : (isset($input['offer_percent']) ? (float)$input['offer_percent'] : null);
+      $offer_starts_at = isset($_POST['offer_starts_at']) ? (($_POST['offer_starts_at'] === '' ) ? null : $_POST['offer_starts_at']) : ($input['offer_starts_at'] ?? null);
+      $offer_ends_at = isset($_POST['offer_ends_at']) ? (($_POST['offer_ends_at'] === '' ) ? null : $_POST['offer_ends_at']) : ($input['offer_ends_at'] ?? null);
+      $force_offer_badge = isset($_POST['force_offer_badge']) ? (int)!!$_POST['force_offer_badge'] : (int)!!($input['force_offer_badge'] ?? 0);
+    } catch (Throwable $e) {}
+
+    // Detect if offer columns exist
+    $hasOfferCols = false;
+    try {
+      $colCheck = $mysqli->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
+      if ($colCheck && $colCheck->num_rows > 0) { $hasOfferCols = true; }
+    } catch (Throwable $e) { $hasOfferCols = false; }
+
     if ($cid === null) {
-      $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status) VALUES (?,?,?,?,NULL,?,?,?)");
-      $st->bind_param('ssdsiss', $title, $description, $price, $image_url, $artist_id, $availability, $status);
+      if ($hasOfferCols) {
+        $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status, offer_price, offer_percent, offer_starts_at, offer_ends_at, force_offer_badge) VALUES (?,?,?,?,NULL,?,?,?,?,?,?,?,?)");
+        // title(s), description(s), price(d), image_url(s), artist_id(i), availability(s), status(s), offer_price(d), offer_percent(d), offer_starts_at(s), offer_ends_at(s), force_offer_badge(i)
+        $st->bind_param('ssdsissddssi', $title, $description, $price, $image_url, $artist_id, $availability, $status, $offer_price, $offer_percent, $offer_starts_at, $offer_ends_at, $force_offer_badge);
+      } else {
+        $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status) VALUES (?,?,?,?,NULL,?,?,?)");
+        $st->bind_param('ssdsiss', $title, $description, $price, $image_url, $artist_id, $availability, $status);
+      }
     } else {
-      $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status) VALUES (?,?,?,?,?,?,?,?)");
-      $st->bind_param('ssdsiiss', $title, $description, $price, $image_url, $cid, $artist_id, $availability, $status);
+      if ($hasOfferCols) {
+        $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status, offer_price, offer_percent, offer_starts_at, offer_ends_at, force_offer_badge) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $st->bind_param('ssdsiissddssi', $title, $description, $price, $image_url, $cid, $artist_id, $availability, $status, $offer_price, $offer_percent, $offer_starts_at, $offer_ends_at, $force_offer_badge);
+      } else {
+        $st = $mysqli->prepare("INSERT INTO artworks (title, description, price, image_url, category_id, artist_id, availability, status) VALUES (?,?,?,?,?,?,?,?)");
+        $st->bind_param('ssdsiiss', $title, $description, $price, $image_url, $cid, $artist_id, $availability, $status);
+      }
     }
 
     $st->execute();

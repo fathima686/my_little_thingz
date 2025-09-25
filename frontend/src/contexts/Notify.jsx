@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 const NotifyContext = createContext({ notify: () => {} });
 
@@ -18,6 +18,21 @@ export function NotifyProvider({ children }) {
     }
     return id;
   }, [remove]);
+
+  // Globally override window.alert to use non-blocking toast notifications
+  useEffect(() => {
+    const originalAlert = window.alert;
+    window.alert = (msg) => {
+      const text = String(msg ?? '');
+      const lower = text.toLowerCase();
+      let kind = 'info';
+      if (lower.includes('success')) kind = 'success';
+      else if (lower.includes('fail') || lower.includes('error')) kind = 'error';
+      else if (lower.includes('warn')) kind = 'warning';
+      notify(text, kind, 4000);
+    };
+    return () => { window.alert = originalAlert; };
+  }, [notify]);
 
   const value = useMemo(() => ({ notify, remove }), [notify, remove]);
 

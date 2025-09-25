@@ -28,6 +28,7 @@ export default function CartPage() {
   const [city, setCity] = useState('');
   const [stateRegion, setStateRegion] = useState('');
   const [pincode, setPincode] = useState('');
+  const [country, setCountry] = useState('India');
   const [phone, setPhone] = useState('');
   const [locating, setLocating] = useState(false);
 
@@ -39,10 +40,11 @@ export default function CartPage() {
       addressLine1,
       addressLine2,
       [city, stateRegion, pincode].filter(Boolean).join(', '),
+      country,
       phone ? `Phone: ${phone}` : ''
     ].filter(Boolean);
     return parts.join('\n');
-  }, [firstName, lastName, addressLine1, addressLine2, city, stateRegion, pincode, phone]);
+  }, [firstName, lastName, addressLine1, addressLine2, city, stateRegion, pincode, country, phone]);
 
   const fetchCart = async () => {
     setLoading(true);
@@ -144,9 +146,9 @@ export default function CartPage() {
     setPlacing(true);
     try {
       // Require a normalized shipping address before payment
-      const requiredOk = firstName && lastName && addressLine1 && city && stateRegion && /^\d{6}$/.test(pincode) && /^\+?\d{10,15}$/.test(phone);
+      const requiredOk = firstName && lastName && addressLine1 && city && stateRegion && country && /^\d{6}$/.test(pincode) && /^\+?\d{10,15}$/.test(phone);
       if (!requiredOk) {
-        alert('Please fill first name, last name, address line 1, city, state, a valid 6-digit pincode, and phone number.');
+        alert('Please fill first name, last name, address line 1, city, state, country, a valid 6-digit pincode, and phone number.');
         setPlacing(false);
         return;
       }
@@ -230,7 +232,7 @@ export default function CartPage() {
   const parsePrice = (p) => parseFloat(String(p).replace(/[^0-9.]/g, '')) || 0;
 
   const subtotal = useMemo(() => {
-    return items.reduce((sum, it) => sum + parsePrice(it.price) * it.quantity, 0);
+    return items.reduce((sum, it) => sum + parsePrice((it?.effective_price ?? it.price)) * it.quantity, 0);
   }, [items]);
 
   const updateQty = async (item, next) => {
@@ -283,9 +285,9 @@ export default function CartPage() {
     setPlacing(true);
     try {
       // Validate normalized fields for COD/regular checkout
-      const requiredOk = firstName && lastName && addressLine1 && city && stateRegion && /^\d{6}$/.test(pincode) && /^\+?\d{10,15}$/.test(phone);
+      const requiredOk = firstName && lastName && addressLine1 && city && stateRegion && country && /^\d{6}$/.test(pincode) && /^\+?\d{10,15}$/.test(phone);
       if (!requiredOk) {
-        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please fill first name, last name, address line 1, city, state, a valid 6-digit pincode, and phone number.' } }));
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please fill first name, last name, address line 1, city, state, country, a valid 6-digit pincode, and phone number.' } }));
         setPlacing(false);
         return;
       }
@@ -338,7 +340,15 @@ export default function CartPage() {
                 <div className="info">
                   <div className="title">{item.title}</div>
                   <div className="meta">
-                    <span className="price">₹{parsePrice(item.price).toFixed(2)}</span>
+                    {item?.effective_price != null && parseFloat(item.effective_price) < parsePrice(item.price) ? (
+                      <>
+                        <span className="price" style={{ color: '#16a34a', fontWeight: 700 }}>₹{parseFloat(item.effective_price).toFixed(2)}</span>
+                        <span style={{ marginLeft: 8, color: '#6b7280', textDecoration: 'line-through' }}>₹{parsePrice(item.price).toFixed(2)}</span>
+                        <span className="badge" style={{ marginLeft: 8, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 6, fontSize: 12 }}>Offer</span>
+                      </>
+                    ) : (
+                      <span className="price">₹{parsePrice(item.price).toFixed(2)}</span>
+                    )}
                   </div>
                   <div className="qty">
                     <button onClick={() => updateQty(item, item.quantity - 1)}><LuMinus /></button>
@@ -474,6 +484,13 @@ export default function CartPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input
                     type="text"
+                    placeholder="Country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
+                  />
+                  <input
+                    type="text"
                     inputMode="numeric"
                     pattern="\\d{6}"
                     placeholder="Pincode (6 digits)"
@@ -481,6 +498,8 @@ export default function CartPage() {
                     onChange={(e) => setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                     style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
                   />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input
                     type="tel"
                     placeholder="Phone"
@@ -488,6 +507,7 @@ export default function CartPage() {
                     onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
                     style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
                   />
+                  <div />
                 </div>
               </div>
             </div>

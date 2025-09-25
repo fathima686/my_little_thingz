@@ -36,8 +36,8 @@ try {
     $database = new Database();
     $db = $database->getConnection();
 
-    // Load cart with current prices and check for customization requirements
-    $stmt = $db->prepare("SELECT c.id as cart_id, c.artwork_id, c.quantity, a.price, a.title, a.requires_customization FROM cart c JOIN artworks a ON c.artwork_id=a.id WHERE c.user_id=? AND a.status='active'");
+    // Load cart with current prices and offer columns, check for customization requirements
+    $stmt = $db->prepare("SELECT c.id as cart_id, c.artwork_id, c.quantity, a.price, a.title, a.requires_customization, a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at FROM cart c JOIN artworks a ON c.artwork_id=a.id WHERE c.user_id=? AND a.status='active'");
     $stmt->execute([$user_id]);
     $cart = $stmt->fetchAll(PDO::FETCH_ASSOC);
     if (!$cart) { echo json_encode(['status'=>'error','message'=>'Cart is empty']); exit; }
@@ -62,7 +62,33 @@ try {
         }
     }
 
-    $subtotal = 0.0; foreach ($cart as $it) { $subtotal += ((float)$it['price']) * ((int)$it['quantity']); }
+    // Compute effective prices (offer-aware)
+    $now = new DateTime('now');
+    $subtotal = 0.0;
+    foreach ($cart as &$it) {
+        $base = (float)$it['price'];
+        $effective = $base;
+        $offerPrice   = isset($it['offer_price']) && $it['offer_price'] !== null ? (float)$it['offer_price'] : null;
+        $offerPercent = isset($it['offer_percent']) && $it['offer_percent'] !== null ? (float)$it['offer_percent'] : null;
+        $startsAt = isset($it['offer_starts_at']) && $it['offer_starts_at'] ? new DateTime($it['offer_starts_at']) : null;
+        $endsAt   = isset($it['offer_ends_at']) && $it['offer_ends_at'] ? new DateTime($it['offer_ends_at']) : null;
+        $isWindowOk = true;
+        if ($startsAt && $now < $startsAt) $isWindowOk = false;
+        if ($endsAt && $now > $endsAt) $isWindowOk = false;
+        if ($isWindowOk) {
+            if ($offerPrice !== null && $offerPrice > 0 && $offerPrice < $effective) {
+                $effective = $offerPrice;
+            } elseif ($offerPercent !== null && $offerPercent > 0 && $offerPercent <= 100) {
+                $disc = round($base * ($offerPercent / 100), 2);
+                $candidate = max(0, $base - $disc);
+                if ($candidate < $effective) $effective = $candidate;
+            }
+        }
+        $it['effective_price'] = $effective;
+        $subtotal += $effective * ((int)$it['quantity']);
+    }
+    unset($it);
+
     $tax = 0.0; $shipping = 0.0; $total = $subtotal + $tax + $shipping;
 
     // Grab shipping address from request body (if provided)
@@ -77,7 +103,7 @@ try {
     $order_id = (int)$db->lastInsertId();
 
     $insItem = $db->prepare("INSERT INTO order_items (order_id, artwork_id, quantity, price) VALUES (?, ?, ?, ?)");
-    foreach ($cart as $it) { $insItem->execute([$order_id, $it['artwork_id'], $it['quantity'], $it['price']]); }
+    foreach ($cart as $it) { $insItem->execute([$order_id, $it['artwork_id'], $it['quantity'], $it['effective_price'] ?? $it['price']]); }
 
     // Create Razorpay order via REST (no SDK)
     $amountPaise = (int) round($total * 100);

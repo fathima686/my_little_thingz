@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createKeydownHandler } from "../utils/validation";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import "../styles/auth.css";
@@ -69,6 +70,11 @@ export default function Auth() {
             if (res.ok && data.status === "success") {
               alert("Signed in with Google!");
               navigate("/");
+            } else if (res.ok && data.status === "registered") {
+              alert("Registration successful! Please sign in.");
+              setMode("login");
+            } else if (res.ok && data.status === "pending") {
+              alert("Your supplier account is awaiting admin approval.");
             } else {
               alert(data.message || "Google sign-in failed");
             }
@@ -203,7 +209,7 @@ export default function Auth() {
             <form className="form" onSubmit={submit}>
               <div className="field">
                 <label>Email</label>
-                <input name="email" type="email" autoComplete="email" value={form.email} onChange={onChange} required />
+                <input name="email" type="email" autoComplete="email" value={form.email} onChange={onChange} onKeyDown={createKeydownHandler(false)} required />
               </div>
               <div className="field">
                 <label>Password</label>
@@ -214,6 +220,7 @@ export default function Auth() {
                     autoComplete="current-password"
                     value={form.password}
                     onChange={onChange}
+                    onKeyDown={createKeydownHandler(false)}
                     required
                   />
                   <button type="button" className="pwbtn" onClick={() => setShowPw((s) => !s)}>

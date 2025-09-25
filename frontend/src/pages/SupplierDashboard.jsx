@@ -25,6 +25,7 @@ export default function SupplierDashboard() {
   const [requirements, setRequirements] = useState([]);
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]); // kept for overview stats (can be removed later)
+  const [allMaterials, setAllMaterials] = useState([]); // full list for inventory section
 
   // Forms
   const [matForm, setMatForm] = useState({ name: "", sku: "", category: "", quantity: "", image_url: "" });
@@ -33,6 +34,16 @@ export default function SupplierDashboard() {
   // Product modal (edit/delete)
   const [prodModalOpen, setProdModalOpen] = useState(false);
   const [prodForm, setProdForm] = useState({ id: 0, name: "", price: 0, quantity: 0, category: "", image_url: "", availability: "available", is_trending: 0 });
+
+  // Material modal (edit/delete)
+  const [matModalOpen, setMatModalOpen] = useState(false);
+  const [matEditForm, setMatEditForm] = useState({ id: 0, name: "", sku: "", category: "", quantity: 0, image_url: "" });
+
+  // Requirements message modal
+  const [reqModalOpen, setReqModalOpen] = useState(false);
+  const [reqModalData, setReqModalData] = useState({ id: 0, order_ref: '', material_name: '', messages: [] });
+  const [newMessage, setNewMessage] = useState('');
+
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -54,17 +65,38 @@ export default function SupplierDashboard() {
       const prodJson = await prod.json();
       if (prod.ok && prodJson.status === "success") setProducts(prodJson.items || []);
 
-      // Materials inventory — optional for overview count only
-      const inv = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}&limit=1`);
+      // Materials inventory — for overview count
+      const inv = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}`);
       const invJson = await inv.json();
-      if (inv.ok && invJson.status === "success") setMaterials(invJson.items || []);
+      if (inv.ok && invJson.status === "success") {
+        setMaterials(invJson.items || []);
+        setAllMaterials(invJson.items || []); // also set here
+      }
     } catch (e) {
       console.error(e);
       alert("Network error loading dashboard");
     }
   };
 
+  const loadInventory = async () => {
+    if (!supplierId) return;
+    try {
+      const inv = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}`);
+      const invJson = await inv.json();
+      if (inv.ok && invJson.status === "success") setAllMaterials(invJson.items || []);
+    } catch (e) {
+      console.error(e);
+      alert("Network error loading inventory");
+    }
+  };
+
   useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [supplierId]);
+
+  useEffect(() => {
+    if (activeSection === 'inventory') {
+      loadInventory();
+    }
+  }, [activeSection, supplierId]);
 
   // Load categories for selects (admin-managed)
   useEffect(() => {
@@ -105,7 +137,7 @@ export default function SupplierDashboard() {
       const data = await res.json();
       if (res.ok && data.status === "success") {
         setMatForm({ name: "", sku: "", category: "", quantity: 0, image_url: "" });
-        await loadData();
+        await loadInventory();
         setActiveSection('inventory');
       } else {
         alert(data.message || "Failed to add material");
@@ -130,6 +162,33 @@ export default function SupplierDashboard() {
     } finally { setUpdating(false); }
   };
 
+  const openReqModal = (req) => {
+    setReqModalData({ id: req.id, order_ref: req.order_ref, material_name: req.material_name, messages: req.messages || [] });
+    setReqModalOpen(true);
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim()) return;
+    try {
+      const res = await fetch(`${API_SUP}/requirements.php?supplier_id=${supplierId}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ requirement_id: reqModalData.id, message: newMessage })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setNewMessage('');
+        await loadData(); // refresh requirements to update messages
+        const updatedReq = requirements.find(r => r.id === reqModalData.id);
+        if (updatedReq) setReqModalData({ ...reqModalData, messages: updatedReq.messages });
+      } else {
+        alert(data.message || 'Failed to send message');
+      }
+    } catch (e) {
+      alert('Network error');
+    }
+  };
+
   // Derived counts for Overview
   const totalProducts = products.length;
   const totalMaterials = materials.length;
@@ -144,7 +203,7 @@ export default function SupplierDashboard() {
         </div>
         <nav className="nav">
           <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => setActiveSection('overview')}>Overview</button>
-          <button className={activeSection === 'products' ? 'active' : ''} onClick={() => setActiveSection('products')}>Products</button>
+          <button className={activeSection === 'products' ? 'active' : ''} onClick={() => setActiveSection('products')}>Supplier Trending Products</button>
           <button className={activeSection === 'inventory' ? 'active' : ''} onClick={() => setActiveSection('inventory')}>Inventory</button>
           <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => setActiveSection('requirements')}>Order Requirements</button>
           <button className={activeSection === 'profile' ? 'active' : ''} onClick={() => navigate('/supplier/profile')}>Profile</button>
@@ -179,7 +238,7 @@ export default function SupplierDashboard() {
                 <section className="stats">
                   <div className="grid stats-grid">
                     <div className="stat-card">
-                      <div className="stat-label">Products</div>
+                      <div className="stat-label">Supplier Trending Products</div>
                       <div className="stat-value">{totalProducts}</div>
                     </div>
                     <div className="stat-card">
@@ -207,7 +266,7 @@ export default function SupplierDashboard() {
                     </button>
                     <button className="action-card" onClick={() => setActiveSection('products')}>
                       <div className="action-icon">📦</div>
-                      <h3>Products</h3>
+                      <h3>Supplier Trending Products</h3>
                       <p>Add items for admin review</p>
                     </button>
                     <button className="action-card" onClick={() => setActiveSection('inventory')}>
@@ -223,7 +282,7 @@ export default function SupplierDashboard() {
             {activeSection === 'products' && (
               <section id="products" className="widget" style={{ marginTop: 12 }}>
                 <div className="widget-head">
-                  <h4><LuPackage /> Products</h4>
+                  <h4><LuPackage /> Supplier Trending Products</h4>
                   <div className="controls">
                     <button className="btn btn-emph" onClick={() => navigate('/supplier/products/new')}><LuUpload /> Add Product</button>
                   </div>
@@ -328,13 +387,14 @@ export default function SupplierDashboard() {
                         <th>Qty</th>
                         <th>Availability</th>
                         <th>Updated</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {materials.length === 0 ? (
-                        <tr><td colSpan={7} className="muted">No inventory yet</td></tr>
+                      {allMaterials.length === 0 ? (
+                        <tr><td colSpan={8} className="muted">No inventory yet</td></tr>
                       ) : (
-                        materials.map(m => (
+                        allMaterials.map(m => (
                           <tr key={m.id}>
                             <td>{m.id}</td>
                             <td style={{display:'flex', alignItems:'center', gap:8}}>
@@ -346,6 +406,12 @@ export default function SupplierDashboard() {
                             <td>{m.quantity}</td>
                             <td style={{ textTransform:'capitalize' }}>{m.availability}</td>
                             <td>{new Date(m.updated_at).toLocaleString()}</td>
+                            <td>
+                              <button className="btn btn-soft tiny" onClick={() => {
+                                setMatEditForm({ id: m.id, name: m.name, sku: m.sku || '', category: m.category || '', quantity: m.quantity, image_url: m.image_url || '' });
+                                setMatModalOpen(true);
+                              }}>Edit</button>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -436,6 +502,80 @@ export default function SupplierDashboard() {
               </div>
             )}
 
+            {/* Material Edit Modal */}
+            {matModalOpen && (
+              <div className="modal-overlay">
+                <div className="modal-content" style={{maxWidth:560}}>
+                  <div className="modal-head">
+                    <h3>Edit Material</h3>
+                    <button className="btn btn-soft small" onClick={()=>setMatModalOpen(false)}>Close</button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="grid" style={{gap:10, gridTemplateColumns:'repeat(2, 1fr)'}}>
+                      <input className="select" placeholder="Name" value={matEditForm.name} onChange={e=>setMatEditForm(v=>({...v, name:e.target.value}))} />
+                      <input className="select" placeholder="SKU" value={matEditForm.sku} onChange={e=>setMatEditForm(v=>({...v, sku:e.target.value}))} />
+                      <select className="select" value={matEditForm.category} onChange={e=>setMatEditForm(v=>({...v, category: e.target.value }))}>
+                        <option value="">— Select category —</option>
+                        {categories.map(n => (<option key={n} value={n}>{n}</option>))}
+                      </select>
+                      <input className="select" placeholder="Qty" type="number" value={matEditForm.quantity} onChange={e=>setMatEditForm(v=>({...v, quantity:e.target.value}))} />
+
+                      <input className="select" placeholder="Image URL" value={matEditForm.image_url} onChange={e=>setMatEditForm(v=>({...v, image_url:e.target.value}))} />
+                      <div style={{gridColumn:'span 2'}}>
+                        <label className="muted">Or upload image</label>
+                        <input className="select" type="file" accept="image/png,image/jpeg,image/webp" onChange={async (e)=>{
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const fd = new FormData();
+                            fd.append('image', file);
+                            const up = await fetch(`${API_SUP}/upload.php?supplier_id=${supplierId}`, { method:'POST', body: fd, headers: { 'X-SUPPLIER-ID': String(supplierId) } });
+                            const upJson = await up.json();
+                            if (up.ok && upJson.status === 'success') {
+                              setMatEditForm(v=>({...v, image_url: upJson.url }));
+                            } else {
+                              alert(upJson.message || 'Upload failed');
+                            }
+                          } catch (err) {
+                            alert('Upload error');
+                          }
+                        }} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="modal-foot" style={{display:'flex',justifyContent:'space-between'}}>
+                    <button className="btn btn-soft" onClick={async ()=>{
+                      if (!supplierId || !matEditForm.id) return;
+                      setUpdating(true);
+                      try {
+                        const res = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}`, {
+                          method: 'PUT',
+                          headers,
+                          body: JSON.stringify(matEditForm)
+                        });
+                        const data = await res.json();
+                        if (!(res.ok && data.status==='success')) { alert(data.message || 'Update failed'); return; }
+                        await loadInventory();
+                        setMatModalOpen(false);
+                      } finally { setUpdating(false); }
+                    }}>Save</button>
+                    <button className="btn btn-danger" onClick={async ()=>{
+                      if (!supplierId || !matEditForm.id) return;
+                      if (!confirm('Delete this material?')) return;
+                      setUpdating(true);
+                      try {
+                        const res = await fetch(`${API_SUP}/inventory.php?supplier_id=${supplierId}&id=${matEditForm.id}`, { method:'DELETE', headers });
+                        const data = await res.json();
+                        if (!(res.ok && data.status==='success')) { alert(data.message || 'Delete failed'); return; }
+                        await loadInventory();
+                        setMatModalOpen(false);
+                      } finally { setUpdating(false); }
+                    }}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeSection === 'requirements' && (
               <section id="requirements" className="widget" style={{ marginTop: 12 }}>
                 <div className="widget-head">
@@ -467,6 +607,7 @@ export default function SupplierDashboard() {
                             <td>{req.due_date || 'TBD'}</td>
                             <td style={{ textTransform:'capitalize' }}>{req.status}</td>
                             <td>
+                              <button className="btn btn-soft tiny" onClick={() => openReqModal(req)}>Messages</button>
                               {req.status !== 'packed' && (
                                 <button className="btn btn-soft tiny" disabled={updating} onClick={() => markPacked(req.id)}>Mark Packed</button>
                               )}
@@ -482,6 +623,34 @@ export default function SupplierDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Requirements Messages Modal */}
+      {reqModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="box" style={{ width: 'min(600px, 95vw)', maxHeight: '80vh', overflow: 'auto', background: '#fff', padding: 20, borderRadius: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0 }}>Messages for {reqModalData.order_ref} - {reqModalData.material_name}</h3>
+              <button className="btn" onClick={() => setReqModalOpen(false)}>Close</button>
+            </div>
+            <div style={{ marginBottom: 16, maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd', padding: 10, borderRadius: 8 }}>
+              {reqModalData.messages.length === 0 ? (
+                <div className="muted">No messages yet.</div>
+              ) : (
+                reqModalData.messages.map((msg, i) => (
+                  <div key={i} style={{ marginBottom: 8, padding: 8, background: msg.sender === 'admin' ? '#f0f8ff' : '#f0fff0', borderRadius: 6 }}>
+                    <div style={{ fontWeight: 'bold', fontSize: 12 }}>{msg.sender === 'admin' ? 'Admin' : 'You'} • {new Date(msg.created_at).toLocaleString()}</div>
+                    <div>{msg.message}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" placeholder="Type your message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} />
+              <button className="btn btn-emph" onClick={sendMessage}>Send</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

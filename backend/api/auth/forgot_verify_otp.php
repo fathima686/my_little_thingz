@@ -16,7 +16,7 @@ if ($mysqli->connect_error) { http_response_code(500); echo json_encode(['status
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $email = trim($input['email'] ?? '');
 $otp   = trim($input['otp'] ?? '');
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{6}$/', $otp)) {
+if ($email === '' || $otp === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{6}$/', $otp)) {
   http_response_code(422);
   echo json_encode(['status'=>'error','message'=>'Invalid input']);
   exit;

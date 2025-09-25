@@ -3,6 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import blue from "../assets/blue.png";
 import "../styles/register.css";
+import { 
+  validateEmail, 
+  validateName, 
+  validatePassword, 
+  validatePasswordMatch, 
+  validateShopName,
+  createInputHandler,
+  createKeydownHandler,
+  trimWhitespace
+} from "../utils/validation";
 
 // API base for XAMPP; adjust if your localhost path differs
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
@@ -17,11 +27,14 @@ export default function Register() {
     lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
     role: "", // require explicit selection: 2=customer, 3=supplier
     shop_name: "",
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   const googleBtnRef = useRef(null);
   const [googleRole, setGoogleRole] = useState("");
@@ -123,48 +136,21 @@ export default function Register() {
     init();
   }, [googleRole, formData.role]);
 
-  // Strict validation rules
+  // Enhanced validation rules using utility functions
   const validators = useMemo(() => ({
-    firstName: (v) =>
-      !v.trim()
-        ? "First name is required"
-        : !/^[A-Za-z][A-Za-z\s'-]{1,29}$/.test(v)
-        ? "Use 2-30 letters (letters, space, ',- allowed)"
-        : null,
-    lastName: (v) =>
-      !v.trim()
-        ? "Last name is required"
-        : !/^[A-Za-z][A-Za-z\s'-]{1,29}$/.test(v)
-        ? "Use 2-30 letters (letters, space, ',- allowed)"
-        : null,
-    email: (v) =>
-      !v.trim()
-        ? "Email is required"
-        : !/^[\w.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(v)
-        ? "Invalid email format"
-        : null,
-    password: (v) =>
-      !v
-        ? "Password is required"
-        : v.length < 8
-        ? "Minimum 8 characters"
-        : !/[A-Z]/.test(v)
-        ? "Must include an uppercase letter"
-        : !/[a-z]/.test(v)
-        ? "Must include a lowercase letter"
-        : !/[0-9]/.test(v)
-        ? "Must include a number"
-        : !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(v)
-        ? "Include one special character"
-        : null,
-    shop_name: (v, role) => String(role) === '3' && !v.trim() ? 'Shop name is required for suppliers' : (String(v).length > 120 ? 'Max 120 characters' : null),
-  }), []);
+    firstName: (v) => validateName(trimWhitespace(v), 'First name', 2, 30),
+    lastName: (v) => validateName(trimWhitespace(v), 'Last name', 2, 30),
+    email: (v) => validateEmail(trimWhitespace(v)),
+    password: (v) => validatePassword(v),
+    confirmPassword: (v) => validatePasswordMatch(formData.password, v),
+    shop_name: (v, role) => validateShopName(trimWhitespace(v), role),
+  }), [formData.password]);
 
   const validateAll = () => {
     const next = Object.fromEntries(
       Object.entries(formData)
         .filter(([k]) => !!validators[k]) // only validate fields that have validators
-        .map(([k, v]) => [k, validators[k](k === 'shop_name' ? v : v, formData.role)])
+        .map(([k, v]) => [k, validators[k](k === 'shop_name' ? v : v, formData.role, formData)])
     );
     Object.keys(next).forEach((k) => next[k] === null && delete next[k]);
     setErrors(next);
@@ -179,7 +165,7 @@ export default function Register() {
   const handleBlur = (e) => {
     const { name, value } = e.target;
     const effectiveRole = formData.role || googleRole;
-    const err = validators[name]?.(value, effectiveRole) || null;
+    const err = validators[name]?.(value, effectiveRole, formData) || null;
     setErrors((p) => ({ ...p, [name]: err || undefined }));
   };
 
@@ -247,6 +233,7 @@ export default function Register() {
                   value={formData.firstName}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  onKeyDown={createKeydownHandler(true)}
                   autoComplete="given-name"
                 />
                 {errors.firstName && <span className="error">{errors.firstName}</span>}
@@ -260,6 +247,7 @@ export default function Register() {
                   value={formData.lastName}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  onKeyDown={createKeydownHandler(true)}
                   autoComplete="family-name"
                 />
                 {errors.lastName && <span className="error">{errors.lastName}</span>}
@@ -274,6 +262,7 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 onBlur={handleBlur}
+                onKeyDown={createKeydownHandler(false)}
                 autoComplete="email"
               />
               {errors.email && <span className="error">{errors.email}</span>}
@@ -281,16 +270,58 @@ export default function Register() {
 
             <div className="field">
               <label>Password</label>
-              <input
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                autoComplete="new-password"
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  name="password"
+                  type={showPwd ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  onKeyDown={createKeydownHandler(false)}
+                  autoComplete="new-password"
+                  aria-describedby="passwordHelp"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  aria-label={showPwd ? "Hide password" : "Show password"}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    border: 'none', background: 'transparent', cursor: 'pointer', padding: 4
+                  }}
+                >
+                  {showPwd ? '🙈' : '👁️'}
+                </button>
+              </div>
               {errors.password && <span className="error">{errors.password}</span>}
-              <p className="hint">8+ chars, upper, lower, number, special</p>
+              <p id="passwordHelp" className="hint">8+ chars, upper, lower, number, special</p>
+            </div>
+
+            <div className="field">
+              <label>Confirm password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  name="confirmPassword"
+                  type={showConfirmPwd ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  onKeyDown={createKeydownHandler(false)}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPwd((v) => !v)}
+                  aria-label={showConfirmPwd ? "Hide password" : "Show password"}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    border: 'none', background: 'transparent', cursor: 'pointer', padding: 4
+                  }}
+                >
+                  {showConfirmPwd ? '🙈' : '👁️'}
+                </button>
+              </div>
+              {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
             </div>
 
             <div className="field">
@@ -311,6 +342,7 @@ export default function Register() {
                   value={formData.shop_name}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  onKeyDown={createKeydownHandler(true)}
                   maxLength={120}
                   placeholder="e.g., Rose Crafts Studio"
                 />
@@ -344,6 +376,7 @@ export default function Register() {
                   value={formData.shop_name}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  onKeyDown={createKeydownHandler(true)}
                   maxLength={120}
                   placeholder="e.g., Rose Crafts Studio"
                 />

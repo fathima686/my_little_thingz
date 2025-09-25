@@ -11,15 +11,15 @@ $data = json_decode(file_get_contents("php://input"), true);
 $email = trim($data['email']);
 $password = $data['password'];
 
-$stmt = $conn->prepare("SELECT id, password FROM users WHERE email = ?");
+$stmt = $conn->prepare("SELECT id, password_hash FROM users WHERE email = ?");
 $stmt->bind_param("s", $email);
 $stmt->execute();
 $stmt->store_result();
 
 if ($stmt->num_rows > 0) {
-    $stmt->bind_result($id, $hashedPassword);
+    $stmt->bind_result($id, $passwordHash);
     $stmt->fetch();
-    if (password_verify($password, $hashedPassword)) {
+    if ($passwordHash && password_verify($password, $passwordHash)) {
         echo json_encode(["status" => "success", "message" => "Login successful", "user_id" => $id]);
     } else {
         echo json_encode(["status" => "error", "message" => "Invalid password"]);

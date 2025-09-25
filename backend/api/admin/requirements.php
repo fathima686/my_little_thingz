@@ -12,6 +12,7 @@ header("Vary: Origin");
 header("Content-Type: application/json");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id");
+header("Cross-Origin-Opener-Policy: unsafe-none");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
@@ -28,40 +29,46 @@ $adminUserId = isset($_SERVER['HTTP_X_ADMIN_USER_ID']) ? (int)$_SERVER['HTTP_X_A
 if ($adminUserId <= 0) { http_response_code(401); echo json_encode(["status"=>"error","message"=>"Missing admin identity"]); exit; }
 
 // Ensure roles tables exist
-$mysqli->query("CREATE TABLE IF NOT EXISTS roles (id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL UNIQUE) ENGINE=InnoDB");
-$mysqli->query("INSERT IGNORE INTO roles (id, name) VALUES (1,'admin'),(2,'customer'),(3,'supplier')");
-$mysqli->query("CREATE TABLE IF NOT EXISTS user_roles (user_id INT UNSIGNED NOT NULL, role_id TINYINT UNSIGNED NOT NULL, PRIMARY KEY (user_id, role_id)) ENGINE=InnoDB");
+try {
+  $mysqli->query("CREATE TABLE IF NOT EXISTS roles (id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL UNIQUE) ENGINE=InnoDB");
+  $mysqli->query("INSERT IGNORE INTO roles (id, name) VALUES (1,'admin'),(2,'customer'),(3,'supplier')");
+  $mysqli->query("CREATE TABLE IF NOT EXISTS user_roles (user_id INT UNSIGNED NOT NULL, role_id TINYINT UNSIGNED NOT NULL, PRIMARY KEY (user_id, role_id)) ENGINE=InnoDB");
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode(["status"=>"error","message"=>"Failed to setup roles tables","detail"=>$e->getMessage()]);
+  exit;
+}
 $chk = $mysqli->prepare("SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id=r.id WHERE ur.user_id=? AND r.name='admin' LIMIT 1");
 $chk->bind_param('i', $adminUserId); $chk->execute(); $chk->store_result();
 if ($chk->num_rows === 0) { http_response_code(403); echo json_encode(["status"=>"error","message"=>"Not an admin user"]); exit; }
 
 // Ensure requirement tables exist (same as supplier endpoint)
-$mysqli->query("CREATE TABLE IF NOT EXISTS order_requirements (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  supplier_id INT UNSIGNED NOT NULL,
-  order_ref VARCHAR(100) NOT NULL,
-  material_name VARCHAR(120) NOT NULL,
-  required_qty INT NOT NULL DEFAULT 0,
-  unit VARCHAR(32) NOT NULL DEFAULT 'pcs',
-  due_date DATE NULL,
-  status ENUM('pending','packed','fulfilled','cancelled') NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX(supplier_id),
-  INDEX(order_ref)
-) ENGINE=InnoDB");
-$mysqli->query("CREATE TABLE IF NOT EXISTS order_requirement_messages (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  requirement_id INT UNSIGNED NOT NULL,
-  sender ENUM('admin','supplier') NOT NULL,
-  message TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX(requirement_id)
-) ENGINE=InnoDB");
-
-$method = $_SERVER['REQUEST_METHOD'];
-
 try {
+  $mysqli->query("CREATE TABLE IF NOT EXISTS order_requirements (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    supplier_id INT UNSIGNED NOT NULL,
+    order_ref VARCHAR(100) NOT NULL,
+    material_name VARCHAR(120) NOT NULL,
+    required_qty INT NOT NULL DEFAULT 0,
+    unit VARCHAR(32) NOT NULL DEFAULT 'pcs',
+    due_date DATE NULL,
+    status ENUM('pending','packed','fulfilled','cancelled') NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX(supplier_id),
+    INDEX(order_ref)
+  ) ENGINE=InnoDB");
+  $mysqli->query("CREATE TABLE IF NOT EXISTS order_requirement_messages (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    requirement_id INT UNSIGNED NOT NULL,
+    sender ENUM('admin','supplier') NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX(requirement_id)
+  ) ENGINE=InnoDB");
+
+  $method = $_SERVER['REQUEST_METHOD'];
+
   if ($method === 'GET') {
     $supplierId = isset($_GET['supplier_id']) ? (int)$_GET['supplier_id'] : 0;
     $q = isset($_GET['q']) ? s($_GET['q']) : '';

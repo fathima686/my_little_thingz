@@ -120,9 +120,9 @@ export default function AdminRequirements() {
 
       {/* Create requirement */}
       <form onSubmit={createRequirement} className="grid" style={{ gap: 8, gridTemplateColumns: 'repeat(6, 1fr)', margin: '12px 0' }}>
-        <input className="select" placeholder="Supplier ID" value={form.supplier_id} onChange={e=>setForm(v=>({...v, supplier_id:e.target.value}))} />
-        <input className="select" placeholder="Order Ref" value={form.order_ref} onChange={e=>setForm(v=>({...v, order_ref:e.target.value}))} />
-        <input className="select" placeholder="Material Name" value={form.material_name} onChange={e=>setForm(v=>({...v, material_name:e.target.value}))} />
+        <input className="select" placeholder="Supplier ID" required value={form.supplier_id} onChange={e=>setForm(v=>({...v, supplier_id:e.target.value}))} />
+        <input className="select" placeholder="Order Ref" required value={form.order_ref} onChange={e=>setForm(v=>({...v, order_ref:e.target.value}))} />
+        <input className="select" placeholder="Material Name" required value={form.material_name} onChange={e=>setForm(v=>({...v, material_name:e.target.value}))} />
         <input className="select" placeholder="Qty" type="number" value={form.required_qty} onChange={e=>setForm(v=>({...v, required_qty:e.target.value}))} />
         <select className="select" value={form.unit} onChange={e=>setForm(v=>({...v, unit:e.target.value}))}>
           <option value="pcs">pcs</option>

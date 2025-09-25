@@ -108,6 +108,39 @@ try {
     while ($row = $res->fetch_assoc()) { $rows[] = $row; }
     $st->close();
 
+    // Attach images for each request so the admin can view them
+    $ids = array_column($rows, 'id');
+    if (!empty($ids)) {
+      // Build a dynamic IN clause safely with prepared statement
+      $in = implode(',', array_fill(0, count($ids), '?'));
+      $types = str_repeat('i', count($ids));
+      $sqlImgs = "SELECT request_id, image_path FROM custom_request_images WHERE request_id IN ($in) ORDER BY uploaded_at ASC";
+      $stImgs = $mysqli->prepare($sqlImgs);
+      // Spread IDs as params
+      $stImgs->bind_param($types, ...$ids);
+      $stImgs->execute();
+      $rsImgs = $stImgs->get_result();
+      $byReq = [];
+      // Build absolute URLs using serve_image.php so the frontend can load images from PHP
+      $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+      $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+      $servePrefix = $scheme . '://' . $host . '/my_little_thingz/backend/serve_image.php?path=';
+      while ($im = $rsImgs->fetch_assoc()) {
+        $rid = (int)$im['request_id'];
+        if (!isset($byReq[$rid])) { $byReq[$rid] = []; }
+        $path = (string)($im['image_path'] ?? '');
+        if (preg_match('~^https?://~i', $path)) {
+          $url = $path; // already absolute
+        } else {
+          $url = $servePrefix . rawurlencode(ltrim($path, '/'));
+        }
+        $byReq[$rid][] = $url;
+      }
+      $stImgs->close();
+      foreach ($rows as &$r) { $r['images'] = $byReq[$r['id']] ?? []; }
+      unset($r);
+    }
+
     if ($split) {
       $normal = [];
       $fromCart = [];
@@ -144,6 +177,52 @@ try {
       http_response_code(404);
       echo json_encode(["status" => "error", "message" => "Request not found"]);
       exit;
+    }
+
+    // If admin marks as completed, move the intended item into the user's cart
+    if ($newStatus === 'completed') {
+      // Fetch mapping
+      $q = $mysqli->prepare("SELECT user_id, COALESCE(artwork_id, 0) AS artwork_id, COALESCE(requested_quantity, 1) AS requested_quantity FROM custom_requests WHERE id=?");
+      $q->bind_param('i', $requestId);
+      $q->execute();
+      $res = $q->get_result();
+      $map = $res->fetch_assoc();
+      $q->close();
+
+      if ($map && (int)$map['artwork_id'] > 0) {
+        $uid = (int)$map['user_id'];
+        $aid = (int)$map['artwork_id'];
+        $qty = max(1, (int)$map['requested_quantity']);
+
+        // Validate artwork exists and is active
+        $chk = $mysqli->prepare("SELECT id FROM artworks WHERE id=? AND status='active' LIMIT 1");
+        $chk->bind_param('i', $aid);
+        $chk->execute();
+        $chk->store_result();
+        if ($chk->num_rows > 0) {
+          $chk->close();
+          // Insert/update cart
+          $sel = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id=? AND artwork_id=? LIMIT 1");
+          $sel->bind_param('ii', $uid, $aid);
+          $sel->execute();
+          $r = $sel->get_result()->fetch_assoc();
+          $sel->close();
+          if ($r) {
+            $newQ = (int)$r['quantity'] + $qty;
+            $upd = $mysqli->prepare("UPDATE cart SET quantity=? WHERE id=?");
+            $upd->bind_param('ii', $newQ, $r['id']);
+            $upd->execute();
+            $upd->close();
+          } else {
+            $ins = $mysqli->prepare("INSERT INTO cart (user_id, artwork_id, quantity, added_at) VALUES (?, ?, ?, NOW())");
+            $ins->bind_param('iii', $uid, $aid, $qty);
+            $ins->execute();
+            $ins->close();
+          }
+        } else {
+          $chk->close();
+        }
+      }
     }
 
     echo json_encode(["status" => "success", "request_id" => $requestId, "new_status" => $newStatus]);

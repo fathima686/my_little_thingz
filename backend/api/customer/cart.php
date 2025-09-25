@@ -54,17 +54,25 @@ try {
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        // Fetch user's cart items
-        $query = "SELECT 
-                    c.id,
-                    c.artwork_id,
-                    c.quantity,
-                    c.added_at,
-                    a.title,
-                    a.price,
-                    a.image_url,
-                    a.availability,
-                    CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name
+        // Fetch user's cart items (include offer columns if present)
+        $hasOfferCols = false;
+        try {
+            $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
+            if ($col && $col->rowCount() > 0) { $hasOfferCols = true; }
+        } catch (Throwable $e) { $hasOfferCols = false; }
+
+        $selectCols = "c.id, c.artwork_id, c.quantity, c.added_at, a.title, a.price, a.image_url, a.availability, CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name";
+        if ($hasOfferCols) {
+            $selectCols .= ", a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at";
+            try {
+                $col2 = $db->query("SHOW COLUMNS FROM artworks LIKE 'force_offer_badge'");
+                if ($col2 && $col2->rowCount() > 0) {
+                    $selectCols .= ", a.force_offer_badge";
+                }
+            } catch (Throwable $e) {}
+        }
+
+        $query = "SELECT $selectCols
                   FROM cart c
                   JOIN artworks a ON c.artwork_id = a.id
                   LEFT JOIN users u ON a.artist_id = u.id
@@ -75,18 +83,53 @@ try {
         $stmt->execute([$user_id]);
         $cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $total = 0;
+        // Compute effective prices and totals
+        $now = new DateTime('now');
+        $total_effective = 0.0;
         foreach ($cart_items as &$item) {
-            $item_total = $item['price'] * $item['quantity'];
-            $item['item_total'] = number_format($item_total, 2);
-            $item['price'] = number_format($item['price'], 2);
-            $total += $item_total;
+            $basePrice = isset($item['price']) ? (float)$item['price'] : 0.0;
+            $effective = $basePrice;
+
+            if ($hasOfferCols) {
+                $offerPrice   = isset($item['offer_price']) && $item['offer_price'] !== null ? (float)$item['offer_price'] : null;
+                $offerPercent = isset($item['offer_percent']) && $item['offer_percent'] !== null ? (float)$item['offer_percent'] : null;
+                $startsAt = isset($item['offer_starts_at']) && $item['offer_starts_at'] ? new DateTime($item['offer_starts_at']) : null;
+                $endsAt   = isset($item['offer_ends_at']) && $item['offer_ends_at'] ? new DateTime($item['offer_ends_at']) : null;
+
+                $isWindowOk = true;
+                if ($startsAt && $now < $startsAt) $isWindowOk = false;
+                if ($endsAt && $now > $endsAt) $isWindowOk = false;
+
+                if ($isWindowOk) {
+                    if ($offerPrice !== null && $offerPrice > 0 && $offerPrice < $effective) {
+                        $effective = $offerPrice;
+                    } elseif ($offerPercent !== null && $offerPercent > 0 && $offerPercent <= 100) {
+                        $disc = round($basePrice * ($offerPercent / 100), 2);
+                        $candidate = max(0, $basePrice - $disc);
+                        if ($candidate < $effective) $effective = $candidate;
+                    }
+                }
+
+                $item['is_on_offer'] = ($effective < $basePrice) && $isWindowOk;
+                // If admin forced badge, show it even without price drop
+                if (isset($item['force_offer_badge']) && (int)$item['force_offer_badge'] === 1) {
+                    $item['is_on_offer'] = true;
+                }
+            } else {
+                $item['is_on_offer'] = false;
+            }
+
+            $item['price'] = number_format($basePrice, 2); // keep original for display
+            $item['effective_price'] = (float)$effective;
+            $item_total_effective = $effective * ((int)$item['quantity']);
+            $item['item_total'] = number_format($item_total_effective, 2);
+            $total_effective += $item_total_effective;
         }
 
         echo json_encode([
             'status' => 'success',
             'cart_items' => $cart_items,
-            'total' => number_format($total, 2)
+            'total' => number_format($total_effective, 2)
         ]);
 
     } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {

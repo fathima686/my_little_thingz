@@ -107,29 +107,32 @@ try {
                 }
             }
 
-            // Optionally add item to cart immediately so it appears in cart
+            // Do NOT add to cart immediately. Store intended artwork and quantity on the request
             $addedToCart = false;
             if ($artwork_id) {
-                // Validate artwork
-                $artwork_stmt = $db->prepare("SELECT id FROM artworks WHERE id=? AND status='active'");
-                $artwork_stmt->execute([$artwork_id]);
-                if ($artwork_stmt->fetch()) {
-                    // Insert or update cart
-                    $check_stmt = $db->prepare("SELECT id, quantity FROM cart WHERE user_id=? AND artwork_id=?");
-                    $check_stmt->execute([$user_id, $artwork_id]);
-                    $existing = $check_stmt->fetch();
-                    if ($existing) {
-                        $newq = ((int)$existing['quantity']) + $quantity;
-                        $upd = $db->prepare("UPDATE cart SET quantity=? WHERE id=?");
-                        $addedToCart = $upd->execute([$newq, $existing['id']]);
-                    } else {
-                        $ins = $db->prepare("INSERT INTO cart (user_id, artwork_id, quantity, added_at) VALUES (?, ?, ?, NOW())");
-                        $addedToCart = $ins->execute([$user_id, $artwork_id, $quantity]);
-                    }
-                }
+                // Ensure columns exist (best effort)
+                try { $rsA = $db->query("SHOW COLUMNS FROM custom_requests LIKE 'artwork_id'"); $hasArtworkCol = $rsA && $rsA->rowCount() > 0; } catch (Throwable $e) { $hasArtworkCol = false; }
+                try { $rsQ = $db->query("SHOW COLUMNS FROM custom_requests LIKE 'requested_quantity'"); $hasQtyCol = $rsQ && $rsQ->rowCount() > 0; } catch (Throwable $e) { $hasQtyCol = false; }
+                try {
+                    if (!$hasArtworkCol) { $db->exec("ALTER TABLE custom_requests ADD COLUMN artwork_id INT NULL AFTER source"); }
+                } catch (Throwable $e) {}
+                try {
+                    if (!$hasQtyCol) { $db->exec("ALTER TABLE custom_requests ADD COLUMN requested_quantity INT NOT NULL DEFAULT 1 AFTER artwork_id"); }
+                } catch (Throwable $e) {}
+                // Persist mapping for later cart insertion upon admin approval
+                try {
+                    $updMap = $db->prepare("UPDATE custom_requests SET artwork_id = ?, requested_quantity = ? WHERE id = ?");
+                    $updMap->execute([$artwork_id, max(1, (int)$quantity), $requestId]);
+                } catch (Throwable $e) {}
             }
 
-            echo json_encode(['status'=>'success','message'=>'Customization request created','request_id'=>$requestId,'added_to_cart'=>$addedToCart]);
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Customization request created',
+                'request_id' => $requestId,
+                'added_to_cart' => false,
+                'will_move_to_cart_on_approval' => true
+            ]);
             exit;
         }
 
