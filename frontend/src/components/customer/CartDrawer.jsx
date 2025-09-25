@@ -28,6 +28,21 @@ export default function CartDrawer({ open, onClose, onCartCountChange }) {
     if (open) fetchCart();
   }, [open]);
 
+  // Periodic refresh and visibility/focus-based fetch to reflect live discounts
+  useEffect(() => {
+    if (!open) return;
+    const intervalId = setInterval(fetchCart, 25000);
+    const onFocus = () => fetchCart();
+    const onVisibility = () => { if (document.visibilityState === 'visible') fetchCart(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [open]);
+
   const subtotal = useMemo(() => {
     return items.reduce((sum, it) => {
       const base = parseFloat(String(it.price).replace(/[^0-9.]/g,'')) || 0;
@@ -107,15 +122,25 @@ export default function CartDrawer({ open, onClose, onCartCountChange }) {
               <div className="info">
                 <div className="title">{item.title}</div>
                 <div className="price">
-                  {item?.effective_price != null && parseFloat(item.effective_price) < (parseFloat(String(item.price).replace(/[^0-9.]/g,'')) || 0) ? (
-                    <>
-                      <span style={{ color: '#16a34a', fontWeight: 700 }}>₹{parseFloat(item.effective_price).toFixed(2)}</span>
-                      <span style={{ marginLeft: 6, color: '#6b7280', textDecoration: 'line-through' }}>₹{String(item.price).replace(/[^0-9.]/g,'')}</span>
-                      <span className="badge" style={{ marginLeft: 6, background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: 6, fontSize: 11 }}>Offer</span>
-                    </>
-                  ) : (
-                    <>₹{String(item.price).replace(/[^0-9.]/g,'')}</>
-                  )}
+                  {(() => {
+                    const base = parseFloat(String(item.price).replace(/[^0-9.]/g,'')) || 0;
+                    const effRaw = item?.effective_price ?? item?.offer_price ?? (base > 0 && (item?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(item.offer_percent) || 0) / 100)) : null);
+                    const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                    const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                    if (!showOffer) return <>₹{base.toFixed(2)}</>;
+                    const pct = Math.round(((base - eff) / base) * 100);
+                    return (
+                      <>
+                        <div style={{ lineHeight: 1 }}>
+                          <span style={{ textDecoration:'line-through', color:'#6b7280' }}>₹{base.toFixed(2)}</span>
+                        </div>
+                        <div style={{ lineHeight: 1.2, marginTop: 2, display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ color:'#c2410c', fontWeight:800 }}>₹{eff.toFixed(2)}</span>
+                          <span style={{ color:'#16a34a', fontWeight:700, fontSize:12 }}>-{pct}%</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="qty">
                   <button onClick={() => updateQty(item, item.quantity - 1)}><LuMinus /></button>

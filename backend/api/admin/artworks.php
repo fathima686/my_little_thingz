@@ -18,7 +18,7 @@ if ($origin && in_array($origin, $allowed_origins, true)) {
 }
 header("Vary: Origin");
 header("Content-Type: application/json");
-header("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -293,6 +293,77 @@ try {
 
     if ($affected === 0) { json_error('Artwork not found', 404); exit; }
     json_success(["deleted" => $id]);
+    exit;
+  }
+
+  if ($method === 'PUT') {
+    // Update existing artwork fields
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if ($id <= 0) { json_error('ID required', 422); exit; }
+
+    $input = [];
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (stripos($contentType, 'application/json') !== false) {
+      $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    } else {
+      // Accept form-encoded fallback
+      $input = $_POST;
+      if (empty($input)) {
+        // Try raw parse for PUT
+        parse_str(file_get_contents('php://input'), $input);
+      }
+    }
+
+    // Detect optional columns
+    $hasOfferCols = true;
+    try {
+      $colCheck = $mysqli->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
+      if (!$colCheck || $colCheck->num_rows === 0) { $hasOfferCols = false; }
+    } catch (Throwable $e) { $hasOfferCols = false; }
+
+    // Build dynamic SQL
+    $fields = [];
+    $params = [];
+    $types = '';
+
+    $maybeSet = function($key, $type = 's') use (&$fields, &$params, &$types, $input) {
+      if (array_key_exists($key, $input)) {
+        $fields[] = "$key = ?";
+        $types .= $type;
+        $params[] = $input[$key];
+      }
+    };
+
+    // Core editable fields
+    $maybeSet('title', 's');
+    $maybeSet('description', 's');
+    if (array_key_exists('price', $input)) { $fields[] = 'price = ?'; $types .= 'd'; $params[] = (float)$input['price']; }
+    if (array_key_exists('category_id', $input)) { $fields[] = 'category_id = ?'; $types .= 'i'; $params[] = ($input['category_id'] === '' ? null : (int)$input['category_id']); }
+    $maybeSet('availability', 's');
+    $maybeSet('status', 's');
+    $maybeSet('image_url', 's');
+
+    if ($hasOfferCols) {
+      if (array_key_exists('offer_price', $input)) { $fields[] = 'offer_price = ?'; $types .= 'd'; $params[] = (($input['offer_price'] === '' || $input['offer_price'] === null) ? null : (float)$input['offer_price']); }
+      if (array_key_exists('offer_percent', $input)) { $fields[] = 'offer_percent = ?'; $types .= 'd'; $params[] = (($input['offer_percent'] === '' || $input['offer_percent'] === null) ? null : (float)$input['offer_percent']); }
+      if (array_key_exists('offer_starts_at', $input)) { $fields[] = 'offer_starts_at = ?'; $types .= 's'; $params[] = ($input['offer_starts_at'] === '' ? null : $input['offer_starts_at']); }
+      if (array_key_exists('offer_ends_at', $input)) { $fields[] = 'offer_ends_at = ?'; $types .= 's'; $params[] = ($input['offer_ends_at'] === '' ? null : $input['offer_ends_at']); }
+      if (array_key_exists('force_offer_badge', $input)) { $fields[] = 'force_offer_badge = ?'; $types .= 'i'; $params[] = (int)!!$input['force_offer_badge']; }
+    }
+
+    if (empty($fields)) { json_success(["updated" => 0]); exit; }
+
+    $sql = "UPDATE artworks SET " . implode(', ', $fields) . " WHERE id = ?";
+    $types .= 'i';
+    $params[] = $id;
+
+    $st = $mysqli->prepare($sql);
+    $st->bind_param($types, ...$params);
+    $st->execute();
+    $affected = $st->affected_rows;
+    $st->close();
+
+    json_success(["updated" => $affected, "id" => $id]);
     exit;
   }
 

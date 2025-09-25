@@ -23,6 +23,9 @@ export default function AdminDashboard() {
   const [artworks, setArtworks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [uploading, setUploading] = useState(false);
+  // Edit artwork modal state
+  const [editArtwork, setEditArtwork] = useState(null); // full artwork row
+  const [editSaving, setEditSaving] = useState(false);
 
   // Requirements state
   const [requirements, setRequirements] = useState([]);
@@ -524,6 +527,62 @@ export default function AdminDashboard() {
       setUploading(false);
       // Auto-hide message after a short delay
       setTimeout(() => setArtNotice({ type: '', text: '' }), 3000);
+    }
+  };
+
+  const openEditArtwork = (a) => {
+    setEditArtwork({
+      id: a.id,
+      title: a.title || '',
+      description: a.description || '',
+      price: a.price || '',
+      offer_price: a.offer_price ?? '',
+      offer_percent: a.offer_percent ?? '',
+      offer_starts_at: a.offer_starts_at ?? '',
+      offer_ends_at: a.offer_ends_at ?? '',
+      force_offer_badge: !!a.force_offer_badge,
+      category_id: a.category_id ?? '',
+      availability: a.availability || 'in_stock',
+      status: a.status || 'active',
+      image_url: a.image_url || ''
+    });
+  };
+
+  const saveEditArtwork = async () => {
+    if (!editArtwork) return;
+    setEditSaving(true);
+    try {
+      const payload = {
+        title: editArtwork.title,
+        description: editArtwork.description,
+        price: Number(editArtwork.price),
+        offer_price: editArtwork.offer_price === '' ? null : Number(editArtwork.offer_price),
+        offer_percent: editArtwork.offer_percent === '' ? null : Number(editArtwork.offer_percent),
+        offer_starts_at: editArtwork.offer_starts_at || null,
+        offer_ends_at: editArtwork.offer_ends_at || null,
+        force_offer_badge: editArtwork.force_offer_badge ? 1 : 0,
+        category_id: editArtwork.category_id === '' ? null : Number(editArtwork.category_id),
+        availability: editArtwork.availability,
+        status: editArtwork.status,
+        image_url: editArtwork.image_url
+      };
+      const res = await fetch(`${API_BASE}/admin/artworks.php?id=${encodeURIComponent(editArtwork.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...adminHeader },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setEditArtwork(null);
+        await fetchArtworks();
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Artwork updated' } }));
+      } else {
+        alert(data.message || 'Update failed');
+      }
+    } catch (e) {
+      alert('Network error updating artwork');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -1338,13 +1397,43 @@ export default function AdminDashboard() {
                   <div>
                     <label className="muted">Offer Price (optional)</label>
                     <input type="number" step="0.01" className="input" value={artForm.offer_price}
-                      onChange={e => setArtForm(f => ({...f, offer_price: e.target.value, offer_percent: ''}))}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setArtForm(f => {
+                          const base = parseFloat(f.price) || 0;
+                          let nextPercent = f.offer_percent;
+                          // Only compute percent if it's currently empty
+                          if ((nextPercent === '' || nextPercent == null) && base > 0 && v !== '') {
+                            const op = parseFloat(v);
+                            if (!isNaN(op)) {
+                              const p = Math.max(0, Math.min(100, ((base - op) / base) * 100));
+                              nextPercent = p.toFixed(2);
+                            }
+                          }
+                          return { ...f, offer_price: v, offer_percent: nextPercent };
+                        });
+                      }}
                       placeholder="e.g., 199.99" />
                   </div>
                   <div>
                     <label className="muted">Offer Percent (optional)</label>
                     <input type="number" step="0.01" min="0" max="100" className="input" value={artForm.offer_percent}
-                      onChange={e => setArtForm(f => ({...f, offer_percent: e.target.value, offer_price: ''}))}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setArtForm(f => {
+                          const base = parseFloat(f.price) || 0;
+                          // Only compute offer price if it's currently empty
+                          if ((f.offer_price === '' || f.offer_price == null) && base > 0 && v !== '') {
+                            const perc = parseFloat(v);
+                            if (!isNaN(perc)) {
+                              const clamped = Math.max(0, Math.min(100, perc));
+                              const op = (base * (1 - clamped / 100)).toFixed(2);
+                              return { ...f, offer_percent: String(clamped), offer_price: String(op) };
+                            }
+                          }
+                          return { ...f, offer_percent: v };
+                        });
+                      }}
                       placeholder="e.g., 20 for 20% off" />
                   </div>
                   <div>
@@ -1447,7 +1536,10 @@ export default function AdminDashboard() {
                             <td>{a.price}</td>
                             <td style={{ textTransform: 'capitalize' }}>{a.status}</td>
                             <td>
-                              <button className="btn btn-danger tiny" onClick={() => deleteArtwork(a.id)}>Delete</button>
+                              <div style={{ display:'flex', gap:8 }}>
+                                <button className="btn tiny" onClick={() => openEditArtwork(a)}>Edit</button>
+                                <button className="btn btn-danger tiny" onClick={() => deleteArtwork(a.id)}>Delete</button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1569,6 +1661,128 @@ export default function AdminDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Edit Artwork Modal */}
+      {editArtwork && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 8, width: 'min(860px, 96vw)', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,.2)' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0 }}>Edit Artwork #{editArtwork.id}</h3>
+              <button className="btn small" onClick={() => setEditArtwork(null)}>Close</button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <div className="grid" style={{ gap: 12, alignItems: 'end' }}>
+                <div>
+                  <label className="muted">Title</label>
+                  <input className="input" value={editArtwork.title} onChange={e => setEditArtwork(f => ({ ...f, title: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="muted">Price</label>
+                  <input type="number" step="0.01" className="input" value={editArtwork.price} onChange={e => setEditArtwork(f => ({ ...f, price: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="muted">Offer Price (optional)</label>
+                  <input type="number" step="0.01" className="input" value={editArtwork.offer_price}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setEditArtwork(f => {
+                        const base = parseFloat(f.price) || 0;
+                        let nextPercent = f.offer_percent;
+                        // Only compute percent if it's currently empty
+                        if ((nextPercent === '' || nextPercent == null) && base > 0 && v !== '') {
+                          const op = parseFloat(v);
+                          if (!isNaN(op)) {
+                            const p = Math.max(0, Math.min(100, ((base - op) / base) * 100));
+                            nextPercent = p.toFixed(2);
+                          }
+                        }
+                        return { ...f, offer_price: v, offer_percent: nextPercent };
+                      });
+                    }}
+                    placeholder="e.g., 199.99" />
+                </div>
+                <div>
+                  <label className="muted">Offer Percent (optional)</label>
+                  <input type="number" step="0.01" min="0" max="100" className="input" value={editArtwork.offer_percent}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setEditArtwork(f => {
+                        const base = parseFloat(f.price) || 0;
+                        // Only compute offer price if it's currently empty
+                        if ((f.offer_price === '' || f.offer_price == null) && base > 0 && v !== '') {
+                          const perc = parseFloat(v);
+                          if (!isNaN(perc)) {
+                            const clamped = Math.max(0, Math.min(100, perc));
+                            const op = (base * (1 - clamped / 100)).toFixed(2);
+                            return { ...f, offer_percent: String(clamped), offer_price: String(op) };
+                          }
+                        }
+                        return { ...f, offer_percent: v };
+                      });
+                    }}
+                    placeholder="e.g., 20 for 20% off" />
+                </div>
+                <div>
+                  <label className="muted">Offer Starts</label>
+                  <input type="datetime-local" className="input"
+                    value={editArtwork.offer_starts_at ? editArtwork.offer_starts_at.replace(' ', 'T').slice(0, 16) : ''}
+                    onChange={e => setEditArtwork(f => ({ ...f, offer_starts_at: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="muted">Offer Ends</label>
+                  <input type="datetime-local" className="input"
+                    value={editArtwork.offer_ends_at ? editArtwork.offer_ends_at.replace(' ', 'T').slice(0, 16) : ''}
+                    onChange={e => setEditArtwork(f => ({ ...f, offer_ends_at: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="muted">Force Offer Badge</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" id="edit_force_offer_badge" checked={!!editArtwork.force_offer_badge}
+                      onChange={e => setEditArtwork(f => ({ ...f, force_offer_badge: e.target.checked }))} />
+                    <label htmlFor="edit_force_offer_badge">Show OFFER ribbon without changing price</label>
+                  </div>
+                </div>
+                <div>
+                  <label className="muted">Category</label>
+                  <select className="select" value={editArtwork.category_id ?? ''} onChange={e => setEditArtwork(f => ({ ...f, category_id: e.target.value }))}>
+                    <option value="">—</option>
+                    {[...new Map(categories.map(c => [c.name, c])).values()].map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="muted">Availability</label>
+                  <select className="select" value={editArtwork.availability} onChange={e => setEditArtwork(f => ({ ...f, availability: e.target.value }))}>
+                    <option value="in_stock">In Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                    <option value="made_to_order">Made to Order</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="muted">Status</label>
+                  <select className="select" value={editArtwork.status} onChange={e => setEditArtwork(f => ({ ...f, status: e.target.value }))}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label className="muted">Image URL</label>
+                  <input className="input" value={editArtwork.image_url || ''} onChange={e => setEditArtwork(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label className="muted">Description</label>
+                  <textarea className="input" rows={3} value={editArtwork.description} onChange={e => setEditArtwork(f => ({ ...f, description: e.target.value }))} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+                <button className="btn" onClick={() => setEditArtwork(null)} disabled={editSaving}>Cancel</button>
+                <button className="btn btn-emph" onClick={saveEditArtwork} disabled={editSaving}>{editSaving ? 'Saving…' : 'Save Changes'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Customization Requests Modal */}
       {showCustomizationRequests && (

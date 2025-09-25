@@ -12,6 +12,7 @@ const CustomRequestStatus = React.lazy(() => import("../components/customer/Cust
 import WishlistManager from "../components/customer/WishlistManager";
 import CartDrawer from "../components/customer/CartDrawer";
 import CustomizationModal from "../components/customer/CustomizationModal";
+// import Recommendations from "../components/customer/Recommendations";
 
 import logo from "../assets/logo.png";
 import poloroid2 from "../assets/poloroid (2).png";
@@ -148,7 +149,13 @@ export default function CustomerDashboard() {
         .then(r => r.json())
         .then(data => {
           if (data?.status === 'success' && Array.isArray(data.artworks)) {
-            const items = data.artworks.filter(a => a?.is_on_offer);
+            const items = data.artworks.filter(a => {
+              const base = parseFloat(String(a.price).replace(/[^0-9.]/g,'')) || 0;
+              const effRaw = a?.effective_price ?? a?.offer_price ?? (base > 0 && (a?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(a.offer_percent) || 0) / 100)) : null);
+              const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+              const discounted = base > 0 && Number.isFinite(eff) && eff < base;
+              return discounted || !!a?.force_offer_badge;
+            });
             setOfferArtworks(items);
           } else {
             setOfferArtworks([]);
@@ -278,6 +285,8 @@ export default function CustomerDashboard() {
           </button>
         </div>
       </section>
+
+      {/* Recommendations removed from dashboard as requested */}
 
       {/* Two-column widgets */}
       <section className="dash-widgets">
@@ -421,7 +430,7 @@ export default function CustomerDashboard() {
                       }}>
                         <div style={{position:'relative'}}>
                           <img src={a.image_url} alt={a.title} style={{width:'100%', height:180, objectFit:'cover', display:'block'}} />
-                          {a.is_on_offer && (
+                          {(() => { const base = parseFloat(String(a.price).replace(/[^0-9.]/g,'')) || 0; const effRaw = a?.effective_price ?? a?.offer_price ?? (base > 0 && (a?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(a.offer_percent) || 0) / 100)) : null); const eff = effRaw != null ? parseFloat(effRaw) : NaN; const discounted = base > 0 && Number.isFinite(eff) && eff < base; return discounted || !!a?.force_offer_badge; })() && (
                             <div style={{
                               position:'absolute', top:12, left:-40,
                               background:'#e11d48', color:'#fff', padding:'6px 50px', fontSize:12,
@@ -433,16 +442,31 @@ export default function CustomerDashboard() {
                         <div style={{padding:12}}>
                           <div style={{fontWeight:700, marginBottom:4}}>{a.title}</div>
                           <div style={{color:'#64748b', fontSize:14, marginBottom:6}}>by {a.artist_name}</div>
-                          <div style={{display:'flex', alignItems:'center', gap:8}}>
-                            {a.is_on_offer ? (
-                              <>
-                                <span style={{ textDecoration:'line-through', color:'#9ca3af' }}>₹{a.price}</span>
-                                <span style={{ color:'#c2410c', fontWeight:700 }}>₹{a.effective_price}</span>
-                                <span style={{ marginLeft: 8, background: '#ffedd5', color: '#9a3412', borderRadius: 6, padding: '2px 6px', fontSize: 12 }}>Offer</span>
-                              </>
-                            ) : (
-                              <span>₹{a.price}</span>
-                            )}
+                          <div aria-label="price-block">
+                            {(() => {
+                              const base = parseFloat(a.price) || 0;
+                              const effRaw =
+                                a.effective_price ??
+                                a.offer_price ??
+                                (base > 0 && a.offer_percent != null && a.offer_percent !== ''
+                                  ? (base * (1 - (parseFloat(a.offer_percent) || 0) / 100))
+                                  : null);
+                              const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                              const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                              if (!showOffer) return <span>₹{a.price}</span>;
+                              const pct = Math.round(((base - eff) / base) * 100);
+                              return (
+                                <>
+                                  <div style={{ lineHeight: 1 }}>
+                                    <span style={{ textDecoration:'line-through', color:'#9ca3af' }}>₹{a.price}</span>
+                                  </div>
+                                  <div style={{ lineHeight: 1.3, marginTop: 4, display:'flex', alignItems:'center', gap:8 }}>
+                                    <span style={{ color:'#c2410c', fontWeight:800 }}>₹{eff.toFixed(2)}</span>
+                                    <span style={{ color:'#16a34a', fontWeight:700, fontSize:13 }}>-{pct}%</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>

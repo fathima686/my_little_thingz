@@ -266,7 +266,27 @@ const WishlistManager = ({ onClose }) => {
                 <div className="item-info">
                   <h3>{item.title}</h3>
                   <p className="item-artist">by {item.artist_name}</p>
-                  <p className="item-price">${item.price}</p>
+                  <div className="item-price">
+                    {(() => {
+                      const base = parseFloat(String(item.price).replace(/[^0-9.]/g,'')) || 0;
+                      const effRaw = item?.effective_price ?? item?.offer_price ?? (base > 0 && (item?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(item.offer_percent) || 0) / 100)) : null);
+                      const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                      const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                      if (!showOffer) return <span>₹{base.toFixed(2)}</span>;
+                      const pct = Math.round(((base - eff) / base) * 100);
+                      return (
+                        <>
+                          <div style={{ lineHeight: 1 }}>
+                            <span style={{ textDecoration:'line-through', color:'#9ca3af' }}>₹{base.toFixed(2)}</span>
+                          </div>
+                          <div style={{ lineHeight: 1.3, marginTop: 4, display:'flex', alignItems:'center', gap:8 }}>
+                            <span style={{ color:'#c2410c', fontWeight:800 }}>₹{eff.toFixed(2)}</span>
+                            <span style={{ color:'#16a34a', fontWeight:700, fontSize:13 }}>-{pct}%</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <p className="item-added">Added {formatDate(item.added_at)}</p>
                   
                   <div className="item-actions">
@@ -321,7 +341,27 @@ const WishlistManager = ({ onClose }) => {
                 <div className="item-detail-info">
                   <h3>{selectedItem.title}</h3>
                   <p className="artist">by {selectedItem.artist_name}</p>
-                  <p className="price">${selectedItem.price}</p>
+                  <div className="price">
+                    {(() => {
+                      const base = parseFloat(String(selectedItem.price).replace(/[^0-9.]/g,'')) || 0;
+                      const effRaw = selectedItem?.effective_price ?? selectedItem?.offer_price ?? (base > 0 && (selectedItem?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(selectedItem.offer_percent) || 0) / 100)) : null);
+                      const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                      const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                      if (!showOffer) return <>₹{base.toFixed(2)}</>;
+                      const pct = Math.round(((base - eff) / base) * 100);
+                      return (
+                        <>
+                          <div style={{ lineHeight: 1 }}>
+                            <span style={{ textDecoration:'line-through', color:'#9ca3af' }}>₹{base.toFixed(2)}</span>
+                          </div>
+                          <div style={{ lineHeight: 1.3, marginTop: 6, display:'flex', alignItems:'center', gap:10 }}>
+                            <span style={{ color:'#c2410c', fontWeight:900, fontSize: 22 }}>₹{eff.toFixed(2)}</span>
+                            <span style={{ color:'#16a34a', fontWeight:800, fontSize: 14 }}>-{pct}%</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <p className="description">{selectedItem.description}</p>
                   
                   <div className="detail-meta">

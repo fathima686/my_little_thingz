@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { createKeydownHandler } from "../utils/validation";
 import { Link, useNavigate } from 'react-router-dom';
 import { LuPackage, LuArrowLeft, LuUpload } from 'react-icons/lu';
 import { useAuth } from '../contexts/AuthContext';
@@ -115,7 +114,7 @@ export default function SupplierProductNew() {
             <form onSubmit={submit} className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label className="muted">Name</label>
-                <input className="input" value={form.name} onChange={e=>setForm({ ...form, name: e.target.value })} onKeyDown={createKeydownHandler(true)} required />
+                <input className="input" value={form.name} onChange={e=>setForm({ ...form, name: e.target.value })} required />
               </div>
 
               <div>
@@ -158,7 +157,7 @@ export default function SupplierProductNew() {
 
               <div style={{ gridColumn: '1 / -1' }}>
                 <label className="muted">Description</label>
-                <textarea className="input" rows={3} value={form.description} onChange={e=>setForm({ ...form, description: e.target.value })} onKeyDown={createKeydownHandler(true)} />
+                <textarea className="input" rows={3} value={form.description} onChange={e=>setForm({ ...form, description: e.target.value })} />
               </div>
 
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 12, justifyContent: 'flex-end' }}>

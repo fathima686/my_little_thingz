@@ -3,6 +3,7 @@ import { LuHeart, LuShoppingCart, LuEye, LuSettings, LuSearch, LuX, LuWand } fro
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CustomizationModal from './CustomizationModal';
+import Recommendations from './Recommendations';
 import '../../styles/customization-modal.css';
 
 // Asset image imports for fallback data
@@ -104,6 +105,20 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
     fetchArtworks();
     fetchCategories();
     fetchWishlist();
+    // Periodic refresh to pick up price/offer changes
+    const intervalId = setInterval(() => {
+      fetchArtworks();
+    }, 30000);
+    // Refresh when tab regains focus or becomes visible
+    const onFocus = () => fetchArtworks();
+    const onVisibility = () => { if (document.visibilityState === 'visible') fetchArtworks(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -502,23 +517,32 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                   {artwork.category_name && <span className="badge">{artwork.category_name}</span>}
                 </div>
                 <p className="artwork-artist">by {artwork.artist_name}</p>
-                <p className="artwork-price">
-                  {artwork.is_on_offer ? (
-                    <>
-                      {Number(artwork.effective_price) < Number(artwork.price) ? (
-                        <>
-                          <span style={{ textDecoration: 'line-through', color: '#999', marginRight: 8 }}>₹{artwork.price}</span>
-                          <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{artwork.effective_price}</span>
-                        </>
-                      ) : (
-                        <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{artwork.price}</span>
-                      )}
-                      <span style={{ marginLeft: 8, background: '#ffedd5', color: '#9a3412', borderRadius: 6, padding: '2px 6px', fontSize: 12 }}>Offer</span>
-                    </>
-                  ) : (
-                    <>₹{artwork.price}</>
-                  )}
-                </p>
+                <div className="artwork-price">
+                  {(() => {
+                    const base = parseFloat(artwork.price) || 0;
+                    const effRaw =
+                      artwork.effective_price ??
+                      artwork.offer_price ??
+                      (base > 0 && artwork.offer_percent != null && artwork.offer_percent !== ''
+                        ? (base * (1 - (parseFloat(artwork.offer_percent) || 0) / 100))
+                        : null);
+                    const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                    const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                    if (!showOffer) return <span>₹{artwork.price}</span>;
+                    const pct = Math.round(((base - eff) / base) * 100);
+                    return (
+                      <>
+                        <div style={{ lineHeight: 1 }}>
+                          <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{artwork.price}</span>
+                        </div>
+                        <div style={{ lineHeight: 1.3, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#c2410c', fontWeight: 800 }}>₹{eff.toFixed(2)}</span>
+                          <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13 }}>-{pct}%</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           ))}
@@ -555,38 +579,62 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                 <div className="artwork-detail-info">
                   <h3>{selectedArtwork.title}</h3>
                   <p className="artist">by {selectedArtwork.artist_name}</p>
-                  <p className="price">
-                    {selectedArtwork?.is_on_offer ? (
-                      <>
-                        {Number(selectedArtwork.effective_price) < Number(selectedArtwork.price) ? (
-                          <>
-                            <span style={{ textDecoration: 'line-through', color: '#999', marginRight: 8 }}>₹{selectedArtwork.price}</span>
-                            <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{selectedArtwork.effective_price}</span>
-                          </>
-                        ) : (
-                          <span style={{ color: '#c2410c', fontWeight: 700 }}>₹{selectedArtwork.price}</span>
-                        )}
-                        <span style={{ marginLeft: 8, background: '#ffedd5', color: '#9a3412', borderRadius: 6, padding: '2px 6px', fontSize: 12 }}>Offer</span>
-                      </>
-                    ) : (
-                      <>₹{selectedArtwork?.price}</>
-                    )}
-                  </p>
+                  <div className="price">
+                    {(() => {
+                      const base = parseFloat(selectedArtwork?.price) || 0;
+                      const effRaw =
+                        selectedArtwork?.effective_price ??
+                        selectedArtwork?.offer_price ??
+                        (base > 0 && selectedArtwork?.offer_percent != null && selectedArtwork?.offer_percent !== ''
+                          ? (base * (1 - (parseFloat(selectedArtwork.offer_percent) || 0) / 100))
+                          : null);
+                      const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                      const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                      if (!showOffer) return <>₹{selectedArtwork?.price}</>;
+                      const pct = Math.round(((base - eff) / base) * 100);
+                      return (
+                        <>
+                          <div style={{ lineHeight: 1 }}>
+                            <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{selectedArtwork.price}</span>
+                          </div>
+                          <div style={{ lineHeight: 1.3, marginTop: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ color: '#c2410c', fontWeight: 900, fontSize: 28 }}>₹{eff.toFixed(2)}</span>
+                            <span style={{ color: '#16a34a', fontWeight: 800, fontSize: 16 }}>-{pct}%</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <p className="description">{selectedArtwork.description}</p>
                   
                   <div className="artwork-actions">
-                    <button 
+                    <button
                       className={`btn ${wishlist.includes(String(selectedArtwork.id)) ? 'btn-secondary' : 'btn-outline'}`}
                       onClick={() => toggleWishlist(selectedArtwork.id)}
                     >
                       <LuHeart /> {wishlist.includes(String(selectedArtwork.id)) ? 'Remove from Wishlist' : 'Add to Wishlist'}
                     </button>
-                    <button 
+                    <button
                       className="btn btn-primary"
                       onClick={() => addToCart(selectedArtwork.id)}
                     >
                       <LuShoppingCart /> Add to Cart
                     </button>
+                  </div>
+
+                  {/* Recommendations Section (stacked vertically) */}
+                  <div style={{display:'block'}}>
+                    <Recommendations
+                      artworkId={selectedArtwork.id}
+                      title="Similar to this"
+                      limit={4}
+                      onCustomizationRequest={handleCustomizationRequest}
+                    />
+                    <Recommendations
+                      title="Recommended For You"
+                      limit={4}
+                      onCustomizationRequest={handleCustomizationRequest}
+                    />
                   </div>
                 </div>
               </div>

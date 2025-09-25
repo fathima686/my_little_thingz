@@ -340,15 +340,25 @@ export default function CartPage() {
                 <div className="info">
                   <div className="title">{item.title}</div>
                   <div className="meta">
-                    {item?.effective_price != null && parseFloat(item.effective_price) < parsePrice(item.price) ? (
-                      <>
-                        <span className="price" style={{ color: '#16a34a', fontWeight: 700 }}>₹{parseFloat(item.effective_price).toFixed(2)}</span>
-                        <span style={{ marginLeft: 8, color: '#6b7280', textDecoration: 'line-through' }}>₹{parsePrice(item.price).toFixed(2)}</span>
-                        <span className="badge" style={{ marginLeft: 8, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 6, fontSize: 12 }}>Offer</span>
-                      </>
-                    ) : (
-                      <span className="price">₹{parsePrice(item.price).toFixed(2)}</span>
-                    )}
+                    {(() => {
+                      const base = parsePrice(item.price);
+                      const effRaw = item?.effective_price ?? item?.offer_price ?? (base > 0 && (item?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(item.offer_percent) || 0) / 100)) : null);
+                      const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                      const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+                      if (!showOffer) return <span className="price">₹{base.toFixed(2)}</span>;
+                      const pct = Math.round(((base - eff) / base) * 100);
+                      return (
+                        <>
+                          <div style={{ lineHeight: 1 }}>
+                            <span style={{ textDecoration:'line-through', color:'#6b7280' }}>₹{base.toFixed(2)}</span>
+                          </div>
+                          <div style={{ lineHeight: 1.2, marginTop: 2, display:'flex', alignItems:'center', gap:8 }}>
+                            <span className="price" style={{ color:'#c2410c', fontWeight:800 }}>₹{eff.toFixed(2)}</span>
+                            <span style={{ color:'#16a34a', fontWeight:700 }}>-{pct}%</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   <div className="qty">
                     <button onClick={() => updateQty(item, item.quantity - 1)}><LuMinus /></button>
