@@ -103,6 +103,40 @@ try {
     WHERE id=? AND user_id=?");
   $upd->execute([$razorpay_order_id, $razorpay_payment_id, $razorpay_signature, $local_order_id, $user_id]);
 
+  // ========================================
+  // AUTOMATIC SHIPROCKET PROCESSING
+  // ========================================
+  try {
+    require_once __DIR__ . '/../../services/ShiprocketAutomation.php';
+    
+    $automation = new ShiprocketAutomation();
+    $automationResult = $automation->processOrder($local_order_id, $user_id);
+    
+    // Log the automation result
+    if ($automationResult['status'] === 'success') {
+      $logMessage = "Shiprocket automation for order #$local_order_id: ";
+      if ($automationResult['shipment_created']) {
+        $logMessage .= "Shipment created. ";
+      }
+      if ($automationResult['courier_assigned']) {
+        $logMessage .= "Courier assigned (" . $automationResult['courier_name'] . "). ";
+      }
+      if ($automationResult['pickup_scheduled']) {
+        $logMessage .= "Pickup scheduled. ";
+      }
+      error_log($logMessage);
+    } else {
+      error_log("Shiprocket automation failed for order #$local_order_id: " . implode(', ', $automationResult['errors']));
+    }
+  } catch (Exception $shipmentError) {
+    // Don't fail the payment if shipment automation fails
+    // Just log the error for admin to handle manually
+    error_log("Shiprocket automation error for order #$local_order_id: " . $shipmentError->getMessage());
+  }
+  // ========================================
+  // END AUTOMATIC SHIPROCKET PROCESSING
+  // ========================================
+
   // Get user and order details for email
   $userStmt = $db->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
   $userStmt->execute([$user_id]);

@@ -62,6 +62,105 @@ const OffersStrip = ({ onSelect }) => {
   );
 };
 
+const parsePriceValue = (value) => {
+  if (value == null) return NaN;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '');
+  if (!cleaned) return NaN;
+  const parsed = parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
+const ensureCurrencyText = (raw) => {
+  const text = String(raw ?? '').trim();
+  if (!text) return '₹0.00';
+  return text.includes('₹') ? text : `₹${text}`;
+};
+
+const formatCurrency = (amount) => `₹${amount.toFixed(2)}`;
+
+const formatPriceDisplay = ({ basePrice, currencyText }) => {
+  if (Number.isFinite(basePrice) && basePrice > 0) {
+    return formatCurrency(basePrice);
+  }
+  const fallback = parsePriceValue(currencyText);
+  if (Number.isFinite(fallback) && fallback > 0) {
+    return formatCurrency(fallback);
+  }
+  return ensureCurrencyText(currencyText);
+};
+
+const parseTimestamp = (value) => {
+  if (value == null) return null;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  const stringValue = String(value).trim();
+  if (!stringValue || stringValue === '0000-00-00 00:00:00') return null;
+  const normalized = stringValue.includes('T') ? stringValue : stringValue.replace(' ', 'T');
+  const fromParse = Date.parse(normalized);
+  if (!Number.isNaN(fromParse)) {
+    return fromParse;
+  }
+  const fromDate = new Date(stringValue).getTime();
+  return Number.isFinite(fromDate) ? fromDate : null;
+};
+
+const isWithinOfferWindow = (item) => {
+  const now = Date.now();
+  const start = parseTimestamp(item?.offer_starts_at);
+  const end = parseTimestamp(item?.offer_ends_at);
+  const started = start == null || start <= now;
+  const notEnded = end == null || end >= now;
+  return started && notEnded;
+};
+
+const computeOfferPricing = (item) => {
+  const basePrice = parsePriceValue(item?.price);
+  const offerCandidate =
+    item?.effective_price ??
+    item?.offer_price ??
+    (Number.isFinite(basePrice) && basePrice > 0 && item?.offer_percent != null && item.offer_percent !== ''
+      ? basePrice * (1 - (parseFloat(item.offer_percent) || 0) / 100)
+      : null);
+  const effectivePrice = parsePriceValue(offerCandidate);
+  const hasDiscount =
+    Number.isFinite(basePrice) &&
+    Number.isFinite(effectivePrice) &&
+    effectivePrice > 0 &&
+    effectivePrice < basePrice;
+
+  return { basePrice, effectivePrice, hasDiscount };
+};
+
+const isOfferCurrentlyActive = (item) => {
+  if (!isWithinOfferWindow(item)) return false;
+  const { hasDiscount } = computeOfferPricing(item);
+  return hasDiscount || Boolean(item?.force_offer_badge);
+};
+
+const renderPriceBlock = ({ basePrice, offerPrice, currencyText }) => {
+  const baseValid = Number.isFinite(basePrice) && basePrice > 0;
+  const offerValid = Number.isFinite(offerPrice) && offerPrice < basePrice;
+
+  if (!baseValid || !offerValid) {
+    return <span>{formatPriceDisplay({ basePrice, currencyText })}</span>;
+  }
+
+  const percent = Math.round(((basePrice - offerPrice) / basePrice) * 100);
+  return (
+    <>
+      <div style={{ lineHeight: 1 }}>
+        <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontWeight: 600 }}>{formatCurrency(basePrice)}</span>
+      </div>
+      <div style={{ lineHeight: 1.3, marginTop: 4 }}>
+        <span style={{ color: '#c2410c', fontWeight: 800 }}>{formatCurrency(offerPrice)}</span>
+        <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13, marginLeft: 6 }}>-{percent}%</span>
+      </div>
+    </>
+  );
+};
+
 export default function CustomerDashboard() {
   const { auth, logout, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -149,12 +248,12 @@ export default function CustomerDashboard() {
         .then(r => r.json())
         .then(data => {
           if (data?.status === 'success' && Array.isArray(data.artworks)) {
-            const items = data.artworks.filter(a => {
-              const base = parseFloat(String(a.price).replace(/[^0-9.]/g,'')) || 0;
-              const effRaw = a?.effective_price ?? a?.offer_price ?? (base > 0 && (a?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(a.offer_percent) || 0) / 100)) : null);
-              const eff = effRaw != null ? parseFloat(effRaw) : NaN;
-              const discounted = base > 0 && Number.isFinite(eff) && eff < base;
-              return discounted || !!a?.force_offer_badge;
+            const items = data.artworks.filter((item) => {
+              if (!isOfferCurrentlyActive(item)) {
+                return false;
+              }
+              const { basePrice, effectivePrice, hasDiscount } = computeOfferPricing(item);
+              return hasDiscount || Boolean(item?.force_offer_badge);
             });
             setOfferArtworks(items);
           } else {
@@ -365,14 +464,19 @@ export default function CustomerDashboard() {
           <article className="widget">
             <header className="widget-head">
               <h4><LuPackage /> Recent Orders</h4>
-              <p className="muted">Track your recent purchases</p>
+              <button className="btn btn-soft tiny" onClick={() => openModal('orders')}>View All</button>
             </header>
             <div className="widget-body">
               {ordersLoading && (
                 <div className="order-item"><div className="order-title">Loading…</div></div>
               )}
               {!ordersLoading && recentOrders.length === 0 && (
-                <div className="order-item"><div className="order-title">No recent orders</div></div>
+                <div className="order-item">
+                  <div className="order-title">No recent orders</div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                    Start shopping to see your orders here
+                  </p>
+                </div>
               )}
               {!ordersLoading && recentOrders.map((o) => {
                 // Derive a display name using first item or order number
@@ -382,14 +486,59 @@ export default function CustomerDashboard() {
                 const dateLabel = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
                 const status = (o.status || '').toLowerCase();
                 const statusClass = status === 'delivered' ? 'success' : status === 'shipped' || status === 'processing' ? 'info' : status === 'cancelled' ? 'danger' : 'warning';
-                const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                const statusLabel = o.current_status || o.shipment_status || (status.charAt(0).toUpperCase() + status.slice(1));
+                
                 return (
-                  <div className="order-item" key={o.id}>
-                    <div>
+                  <div 
+                    className="order-item" 
+                    key={o.id}
+                    onClick={() => openModal('orders')}
+                    style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ flex: 1 }}>
                       <div className="order-title">{title}</div>
                       <div className="order-date">{dateLabel}</div>
+                      {o.awb_code && (
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: '#059669', 
+                          marginTop: '4px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <LuTruck size={14} /> {o.courier_name || 'In Transit'}
+                        </div>
+                      )}
+                      {o.awb_code && (
+                        <div style={{ 
+                          fontSize: '11px', 
+                          color: '#6b7280', 
+                          marginTop: '2px',
+                          fontFamily: 'monospace'
+                        }}>
+                          AWB: {o.awb_code}
+                        </div>
+                      )}
                     </div>
-                    <span className={`status ${statusClass}`}>{statusLabel}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <span className={`status ${statusClass}`}>{statusLabel}</span>
+                      {o.awb_code && (
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: '#3b82f6',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          🔴 Live Tracking
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -430,7 +579,7 @@ export default function CustomerDashboard() {
                       }}>
                         <div style={{position:'relative'}}>
                           <img src={a.image_url} alt={a.title} style={{width:'100%', height:180, objectFit:'cover', display:'block'}} />
-                          {(() => { const base = parseFloat(String(a.price).replace(/[^0-9.]/g,'')) || 0; const effRaw = a?.effective_price ?? a?.offer_price ?? (base > 0 && (a?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(a.offer_percent) || 0) / 100)) : null); const eff = effRaw != null ? parseFloat(effRaw) : NaN; const discounted = base > 0 && Number.isFinite(eff) && eff < base; return discounted || !!a?.force_offer_badge; })() && (
+                          {isOfferCurrentlyActive(a) && (
                             <div style={{
                               position:'absolute', top:12, left:-40,
                               background:'#e11d48', color:'#fff', padding:'6px 50px', fontSize:12,
@@ -453,18 +602,13 @@ export default function CustomerDashboard() {
                                   : null);
                               const eff = effRaw != null ? parseFloat(effRaw) : NaN;
                               const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
-                              if (!showOffer) return <span>₹{a.price}</span>;
-                              const pct = Math.round(((base - eff) / base) * 100);
+                              if (!showOffer) {
+                                return <span>{formatPriceDisplay({ basePrice: base, currencyText: a.price })}</span>;
+                              }
                               return (
-                                <>
-                                  <div style={{ lineHeight: 1 }}>
-                                    <span style={{ textDecoration:'line-through', color:'#9ca3af' }}>₹{a.price}</span>
-                                  </div>
-                                  <div style={{ lineHeight: 1.3, marginTop: 4, display:'flex', alignItems:'center', gap:8 }}>
-                                    <span style={{ color:'#c2410c', fontWeight:800 }}>₹{eff.toFixed(2)}</span>
-                                    <span style={{ color:'#16a34a', fontWeight:700, fontSize:13 }}>-{pct}%</span>
-                                  </div>
-                                </>
+                                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                                  {renderPriceBlock({ basePrice: base, offerPrice: eff, currencyText: a.price })}
+                                </div>
                               );
                             })()}
                           </div>

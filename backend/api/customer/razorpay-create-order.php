@@ -36,8 +36,8 @@ try {
     $database = new Database();
     $db = $database->getConnection();
 
-    // Load cart with current prices and offer columns, check for customization requirements
-    $stmt = $db->prepare("SELECT c.id as cart_id, c.artwork_id, c.quantity, a.price, a.title, a.requires_customization, a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at FROM cart c JOIN artworks a ON c.artwork_id=a.id WHERE c.user_id=? AND a.status='active'");
+    // Load cart with current prices, weight, and offer columns, check for customization requirements
+    $stmt = $db->prepare("SELECT c.id as cart_id, c.artwork_id, c.quantity, a.price, a.title, a.weight, a.requires_customization, a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at FROM cart c JOIN artworks a ON c.artwork_id=a.id WHERE c.user_id=? AND a.status='active'");
     $stmt->execute([$user_id]);
     $cart = $stmt->fetchAll(PDO::FETCH_ASSOC);
     if (!$cart) { echo json_encode(['status'=>'error','message'=>'Cart is empty']); exit; }
@@ -62,9 +62,10 @@ try {
         }
     }
 
-    // Compute effective prices (offer-aware)
+    // Compute effective prices (offer-aware) and total weight
     $now = new DateTime('now');
     $subtotal = 0.0;
+    $totalWeight = 0.0;
     foreach ($cart as &$it) {
         $base = (float)$it['price'];
         $effective = $base;
@@ -86,10 +87,17 @@ try {
         }
         $it['effective_price'] = $effective;
         $subtotal += $effective * ((int)$it['quantity']);
+        
+        // Calculate total weight
+        $itemWeight = isset($it['weight']) && $it['weight'] > 0 ? (float)$it['weight'] : 0.5; // Default 0.5 kg
+        $totalWeight += $itemWeight * ((int)$it['quantity']);
     }
     unset($it);
 
-    $tax = 0.0; $shipping = 0.0; $total = $subtotal + $tax + $shipping;
+    // Calculate shipping charges: ₹60 per kg, minimum ₹60
+    $tax = 0.0;
+    $shipping = max(60.0, ceil($totalWeight) * 60.0); // Round up weight to nearest kg
+    $total = $subtotal + $tax + $shipping;
 
     // Grab shipping address from request body (if provided)
     $bodyInput = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -98,8 +106,8 @@ try {
     // Create local pending order first
     $db->beginTransaction();
     $order_number = 'ORD-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)),0,6);
-    $ins = $db->prepare("INSERT INTO orders (user_id, order_number, status, payment_method, payment_status, total_amount, subtotal, tax_amount, shipping_cost, shipping_address, created_at) VALUES (?, ?, 'pending', 'razorpay', 'pending', ?, ?, ?, ?, ?, NOW())");
-    $ins->execute([$user_id, $order_number, $total, $subtotal, $tax, $shipping, $shipping_address]);
+    $ins = $db->prepare("INSERT INTO orders (user_id, order_number, status, payment_method, payment_status, total_amount, subtotal, tax_amount, shipping_cost, weight, shipping_address, created_at) VALUES (?, ?, 'pending', 'razorpay', 'pending', ?, ?, ?, ?, ?, ?, NOW())");
+    $ins->execute([$user_id, $order_number, $total, $subtotal, $tax, $shipping, $totalWeight, $shipping_address]);
     $order_id = (int)$db->lastInsertId();
 
     $insItem = $db->prepare("INSERT INTO order_items (order_id, artwork_id, quantity, price) VALUES (?, ?, ?, ?)");
@@ -135,6 +143,10 @@ try {
             'razorpay_order_id' => $rp['id'],
             'amount' => $total,
             'currency' => $config['currency'],
+            'subtotal' => $subtotal,
+            'tax' => $tax,
+            'shipping' => $shipping,
+            'weight' => $totalWeight
         ],
         'key_id' => $config['key_id']
     ]);

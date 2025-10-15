@@ -81,6 +81,75 @@ const FALLBACK_ARTWORKS = [
   { id: 'b1', title: 'Bouquets', description: 'Gift bouquet arrangement', price: 200, image_url: bouquetsImg, category_id: 'bouquets', category_name: 'Bouquets', artist_name: 'Store' }
 ];
 
+const normalizeOfferEntries = (items) => {
+  if (!Array.isArray(items)) return [];
+  const now = Date.now();
+  const parseTime = (value) => {
+    if (!value) return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const stringValue = String(value).trim();
+    if (!stringValue || stringValue === '0000-00-00 00:00:00') return null;
+    const normalized = stringValue.includes('T') ? stringValue : stringValue.replace(' ', 'T');
+    const timestamp = Date.parse(normalized);
+    if (Number.isNaN(timestamp)) {
+      const fallback = new Date(stringValue).getTime();
+      return Number.isFinite(fallback) ? fallback : null;
+    }
+    return timestamp;
+  };
+
+  return items.map((item) => {
+    if (!item) return item;
+
+    const startTime = parseTime(item.offer_starts_at);
+    const endTime = parseTime(item.offer_ends_at);
+    const forceOffer = Boolean(item.force_offer_badge);
+    const offerStartsLater = startTime !== null && startTime > now;
+    const offerExpired = endTime !== null && endTime < now;
+
+    if (forceOffer && !offerExpired) {
+      return {
+        ...item,
+        is_on_offer: true,
+      };
+    }
+
+    if (!forceOffer && (offerStartsLater || offerExpired)) {
+      return {
+        ...item,
+        is_on_offer: false,
+        effective_price: null,
+        offer_price: null,
+        offer_percent: null,
+        offer_starts_at: offerStartsLater ? item.offer_starts_at : null,
+        offer_ends_at: null,
+      };
+    }
+
+    return {
+      ...item,
+      is_on_offer: Boolean(item.is_on_offer) && !offerStartsLater && !offerExpired,
+    };
+  });
+};
+
+const parsePriceValue = (value) => {
+  if (value == null) return NaN;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '');
+  if (!cleaned) return NaN;
+  const parsed = parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
+const formatCurrency = (amount) => `₹${amount.toFixed(2)}`;
+
+const ensureCurrencyText = (raw) => {
+  const text = String(raw ?? '').trim();
+  if (!text) return '₹0.00';
+  return text.includes('₹') ? text : `₹${text}`;
+};
+
 const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
   const { auth } = useAuth();
   const navigate = useNavigate();
@@ -130,7 +199,8 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
       const response = await fetch(`${API_BASE}/customer/artworks.php`);
       const data = await response.json();
       if (data.status === 'success' && Array.isArray(data.artworks) && data.artworks.length > 0) {
-        setArtworks(data.artworks);
+        const normalized = normalizeOfferEntries(data.artworks);
+        setArtworks(normalized);
       } else {
         // Fallback to local products
         setArtworks(FALLBACK_ARTWORKS);
@@ -519,24 +589,24 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                 <p className="artwork-artist">by {artwork.artist_name}</p>
                 <div className="artwork-price">
                   {(() => {
-                    const base = parseFloat(artwork.price) || 0;
-                    const effRaw =
+                    const base = parsePriceValue(artwork.price);
+                    const effCandidate =
                       artwork.effective_price ??
                       artwork.offer_price ??
                       (base > 0 && artwork.offer_percent != null && artwork.offer_percent !== ''
-                        ? (base * (1 - (parseFloat(artwork.offer_percent) || 0) / 100))
+                        ? base * (1 - (parseFloat(artwork.offer_percent) || 0) / 100)
                         : null);
-                    const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                    const eff = parsePriceValue(effCandidate);
                     const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
-                    if (!showOffer) return <span>₹{artwork.price}</span>;
+                    if (!showOffer) return <span>{ensureCurrencyText(artwork.price)}</span>;
                     const pct = Math.round(((base - eff) / base) * 100);
                     return (
                       <>
                         <div style={{ lineHeight: 1 }}>
-                          <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{artwork.price}</span>
+                          <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>{formatCurrency(base)}</span>
                         </div>
                         <div style={{ lineHeight: 1.3, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ color: '#c2410c', fontWeight: 800 }}>₹{eff.toFixed(2)}</span>
+                          <span style={{ color: '#c2410c', fontWeight: 800 }}>{formatCurrency(eff)}</span>
                           <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13 }}>-{pct}%</span>
                         </div>
                       </>
@@ -581,24 +651,24 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                   <p className="artist">by {selectedArtwork.artist_name}</p>
                   <div className="price">
                     {(() => {
-                      const base = parseFloat(selectedArtwork?.price) || 0;
-                      const effRaw =
+                      const base = parsePriceValue(selectedArtwork?.price);
+                      const effCandidate =
                         selectedArtwork?.effective_price ??
                         selectedArtwork?.offer_price ??
                         (base > 0 && selectedArtwork?.offer_percent != null && selectedArtwork?.offer_percent !== ''
-                          ? (base * (1 - (parseFloat(selectedArtwork.offer_percent) || 0) / 100))
+                          ? base * (1 - (parseFloat(selectedArtwork.offer_percent) || 0) / 100)
                           : null);
-                      const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+                      const eff = parsePriceValue(effCandidate);
                       const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
-                      if (!showOffer) return <>₹{selectedArtwork?.price}</>;
+                      if (!showOffer) return <>{ensureCurrencyText(selectedArtwork?.price)}</>;
                       const pct = Math.round(((base - eff) / base) * 100);
                       return (
                         <>
                           <div style={{ lineHeight: 1 }}>
-                            <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{selectedArtwork.price}</span>
+                            <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>{formatCurrency(base)}</span>
                           </div>
                           <div style={{ lineHeight: 1.3, marginTop: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: '#c2410c', fontWeight: 900, fontSize: 28 }}>₹{eff.toFixed(2)}</span>
+                            <span style={{ color: '#c2410c', fontWeight: 900, fontSize: 28 }}>{formatCurrency(eff)}</span>
                             <span style={{ color: '#16a34a', fontWeight: 800, fontSize: 16 }}>-{pct}%</span>
                           </div>
                         </>

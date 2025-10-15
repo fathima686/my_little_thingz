@@ -31,7 +31,12 @@ export default function AdminDashboard() {
   const [requirements, setRequirements] = useState([]);
   const [reqForm, setReqForm] = useState({ supplier_id: '', order_ref: '', material_name: '', required_qty: '', unit: 'pcs', due_date: '' });
   const [showCustomizationRequests, setShowCustomizationRequests] = useState(false);
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | settings
+
+  // Orders management state
+  const [orders, setOrders] = useState([]);
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | settings
   const [artForm, setArtForm] = useState({
     title: "",
     description: "",
@@ -331,6 +336,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/orders.php`, { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setOrders(data.orders || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const updateOrderStatus = async (orderId, action) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/orders.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeader },
+        body: JSON.stringify({ order_id: orderId, action })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        alert(data.message);
+        fetchOrders();
+      } else {
+        alert(data.message || 'Failed to update order');
+      }
+    } catch (e) {
+      alert('Network error updating order');
+    }
+  };
+
   // Supplier Products: list and approve/reject
   const fetchSupplierProducts = async (opts = {}) => {
     const { q = spQuery, supplier_id = spSupplierId, availability = spAvailability } = opts;
@@ -490,6 +526,14 @@ export default function AdminDashboard() {
       alert('Title, price, and image are required');
       return;
     }
+    if (artForm.offer_price && parseFloat(artForm.offer_price) >= parseFloat(artForm.price)) {
+      alert('Offer price must be less than the original price.');
+      return;
+    }
+    if (artForm.offer_percent && (parseFloat(artForm.offer_percent) <= 0 || parseFloat(artForm.offer_percent) > 100)) {
+      alert('Offer percentage must be between 1 and 100.');
+      return;
+    }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -550,14 +594,29 @@ export default function AdminDashboard() {
 
   const saveEditArtwork = async () => {
     if (!editArtwork) return;
+
+    // Validation
+    const priceNum = Number(editArtwork.price);
+    const offerPriceNum = editArtwork.offer_price === '' ? null : Number(editArtwork.offer_price);
+    const offerPercentNum = editArtwork.offer_percent === '' ? null : Number(editArtwork.offer_percent);
+
+    if (offerPriceNum !== null && offerPriceNum >= priceNum) {
+      alert("Offer price must be less than the regular price.");
+      return;
+    }
+    if (offerPercentNum !== null && (offerPercentNum <= 0 || offerPercentNum > 100)) {
+      alert("Offer percent must be between 0 and 100.");
+      return;
+    }
+
     setEditSaving(true);
     try {
       const payload = {
         title: editArtwork.title,
         description: editArtwork.description,
-        price: Number(editArtwork.price),
-        offer_price: editArtwork.offer_price === '' ? null : Number(editArtwork.offer_price),
-        offer_percent: editArtwork.offer_percent === '' ? null : Number(editArtwork.offer_percent),
+        price: priceNum,
+        offer_price: offerPriceNum,
+        offer_percent: offerPercentNum,
         offer_starts_at: editArtwork.offer_starts_at || null,
         offer_ends_at: editArtwork.offer_ends_at || null,
         force_offer_badge: editArtwork.force_offer_badge ? 1 : 0,
@@ -1396,45 +1455,74 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="muted">Offer Price (optional)</label>
-                    <input type="number" step="0.01" className="input" value={artForm.offer_price}
-                      onChange={e => {
-                        const v = e.target.value;
-                        setArtForm(f => {
-                          const base = parseFloat(f.price) || 0;
-                          let nextPercent = f.offer_percent;
-                          // Only compute percent if it's currently empty
-                          if ((nextPercent === '' || nextPercent == null) && base > 0 && v !== '') {
-                            const op = parseFloat(v);
-                            if (!isNaN(op)) {
-                              const p = Math.max(0, Math.min(100, ((base - op) / base) * 100));
-                              nextPercent = p.toFixed(2);
+                    <div className="input-with-actions">
+                      <input type="number" step="0.01" min="0" max={artForm.price ? parseFloat(artForm.price) - 0.01 : undefined} className="input" value={artForm.offer_price}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setArtForm(f => {
+                            const base = parseFloat(f.price) || 0;
+                            let nextPercent = f.offer_percent;
+                            // Only compute percent if it's currently empty
+                            if ((nextPercent === '' || nextPercent == null) && base > 0 && v !== '') {
+                              const op = parseFloat(v);
+                              if (!isNaN(op)) {
+                                const p = Math.max(0, Math.min(100, ((base - op) / base) * 100));
+                                nextPercent = p.toFixed(2);
+                              }
                             }
-                          }
-                          return { ...f, offer_price: v, offer_percent: nextPercent };
-                        });
-                      }}
-                      placeholder="e.g., 199.99" />
+                            return { ...f, offer_price: v, offer_percent: nextPercent };
+                          });
+                        }}
+                        placeholder="e.g., 199.99" />
+                      <button type="button" className="btn btn-soft small"
+                        onClick={() => {
+                          setArtForm(f => {
+                            const base = parseFloat(f.price) || 0;
+                            const perc = parseFloat(f.offer_percent);
+                            if (!base || isNaN(base) || isNaN(perc)) {
+                              return f;
+                            }
+                            const clamped = Math.max(0, Math.min(100, perc));
+                            const derived = (base * (1 - clamped / 100)).toFixed(2);
+                            return { ...f, offer_percent: String(clamped), offer_price: String(derived) };
+                          });
+                        }}>Apply %</button>
+                    </div>
                   </div>
                   <div>
                     <label className="muted">Offer Percent (optional)</label>
-                    <input type="number" step="0.01" min="0" max="100" className="input" value={artForm.offer_percent}
-                      onChange={e => {
-                        const v = e.target.value;
-                        setArtForm(f => {
-                          const base = parseFloat(f.price) || 0;
-                          // Only compute offer price if it's currently empty
-                          if ((f.offer_price === '' || f.offer_price == null) && base > 0 && v !== '') {
-                            const perc = parseFloat(v);
-                            if (!isNaN(perc)) {
-                              const clamped = Math.max(0, Math.min(100, perc));
-                              const op = (base * (1 - clamped / 100)).toFixed(2);
-                              return { ...f, offer_percent: String(clamped), offer_price: String(op) };
+                    <div className="input-with-actions">
+                      <input type="number" step="0.01" min="0" max="100" className="input" value={artForm.offer_percent}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setArtForm(f => {
+                            const base = parseFloat(f.price) || 0;
+                            // Only compute offer price if it's currently empty
+                            if ((f.offer_price === '' || f.offer_price == null) && base > 0 && v !== '') {
+                              const perc = parseFloat(v);
+                              if (!isNaN(perc)) {
+                                const clamped = Math.max(0, Math.min(100, perc));
+                                const op = (base * (1 - clamped / 100)).toFixed(2);
+                                return { ...f, offer_percent: String(clamped), offer_price: String(op) };
+                              }
                             }
-                          }
-                          return { ...f, offer_percent: v };
-                        });
-                      }}
-                      placeholder="e.g., 20 for 20% off" />
+                            return { ...f, offer_percent: v };
+                          });
+                        }}
+                        placeholder="e.g., 20 for 20% off" />
+                      <button type="button" className="btn btn-soft small"
+                        onClick={() => {
+                          setArtForm(f => {
+                            const base = parseFloat(f.price) || 0;
+                            const offerPrice = parseFloat(f.offer_price);
+                            if (!base || isNaN(base) || isNaN(offerPrice)) { return f; }
+                            const discount = ((base - offerPrice) / base) * 100;
+                            const clamped = Math.max(0, Math.min(100, discount));
+                            const normalizedOffer = offerPrice.toFixed(2);
+                            return { ...f, offer_percent: clamped.toFixed(2), offer_price: normalizedOffer };
+                          });
+                        }}>Apply ₹</button>
+                    </div>
                   </div>
                   <div>
                     <label className="muted">Offer Starts</label>
@@ -1682,45 +1770,74 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="muted">Offer Price (optional)</label>
-                  <input type="number" step="0.01" className="input" value={editArtwork.offer_price}
-                    onChange={e => {
-                      const v = e.target.value;
-                      setEditArtwork(f => {
-                        const base = parseFloat(f.price) || 0;
-                        let nextPercent = f.offer_percent;
-                        // Only compute percent if it's currently empty
-                        if ((nextPercent === '' || nextPercent == null) && base > 0 && v !== '') {
-                          const op = parseFloat(v);
-                          if (!isNaN(op)) {
-                            const p = Math.max(0, Math.min(100, ((base - op) / base) * 100));
-                            nextPercent = p.toFixed(2);
+                  <div className="input-with-actions">
+                    <input type="number" step="0.01" min="0" max={editArtwork.price ? parseFloat(editArtwork.price) - 0.01 : undefined} className="input" value={editArtwork.offer_price}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setEditArtwork(f => {
+                          const base = parseFloat(f.price) || 0;
+                          let nextPercent = f.offer_percent;
+                          // Only compute percent if it's currently empty
+                          if ((nextPercent === '' || nextPercent == null) && base > 0 && v !== '') {
+                            const op = parseFloat(v);
+                            if (!isNaN(op)) {
+                              const p = Math.max(0, Math.min(100, ((base - op) / base) * 100));
+                              nextPercent = p.toFixed(2);
+                            }
                           }
-                        }
-                        return { ...f, offer_price: v, offer_percent: nextPercent };
-                      });
-                    }}
-                    placeholder="e.g., 199.99" />
+                          return { ...f, offer_price: v, offer_percent: nextPercent };
+                        });
+                      }}
+                      placeholder="e.g., 199.99" />
+                    <button type="button" className="btn btn-soft small"
+                      onClick={() => {
+                        setEditArtwork(f => {
+                          const base = parseFloat(f.price) || 0;
+                          const perc = parseFloat(f.offer_percent);
+                          if (!base || isNaN(base) || isNaN(perc)) {
+                            return f;
+                          }
+                          const clamped = Math.max(0, Math.min(100, perc));
+                          const derived = (base * (1 - clamped / 100)).toFixed(2);
+                          return { ...f, offer_percent: String(clamped), offer_price: String(derived) };
+                        });
+                      }}>Apply %</button>
+                  </div>
                 </div>
                 <div>
                   <label className="muted">Offer Percent (optional)</label>
-                  <input type="number" step="0.01" min="0" max="100" className="input" value={editArtwork.offer_percent}
-                    onChange={e => {
-                      const v = e.target.value;
-                      setEditArtwork(f => {
-                        const base = parseFloat(f.price) || 0;
-                        // Only compute offer price if it's currently empty
-                        if ((f.offer_price === '' || f.offer_price == null) && base > 0 && v !== '') {
-                          const perc = parseFloat(v);
-                          if (!isNaN(perc)) {
-                            const clamped = Math.max(0, Math.min(100, perc));
-                            const op = (base * (1 - clamped / 100)).toFixed(2);
-                            return { ...f, offer_percent: String(clamped), offer_price: String(op) };
+                  <div className="input-with-actions">
+                    <input type="number" step="0.01" min="0" max="100" className="input" value={editArtwork.offer_percent}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setEditArtwork(f => {
+                          const base = parseFloat(f.price) || 0;
+                          // Only compute offer price if it's currently empty
+                          if ((f.offer_price === '' || f.offer_price == null) && base > 0 && v !== '') {
+                            const perc = parseFloat(v);
+                            if (!isNaN(perc)) {
+                              const clamped = Math.max(0, Math.min(100, perc));
+                              const op = (base * (1 - clamped / 100)).toFixed(2);
+                              return { ...f, offer_percent: String(clamped), offer_price: String(op) };
+                            }
                           }
-                        }
-                        return { ...f, offer_percent: v };
-                      });
-                    }}
-                    placeholder="e.g., 20 for 20% off" />
+                          return { ...f, offer_percent: v };
+                        });
+                      }}
+                      placeholder="e.g., 20 for 20% off" />
+                    <button type="button" className="btn btn-soft small"
+                      onClick={() => {
+                        setEditArtwork(f => {
+                          const base = parseFloat(f.price) || 0;
+                          const offerPrice = parseFloat(f.offer_price);
+                          if (!base || isNaN(base) || isNaN(offerPrice)) { return f; }
+                          const discount = ((base - offerPrice) / base) * 100;
+                          const clamped = Math.max(0, Math.min(100, discount));
+                          const normalizedOffer = offerPrice.toFixed(2);
+                          return { ...f, offer_percent: clamped.toFixed(2), offer_price: normalizedOffer };
+                        });
+                      }}>Apply ₹</button>
+                  </div>
                 </div>
                 <div>
                   <label className="muted">Offer Starts</label>

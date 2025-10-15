@@ -50,7 +50,7 @@ try {
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        // Fetch user's orders
+        // Fetch user's orders with Shiprocket tracking data
         $query = "SELECT 
                     o.id,
                     o.order_number,
@@ -64,7 +64,17 @@ try {
                     o.created_at,
                     o.shipped_at,
                     o.delivered_at,
-                    o.estimated_delivery
+                    o.estimated_delivery,
+                    o.shiprocket_order_id,
+                    o.shiprocket_shipment_id,
+                    o.awb_code,
+                    o.courier_id,
+                    o.courier_name,
+                    o.shipping_charges,
+                    o.pickup_scheduled_date,
+                    o.pickup_token_number,
+                    o.shipment_status,
+                    o.current_status
                   FROM orders o
                   WHERE o.user_id = ?
                   ORDER BY o.created_at DESC";

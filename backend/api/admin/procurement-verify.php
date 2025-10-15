@@ -97,4 +97,56 @@ $upd = $mysqli->prepare("UPDATE purchase_orders SET payment_status='paid', statu
 $upd->bind_param('sssi', $razorpay_order_id, $razorpay_payment_id, $razorpay_signature, $local_id);
 $upd->execute();
 
+// Send email notifications
+require_once __DIR__ . '/../../includes/EmailSender.php';
+$emailSender = new EmailSender();
+
+// Get order details for email
+$orderQuery = $mysqli->prepare("
+ SELECT po.order_number, po.total_amount, po.currency, u.email as admin_email, u.first_name as admin_first, u.last_name as admin_last
+ FROM purchase_orders po
+ JOIN users u ON po.admin_id = u.id
+ WHERE po.id = ?
+");
+$orderQuery->bind_param('i', $local_id);
+$orderQuery->execute();
+$orderResult = $orderQuery->get_result();
+$orderData = $orderResult->fetch_assoc();
+$orderQuery->close();
+
+if ($orderData) {
+ $order_details = [
+  'order_number' => $orderData['order_number'],
+  'total_amount' => (float)$orderData['total_amount'],
+  'currency' => $orderData['currency'],
+  'payment_method' => 'Razorpay'
+ ];
+
+ $admin_email = $orderData['admin_email'];
+ $admin_name = $orderData['admin_first'] . ' ' . $orderData['admin_last'];
+
+ // Send email to admin
+ $emailSender->sendProcurementSuccessEmail($admin_email, $admin_name, $order_details, 'admin');
+
+ // Get unique suppliers from order items
+ $supplierQuery = $mysqli->prepare("
+  SELECT DISTINCT u.email, u.first_name, u.last_name
+  FROM purchase_order_items poi
+  JOIN users u ON poi.supplier_id = u.id
+  WHERE poi.purchase_order_id = ?
+ ");
+ $supplierQuery->bind_param('i', $local_id);
+ $supplierQuery->execute();
+ $supplierResult = $supplierQuery->get_result();
+
+ while ($supplier = $supplierResult->fetch_assoc()) {
+  $supplier_email = $supplier['email'];
+  $supplier_name = $supplier['first_name'] . ' ' . $supplier['last_name'];
+
+  // Send email to supplier
+  $emailSender->sendProcurementSuccessEmail($supplier_email, $supplier_name, $order_details, 'supplier');
+ }
+ $supplierQuery->close();
+}
+
 echo json_encode(['status'=>'success','message'=>'Payment verified']);

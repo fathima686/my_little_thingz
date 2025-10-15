@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye } from 'react-icons/lu';
+import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye, LuRefreshCw, LuExternalLink } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
@@ -10,6 +10,8 @@ const OrderTracking = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [trackingData, setTrackingData] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -34,8 +36,28 @@ const OrderTracking = ({ onClose }) => {
     }
   };
 
+  const fetchLiveTracking = async (orderId) => {
+    setTrackingLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/customer/track-shipment.php?order_id=${orderId}&user_id=${auth?.user_id}`, {
+        headers: {
+          'Authorization': `Bearer ${auth?.token}`,
+          'X-User-ID': auth?.user_id
+        }
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setTrackingData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tracking:', error);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
   const getStatusIcon = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'pending':
         return <LuClock className="status-icon pending" />;
       case 'processing':
@@ -50,7 +72,7 @@ const OrderTracking = ({ onClose }) => {
   };
 
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'pending':
         return '#f39c12';
       case 'processing':
@@ -68,10 +90,11 @@ const OrderTracking = ({ onClose }) => {
 
   const filteredOrders = orders.filter(order => {
     if (filter === 'all') return true;
-    return order.status.toLowerCase() === filter;
+    return order.status?.toLowerCase() === filter;
   });
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -79,35 +102,62 @@ const OrderTracking = ({ onClose }) => {
     });
   };
 
-  const getTrackingSteps = (status, orderDate, shippedDate, deliveredDate) => {
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getTrackingSteps = (order) => {
     const steps = [
       {
         title: 'Order Placed',
-        date: orderDate,
+        date: order.created_at,
         completed: true,
         icon: <LuCheck />
       },
       {
         title: 'Processing',
-        date: null,
-        completed: ['processing', 'shipped', 'delivered'].includes(status.toLowerCase()),
+        date: order.shiprocket_order_id ? order.created_at : null,
+        completed: order.shiprocket_order_id || ['processing', 'shipped', 'delivered'].includes(order.status?.toLowerCase()),
         icon: <LuPackage />
       },
       {
         title: 'Shipped',
-        date: shippedDate,
-        completed: ['shipped', 'delivered'].includes(status.toLowerCase()),
+        date: order.shipped_at || order.pickup_scheduled_date,
+        completed: order.awb_code || ['shipped', 'delivered'].includes(order.status?.toLowerCase()),
         icon: <LuTruck />
       },
       {
         title: 'Delivered',
-        date: deliveredDate,
-        completed: status.toLowerCase() === 'delivered',
+        date: order.delivered_at,
+        completed: order.status?.toLowerCase() === 'delivered',
         icon: <LuCheck />
       }
     ];
 
     return steps;
+  };
+
+  const handleViewDetails = async (order) => {
+    setSelectedOrder(order);
+    setTrackingData(null);
+    
+    // Fetch live tracking if AWB code exists
+    if (order.awb_code || order.shiprocket_shipment_id) {
+      await fetchLiveTracking(order.id);
+    }
+  };
+
+  const handleRefreshTracking = () => {
+    if (selectedOrder) {
+      fetchLiveTracking(selectedOrder.id);
+    }
   };
 
   if (loading) {
@@ -124,7 +174,7 @@ const OrderTracking = ({ onClose }) => {
     <div className="modal-overlay">
       <div className="modal-content extra-large">
         <div className="modal-header">
-          <h2>Order Tracking</h2>
+          <h2>📦 Order Tracking</h2>
           <button className="btn-close" onClick={onClose}>
             <LuX />
           </button>
@@ -142,25 +192,25 @@ const OrderTracking = ({ onClose }) => {
             className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
             onClick={() => setFilter('pending')}
           >
-            Pending ({orders.filter(o => o.status.toLowerCase() === 'pending').length})
+            Pending ({orders.filter(o => o.status?.toLowerCase() === 'pending').length})
           </button>
           <button 
             className={`filter-tab ${filter === 'processing' ? 'active' : ''}`}
             onClick={() => setFilter('processing')}
           >
-            Processing ({orders.filter(o => o.status.toLowerCase() === 'processing').length})
+            Processing ({orders.filter(o => o.status?.toLowerCase() === 'processing').length})
           </button>
           <button 
             className={`filter-tab ${filter === 'shipped' ? 'active' : ''}`}
             onClick={() => setFilter('shipped')}
           >
-            Shipped ({orders.filter(o => o.status.toLowerCase() === 'shipped').length})
+            Shipped ({orders.filter(o => o.status?.toLowerCase() === 'shipped').length})
           </button>
           <button 
             className={`filter-tab ${filter === 'delivered' ? 'active' : ''}`}
             onClick={() => setFilter('delivered')}
           >
-            Delivered ({orders.filter(o => o.status.toLowerCase() === 'delivered').length})
+            Delivered ({orders.filter(o => o.status?.toLowerCase() === 'delivered').length})
           </button>
         </div>
 
@@ -174,11 +224,21 @@ const OrderTracking = ({ onClose }) => {
                   <p className="order-date">
                     <LuCalendar /> Placed on {formatDate(order.created_at)}
                   </p>
+                  {order.awb_code && (
+                    <p className="tracking-badge">
+                      <LuTruck /> AWB: {order.awb_code}
+                    </p>
+                  )}
+                  {order.courier_name && (
+                    <p className="courier-badge">
+                      📮 {order.courier_name}
+                    </p>
+                  )}
                 </div>
                 <div className="order-status">
                   {getStatusIcon(order.status)}
                   <span style={{ color: getStatusColor(order.status) }}>
-                    {order.status}
+                    {order.current_status || order.shipment_status || order.status}
                   </span>
                 </div>
               </div>
@@ -210,12 +270,16 @@ const OrderTracking = ({ onClose }) => {
                 <div className="order-summary">
                   <div className="summary-item">
                     <LuDollarSign />
-                    <span>Total: ${order.total_amount}</span>
+                    <span>Total: ₹{order.total_amount}</span>
                   </div>
                   {order.shipping_address && (
                     <div className="summary-item">
                       <LuMapPin />
-                      <span>{order.shipping_address}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {order.shipping_address.split('\n').slice(0, 2).map((line, idx) => (
+                          <span key={idx}>{line}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -224,14 +288,14 @@ const OrderTracking = ({ onClose }) => {
               <div className="order-actions">
                 <button 
                   className="btn btn-outline"
-                  onClick={() => setSelectedOrder(order)}
+                  onClick={() => handleViewDetails(order)}
                 >
-                  <LuEye /> View Details
+                  <LuEye /> View Live Tracking
                 </button>
-                {order.tracking_number && (
-                  <button className="btn btn-primary">
-                    Track Package
-                  </button>
+                {order.awb_code && (
+                  <span className="tracking-status">
+                    🚚 Tracking Available
+                  </span>
                 )}
               </div>
             </div>
@@ -246,28 +310,145 @@ const OrderTracking = ({ onClose }) => {
           </div>
         )}
 
-        {/* Order Detail Modal */}
+        {/* Order Detail Modal with Live Tracking */}
         {selectedOrder && (
-          <div className="modal-overlay">
+          <div className="modal-overlay" style={{ zIndex: 1001 }}>
             <div className="modal-content large">
               <div className="modal-header">
-                <h2>Order #{selectedOrder.order_number}</h2>
-                <button className="btn-close" onClick={() => setSelectedOrder(null)}>
-                  <LuX />
-                </button>
+                <h2>🚚 Order #{selectedOrder.order_number}</h2>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  {(selectedOrder.awb_code || selectedOrder.shiprocket_shipment_id) && (
+                    <button 
+                      className="btn btn-soft small"
+                      onClick={handleRefreshTracking}
+                      disabled={trackingLoading}
+                    >
+                      <LuRefreshCw className={trackingLoading ? 'spinning' : ''} /> Refresh
+                    </button>
+                  )}
+                  <button className="btn-close" onClick={() => setSelectedOrder(null)}>
+                    <LuX />
+                  </button>
+                </div>
               </div>
 
               <div className="order-detail">
-                {/* Tracking Progress */}
+                {/* Shiprocket Live Tracking Section */}
+                {(selectedOrder.awb_code || selectedOrder.shiprocket_shipment_id) && (
+                  <div className="live-tracking-section">
+                    <h3>📍 Live Shipment Tracking</h3>
+                    
+                    {trackingLoading && (
+                      <div className="tracking-loading">
+                        <LuRefreshCw className="spinning" /> Loading live tracking data...
+                      </div>
+                    )}
+
+                    {!trackingLoading && trackingData && trackingData.tracking_available && (
+                      <>
+                        {/* Shipment Info Card */}
+                        <div className="shipment-info-card">
+                          <div className="info-row">
+                            <span className="label">AWB Code:</span>
+                            <span className="value">{trackingData.order.awb_code}</span>
+                          </div>
+                          <div className="info-row">
+                            <span className="label">Courier:</span>
+                            <span className="value">{trackingData.order.courier_name || 'N/A'}</span>
+                          </div>
+                          {trackingData.order.pickup_scheduled_date && (
+                            <div className="info-row">
+                              <span className="label">Pickup Date:</span>
+                              <span className="value">{formatDate(trackingData.order.pickup_scheduled_date)}</span>
+                            </div>
+                          )}
+                          {trackingData.order.estimated_delivery && (
+                            <div className="info-row">
+                              <span className="label">Est. Delivery:</span>
+                              <span className="value">{formatDate(trackingData.order.estimated_delivery)}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Live Tracking Timeline */}
+                        {trackingData.tracking_data && trackingData.tracking_data.shipment_track && (
+                          <div className="live-tracking-timeline">
+                            <h4>📦 Shipment Journey</h4>
+                            <div className="timeline">
+                              {trackingData.tracking_data.shipment_track.map((track, index) => (
+                                <div key={index} className="timeline-item">
+                                  <div className="timeline-marker">
+                                    <div className="marker-dot"></div>
+                                    {index < trackingData.tracking_data.shipment_track.length - 1 && (
+                                      <div className="marker-line"></div>
+                                    )}
+                                  </div>
+                                  <div className="timeline-content">
+                                    <div className="timeline-header">
+                                      <span className="timeline-status">{track.status}</span>
+                                      <span className="timeline-date">{formatDateTime(track.date)}</span>
+                                    </div>
+                                    {track.location && (
+                                      <div className="timeline-location">
+                                        <LuMapPin size={14} /> {track.location}
+                                      </div>
+                                    )}
+                                    {track.remarks && (
+                                      <div className="timeline-remarks">{track.remarks}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Current Status from Shiprocket */}
+                        {trackingData.tracking_data && trackingData.tracking_data.shipment_status && (
+                          <div className="current-status-card">
+                            <h4>Current Status</h4>
+                            <div className="status-content">
+                              <div className="status-badge" style={{ 
+                                backgroundColor: getStatusColor(trackingData.tracking_data.shipment_status),
+                                color: 'white',
+                                padding: '8px 16px',
+                                borderRadius: '20px',
+                                fontWeight: 'bold'
+                              }}>
+                                {trackingData.tracking_data.shipment_status}
+                              </div>
+                              {trackingData.tracking_data.current_status && (
+                                <p style={{ marginTop: '10px', color: '#666' }}>
+                                  {trackingData.tracking_data.current_status}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {!trackingLoading && trackingData && !trackingData.tracking_available && (
+                      <div className="tracking-unavailable">
+                        <LuClock size={32} />
+                        <p>Shipment tracking will be available once the courier picks up your package.</p>
+                      </div>
+                    )}
+
+                    {!trackingLoading && !trackingData && (
+                      <div className="tracking-unavailable">
+                        <LuPackage size={32} />
+                        <p>Shipment is being prepared. Tracking information will be available soon.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Traditional Tracking Progress */}
                 <div className="tracking-section">
                   <h3>Order Progress</h3>
                   <div className="tracking-steps">
-                    {getTrackingSteps(
-                      selectedOrder.status,
-                      selectedOrder.created_at,
-                      selectedOrder.shipped_at,
-                      selectedOrder.delivered_at
-                    ).map((step, index) => (
+                    {getTrackingSteps(selectedOrder).map((step, index) => (
                       <div key={index} className={`tracking-step ${step.completed ? 'completed' : ''}`}>
                         <div className="step-icon">
                           {step.icon}
@@ -294,10 +475,10 @@ const OrderTracking = ({ onClose }) => {
                         <div className="item-details">
                           <h4>{item.name}</h4>
                           <p>Quantity: {item.quantity}</p>
-                          <p>Price: ${item.price}</p>
+                          <p>Price: ₹{item.price}</p>
                         </div>
                         <div className="item-total">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          ₹{(parseFloat(item.price) * item.quantity).toFixed(2)}
                         </div>
                       </div>
                     ))}
@@ -310,19 +491,19 @@ const OrderTracking = ({ onClose }) => {
                   <div className="summary-details">
                     <div className="summary-row">
                       <span>Subtotal:</span>
-                      <span>${selectedOrder.subtotal || selectedOrder.total_amount}</span>
+                      <span>₹{selectedOrder.subtotal || selectedOrder.total_amount}</span>
                     </div>
                     <div className="summary-row">
                       <span>Shipping:</span>
-                      <span>${selectedOrder.shipping_cost || '0.00'}</span>
+                      <span>₹{selectedOrder.shipping_charges || selectedOrder.shipping_cost || '0.00'}</span>
                     </div>
                     <div className="summary-row">
                       <span>Tax:</span>
-                      <span>${selectedOrder.tax_amount || '0.00'}</span>
+                      <span>₹{selectedOrder.tax_amount || '0.00'}</span>
                     </div>
                     <div className="summary-row total">
                       <span>Total:</span>
-                      <span>${selectedOrder.total_amount}</span>
+                      <span>₹{selectedOrder.total_amount}</span>
                     </div>
                   </div>
                 </div>
@@ -332,9 +513,16 @@ const OrderTracking = ({ onClose }) => {
                   <div className="shipping-section">
                     <h3>Shipping Information</h3>
                     <div className="shipping-details">
-                      <p><strong>Address:</strong> {selectedOrder.shipping_address}</p>
-                      {selectedOrder.tracking_number && (
-                        <p><strong>Tracking Number:</strong> {selectedOrder.tracking_number}</p>
+                      <div style={{ marginBottom: '8px' }}>
+                        <strong>Address:</strong>
+                        <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {selectedOrder.shipping_address.split('\n').map((line, idx) => (
+                            <span key={idx}>{line}</span>
+                          ))}
+                        </div>
+                      </div>
+                      {selectedOrder.awb_code && (
+                        <p><strong>AWB Tracking Code:</strong> {selectedOrder.awb_code}</p>
                       )}
                       {selectedOrder.estimated_delivery && (
                         <p><strong>Estimated Delivery:</strong> {formatDate(selectedOrder.estimated_delivery)}</p>
@@ -360,20 +548,22 @@ const OrderTracking = ({ onClose }) => {
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          overflow-y: auto;
+          padding: 20px;
         }
 
         .modal-content {
           background: white;
-          border-radius: 12px;
-          padding: 24px;
+          border-radius: 16px;
+          width: 100%;
+          max-width: 600px;
           max-height: 90vh;
           overflow-y: auto;
-          width: 90%;
-          max-width: 800px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
         .modal-content.large {
-          max-width: 1000px;
+          max-width: 800px;
         }
 
         .modal-content.extra-large {
@@ -384,9 +574,18 @@ const OrderTracking = ({ onClose }) => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 24px;
-          padding-bottom: 16px;
-          border-bottom: 1px solid #eee;
+          padding: 24px;
+          border-bottom: 1px solid #e5e7eb;
+          position: sticky;
+          top: 0;
+          background: white;
+          z-index: 10;
+        }
+
+        .modal-header h2 {
+          margin: 0;
+          font-size: 24px;
+          color: #1f2937;
         }
 
         .btn-close {
@@ -394,54 +593,62 @@ const OrderTracking = ({ onClose }) => {
           border: none;
           font-size: 24px;
           cursor: pointer;
-          padding: 8px;
-          border-radius: 50%;
+          color: #6b7280;
+          padding: 4px;
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: color 0.2s;
         }
 
         .btn-close:hover {
-          background: #f5f5f5;
+          color: #1f2937;
         }
 
         .filter-tabs {
           display: flex;
           gap: 8px;
-          margin-bottom: 24px;
-          flex-wrap: wrap;
+          padding: 16px 24px;
+          border-bottom: 1px solid #e5e7eb;
+          overflow-x: auto;
+          background: #f9fafb;
         }
 
         .filter-tab {
           padding: 8px 16px;
-          border: 1px solid #ddd;
+          border: none;
           background: white;
-          border-radius: 20px;
+          border-radius: 8px;
           cursor: pointer;
-          transition: all 0.2s;
           font-size: 14px;
+          font-weight: 500;
+          color: #6b7280;
+          transition: all 0.2s;
+          white-space: nowrap;
         }
 
         .filter-tab:hover {
-          background: #f8f9fa;
+          background: #f3f4f6;
+          color: #1f2937;
         }
 
         .filter-tab.active {
-          background: #3498db;
+          background: #3b82f6;
           color: white;
-          border-color: #3498db;
         }
 
         .orders-list {
+          padding: 24px;
           display: flex;
           flex-direction: column;
           gap: 16px;
         }
 
         .order-card {
-          border: 1px solid #eee;
+          border: 1px solid #e5e7eb;
           border-radius: 12px;
           padding: 20px;
+          background: white;
           transition: box-shadow 0.2s;
         }
 
@@ -457,45 +664,59 @@ const OrderTracking = ({ onClose }) => {
         }
 
         .order-info h3 {
-          margin: 0 0 4px 0;
+          margin: 0 0 8px 0;
           font-size: 18px;
+          color: #1f2937;
         }
 
         .order-date {
-          margin: 0;
-          color: #666;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
+          color: #6b7280;
           font-size: 14px;
+          margin: 4px 0;
+        }
+
+        .tracking-badge, .courier-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #059669;
+          font-size: 13px;
+          font-weight: 600;
+          margin: 4px 0;
+        }
+
+        .courier-badge {
+          color: #7c3aed;
         }
 
         .order-status {
           display: flex;
           align-items: center;
           gap: 8px;
-          font-weight: 500;
+          font-weight: 600;
+          font-size: 14px;
         }
 
         .status-icon {
           font-size: 20px;
         }
 
-        .status-icon.pending { color: #f39c12; }
-        .status-icon.processing { color: #3498db; }
-        .status-icon.shipped { color: #9b59b6; }
-        .status-icon.delivered { color: #27ae60; }
-
         .order-details {
           display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 24px;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
           margin-bottom: 16px;
         }
 
         .order-items h4 {
           margin: 0 0 12px 0;
-          font-size: 16px;
+          font-size: 14px;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .items-preview {
@@ -506,15 +727,15 @@ const OrderTracking = ({ onClose }) => {
 
         .item-preview {
           display: flex;
-          align-items: center;
           gap: 12px;
+          align-items: center;
         }
 
         .item-preview img {
-          width: 40px;
-          height: 40px;
-          border-radius: 6px;
+          width: 50px;
+          height: 50px;
           object-fit: cover;
+          border-radius: 8px;
         }
 
         .item-info {
@@ -524,19 +745,24 @@ const OrderTracking = ({ onClose }) => {
         }
 
         .item-name {
-          font-weight: 500;
           font-size: 14px;
+          color: #1f2937;
+          font-weight: 500;
         }
 
         .item-quantity {
           font-size: 12px;
-          color: #666;
+          color: #6b7280;
         }
 
         .more-items {
-          font-size: 12px;
-          color: #666;
+          font-size: 13px;
+          color: #6b7280;
           font-style: italic;
+          padding: 8px;
+          background: #f9fafb;
+          border-radius: 6px;
+          text-align: center;
         }
 
         .order-summary {
@@ -547,145 +773,367 @@ const OrderTracking = ({ onClose }) => {
 
         .summary-item {
           display: flex;
-          align-items: center;
           gap: 8px;
+          align-items: flex-start;
           font-size: 14px;
+          color: #4b5563;
         }
 
         .order-actions {
           display: flex;
           gap: 12px;
-          justify-content: flex-end;
+          align-items: center;
+          padding-top: 16px;
+          border-top: 1px solid #e5e7eb;
         }
 
         .btn {
-          padding: 8px 16px;
-          border: none;
-          border-radius: 6px;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
           cursor: pointer;
+          transition: all 0.2s;
           display: flex;
           align-items: center;
-          gap: 6px;
-          font-size: 14px;
-          font-weight: 500;
-          transition: all 0.2s;
+          gap: 8px;
+          border: none;
+        }
+
+        .btn-outline {
+          background: white;
+          border: 2px solid #3b82f6;
+          color: #3b82f6;
+        }
+
+        .btn-outline:hover {
+          background: #3b82f6;
+          color: white;
         }
 
         .btn-primary {
-          background: #3498db;
+          background: #3b82f6;
           color: white;
         }
 
         .btn-primary:hover {
-          background: #2980b9;
+          background: #2563eb;
         }
 
-        .btn-outline {
-          background: transparent;
-          border: 1px solid #ddd;
-          color: #333;
+        .btn-soft {
+          background: #f3f4f6;
+          color: #1f2937;
         }
 
-        .btn-outline:hover {
-          background: #f8f9fa;
+        .btn-soft:hover {
+          background: #e5e7eb;
+        }
+
+        .btn.small {
+          padding: 6px 12px;
+          font-size: 13px;
+        }
+
+        .tracking-status {
+          color: #059669;
+          font-size: 13px;
+          font-weight: 600;
         }
 
         .empty-state {
           text-align: center;
-          padding: 48px;
-          color: #666;
+          padding: 60px 20px;
+          color: #6b7280;
+        }
+
+        .empty-state svg {
+          color: #d1d5db;
+          margin-bottom: 16px;
         }
 
         .empty-state h3 {
-          margin: 16px 0 8px 0;
-        }
-
-        .loading-spinner {
-          text-align: center;
-          padding: 48px;
+          margin: 0 0 8px 0;
+          color: #1f2937;
         }
 
         .order-detail {
+          padding: 24px;
           display: flex;
           flex-direction: column;
-          gap: 32px;
+          gap: 24px;
         }
 
-        .tracking-section h3,
-        .items-section h3,
-        .summary-section h3,
-        .shipping-section h3 {
-          margin: 0 0 16px 0;
-          color: #2c3e50;
-          border-bottom: 2px solid #3498db;
-          padding-bottom: 8px;
+        .live-tracking-section {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 12px;
+          padding: 24px;
+          color: white;
+        }
+
+        .live-tracking-section h3 {
+          margin: 0 0 20px 0;
+          font-size: 20px;
+        }
+
+        .shipment-info-card {
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(10px);
+          border-radius: 10px;
+          padding: 16px;
+          margin-bottom: 20px;
+        }
+
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .info-row:last-child {
+          border-bottom: none;
+        }
+
+        .info-row .label {
+          font-weight: 600;
+          opacity: 0.9;
+        }
+
+        .info-row .value {
+          font-weight: 700;
+        }
+
+        .live-tracking-timeline {
+          background: white;
+          border-radius: 10px;
+          padding: 20px;
+          color: #1f2937;
+        }
+
+        .live-tracking-timeline h4 {
+          margin: 0 0 20px 0;
+          color: #1f2937;
+        }
+
+        .timeline {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+
+        .timeline-item {
+          display: flex;
+          gap: 16px;
+          position: relative;
+        }
+
+        .timeline-marker {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: relative;
+        }
+
+        .marker-dot {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: 3px solid white;
+          box-shadow: 0 0 0 2px #3b82f6;
+          z-index: 1;
+        }
+
+        .marker-line {
+          width: 2px;
+          flex: 1;
+          background: #e5e7eb;
+          min-height: 40px;
+        }
+
+        .timeline-content {
+          flex: 1;
+          padding-bottom: 24px;
+        }
+
+        .timeline-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+
+        .timeline-status {
+          font-weight: 700;
+          color: #1f2937;
+          font-size: 15px;
+        }
+
+        .timeline-date {
+          font-size: 13px;
+          color: #6b7280;
+        }
+
+        .timeline-location {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #059669;
+          font-size: 14px;
+          margin-bottom: 4px;
+        }
+
+        .timeline-remarks {
+          color: #6b7280;
+          font-size: 13px;
+          font-style: italic;
+        }
+
+        .current-status-card {
+          background: white;
+          border-radius: 10px;
+          padding: 20px;
+          color: #1f2937;
+          margin-top: 16px;
+        }
+
+        .current-status-card h4 {
+          margin: 0 0 12px 0;
+        }
+
+        .tracking-loading, .tracking-unavailable {
+          text-align: center;
+          padding: 40px 20px;
+          color: white;
+        }
+
+        .tracking-unavailable {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+
+        .tracking-unavailable svg {
+          margin-bottom: 12px;
+          opacity: 0.8;
+        }
+
+        .spinning {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .tracking-section {
+          background: #f9fafb;
+          border-radius: 12px;
+          padding: 20px;
+        }
+
+        .tracking-section h3 {
+          margin: 0 0 20px 0;
+          color: #1f2937;
         }
 
         .tracking-steps {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 0;
         }
 
         .tracking-step {
           display: flex;
-          align-items: center;
           gap: 16px;
-          padding: 12px;
-          border-radius: 8px;
-          transition: all 0.2s;
+          padding: 16px 0;
+          position: relative;
+          opacity: 0.5;
         }
 
         .tracking-step.completed {
-          background: #f8f9fa;
+          opacity: 1;
+        }
+
+        .tracking-step::after {
+          content: '';
+          position: absolute;
+          left: 19px;
+          top: 50px;
+          width: 2px;
+          height: calc(100% - 20px);
+          background: #e5e7eb;
+        }
+
+        .tracking-step:last-child::after {
+          display: none;
+        }
+
+        .tracking-step.completed::after {
+          background: #3b82f6;
         }
 
         .step-icon {
           width: 40px;
           height: 40px;
           border-radius: 50%;
+          background: #e5e7eb;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #ecf0f1;
-          color: #95a5a6;
+          font-size: 18px;
+          color: #6b7280;
+          flex-shrink: 0;
         }
 
         .tracking-step.completed .step-icon {
-          background: #27ae60;
+          background: #3b82f6;
           color: white;
         }
 
         .step-content h4 {
           margin: 0 0 4px 0;
+          color: #1f2937;
+          font-size: 16px;
         }
 
         .step-content p {
           margin: 0;
+          color: #6b7280;
           font-size: 14px;
-          color: #666;
+        }
+
+        .items-section, .summary-section, .shipping-section {
+          background: #f9fafb;
+          border-radius: 12px;
+          padding: 20px;
+        }
+
+        .items-section h3, .summary-section h3, .shipping-section h3 {
+          margin: 0 0 16px 0;
+          color: #1f2937;
         }
 
         .detailed-items {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
         }
 
         .detailed-item {
           display: flex;
-          align-items: center;
           gap: 16px;
-          padding: 16px;
-          border: 1px solid #eee;
+          align-items: center;
+          background: white;
+          padding: 12px;
           border-radius: 8px;
         }
 
         .detailed-item img {
           width: 60px;
           height: 60px;
-          border-radius: 8px;
           object-fit: cover;
+          border-radius: 8px;
         }
 
         .item-details {
@@ -694,58 +1142,78 @@ const OrderTracking = ({ onClose }) => {
 
         .item-details h4 {
           margin: 0 0 4px 0;
+          font-size: 15px;
+          color: #1f2937;
         }
 
         .item-details p {
-          margin: 0 0 2px 0;
-          font-size: 14px;
-          color: #666;
+          margin: 2px 0;
+          font-size: 13px;
+          color: #6b7280;
         }
 
         .item-total {
-          font-weight: 600;
+          font-weight: 700;
+          color: #1f2937;
           font-size: 16px;
         }
 
         .summary-details {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+          background: white;
+          border-radius: 8px;
+          padding: 16px;
         }
 
         .summary-row {
           display: flex;
           justify-content: space-between;
           padding: 8px 0;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .summary-row:last-child {
+          border-bottom: none;
         }
 
         .summary-row.total {
-          border-top: 1px solid #eee;
-          font-weight: 600;
+          font-weight: 700;
           font-size: 18px;
+          color: #1f2937;
+          padding-top: 12px;
+          margin-top: 8px;
+          border-top: 2px solid #1f2937;
+        }
+
+        .shipping-details {
+          background: white;
+          border-radius: 8px;
+          padding: 16px;
         }
 
         .shipping-details p {
-          margin: 0 0 8px 0;
+          margin: 8px 0;
+          color: #4b5563;
+        }
+
+        .loading-spinner {
+          text-align: center;
+          padding: 40px;
+          color: #6b7280;
         }
 
         @media (max-width: 768px) {
+          .modal-content {
+            max-width: 100%;
+            max-height: 100vh;
+            border-radius: 0;
+          }
+
           .order-details {
             grid-template-columns: 1fr;
           }
-          
-          .order-header {
-            flex-direction: column;
-            gap: 12px;
-            align-items: flex-start;
-          }
-          
+
           .filter-tabs {
-            flex-direction: column;
-          }
-          
-          .order-actions {
-            justify-content: flex-start;
+            overflow-x: scroll;
           }
         }
       `}</style>

@@ -202,5 +202,63 @@ class EmailSender {
         </body>
         </html>";
     }
+
+    public function sendProcurementSuccessEmail($user_email, $user_name, $order_details, $recipient_type = 'admin') {
+        $subject = "Procurement Payment Successful - Order #" . $order_details['order_number'];
+
+        $message = $this->getProcurementSuccessTemplate($user_name, $order_details, $recipient_type);
+
+        return $this->sendEmail($user_email, $user_name, $subject, $message);
+    }
+
+    private function getProcurementSuccessTemplate($user_name, $order_details, $recipient_type) {
+        $recipient_message = $recipient_type === 'admin' ?
+            "Your procurement order has been successfully paid for. The suppliers will be notified and will start processing your order." :
+            "A procurement order has been placed and payment has been successfully processed. Please prepare the requested items.";
+
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>Procurement Payment Successful</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #6b46c1; color: white; padding: 20px; text-align: center; }
+                .content { padding: 20px; background: #f9f9f9; }
+                .success { color: #28a745; font-weight: bold; }
+                .order-details { background: white; padding: 15px; margin: 15px 0; border-radius: 5px; }
+                .footer { text-align: center; padding: 20px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h1>💰 Procurement Payment Successful!</h1>
+                </div>
+                <div class='content'>
+                    <p>Dear <strong>$user_name</strong>,</p>
+                    <p class='success'>$recipient_message</p>
+
+                    <div class='order-details'>
+                        <h3>Order Details:</h3>
+                        <p><strong>Order Number:</strong> " . $order_details['order_number'] . "</p>
+                        <p><strong>Total Amount:</strong> ₹" . number_format($order_details['total_amount'], 2) . "</p>
+                        <p><strong>Payment Method:</strong> " . $order_details['payment_method'] . "</p>
+                        <p><strong>Order Status:</strong> Processing</p>
+                        <p><strong>Order Date:</strong> " . date('F j, Y \a\t g:i A') . "</p>
+                    </div>
+
+                    <p>Please check your dashboard for more details about this order.</p>
+                    <p>If you have any questions, please don't hesitate to contact us.</p>
+                </div>
+                <div class='footer'>
+                    <p>Best regards,<br>My Little Thingz Team</p>
+                </div>
+            </div>
+        </body>
+        </html>";
+    }
 }
 ?>

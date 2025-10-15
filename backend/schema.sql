@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 23, 2025 at 06:58 PM
+-- Generation Time: Oct 08, 2025 at 04:14 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -32,9 +32,16 @@ CREATE TABLE `artworks` (
   `title` varchar(180) NOT NULL,
   `description` text DEFAULT NULL,
   `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `weight` decimal(10,2) NOT NULL DEFAULT 0.50 COMMENT 'Product weight in kg',
+  `offer_price` decimal(10,2) DEFAULT NULL,
+  `offer_percent` decimal(5,2) DEFAULT NULL,
+  `offer_starts_at` datetime DEFAULT NULL,
+  `offer_ends_at` datetime DEFAULT NULL,
+  `force_offer_badge` tinyint(1) NOT NULL DEFAULT 0,
   `image_url` varchar(255) NOT NULL,
   `category_id` int(10) UNSIGNED DEFAULT NULL,
   `artist_id` int(10) UNSIGNED DEFAULT NULL,
+  `is_combo` tinyint(1) NOT NULL DEFAULT 0,
   `availability` enum('in_stock','out_of_stock','made_to_order') NOT NULL DEFAULT 'in_stock',
   `requires_customization` tinyint(1) DEFAULT 0,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
@@ -46,33 +53,39 @@ CREATE TABLE `artworks` (
 -- Dumping data for table `artworks`
 --
 
-INSERT INTO `artworks` (`id`, `title`, `description`, `price`, `image_url`, `category_id`, `artist_id`, `availability`, `requires_customization`, `status`, `created_at`, `updated_at`) VALUES
-(2, 'wedding card', 'per card 50 rupees', 50.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/wedding_card_20250909_162709_3882f9.png', 6, 5, 'in_stock', 1, 'active', '2025-09-09 14:27:09', '2025-09-12 05:19:12'),
-(3, 'poloroids', '20 photos 150 ruppes', 150.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid_20250909_162827_bad52f.png', 4, 5, 'in_stock', 1, 'active', '2025-09-09 14:28:27', '2025-09-12 05:19:12'),
-(4, '4 * 4 frame', 'mini frame', 120.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/4_4_frame_20250909_163041_e6da75.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:30:41', '2025-09-09 14:30:41'),
-(5, '6 * 4', 'best friends frames', 250.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/6_4_frame_20250909_163511_f22d0e.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:35:11', '2025-09-09 14:35:11'),
-(6, 'A3 frame', 'cartoon frame', 749.99, 'http://localhost/my_little_thingz/backend/uploads/artworks/A3_frame_20250909_163546_05748c.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:35:46', '2025-09-09 14:35:46'),
-(7, 'album', 'carboard sheet album', 200.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/album_20250909_163744_d02862.png', 8, 5, 'in_stock', 0, 'active', '2025-09-09 14:37:44', '2025-09-09 14:37:44'),
-(8, 'boaqutes', 'red rose boaqutes', 400.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/boaqutes_20250909_163941_3994ac.png', 2, 5, 'in_stock', 0, 'active', '2025-09-09 14:39:41', '2025-09-09 14:39:41'),
-(9, 'chocolates', 'per chocolates 30', 30.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/custom_chocolate_20250909_164039_e9be6c.png', 5, 5, 'in_stock', 0, 'active', '2025-09-09 14:40:39', '2025-09-09 14:40:39'),
-(10, 'Custom Drawing', 'Sketches', 1000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/drawings_20250909_164237_1da7b5.png', 7, 5, 'in_stock', 0, 'active', '2025-09-09 14:42:37', '2025-09-09 14:42:37'),
-(11, 'gift set', 'it consist of gift box boaqutes frames', 3000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_set_20250909_164422_32ae0c.png', 1, 5, 'in_stock', 0, 'active', '2025-09-09 14:44:22', '2025-09-09 14:44:22'),
-(12, 'gift box', 'giftbox consist of chocolates and watch', 2000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_20250909_164839_021d32.png', 1, 5, 'in_stock', 0, 'active', '2025-09-09 14:48:39', '2025-09-09 14:48:39'),
-(13, 'Micro frame', 'micro frame', 90.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/micro_frame_20250909_164926_56f796.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:49:26', '2025-09-09 14:49:26'),
-(14, 'mini frame', 'mini frame', 149.99, 'http://localhost/my_little_thingz/backend/uploads/artworks/mini_frame_20250909_165028_7eaa02.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:50:28', '2025-09-09 14:50:28'),
-(15, 'album', '20  photos 150', 150.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid__2__20250909_165107_4ac16f.png', 3, 5, 'in_stock', 0, 'active', '2025-09-09 14:51:07', '2025-09-09 14:51:07'),
-(16, 'Hamper', 'wedding hamper', 2000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Wedding_hamper_20250909_165223_b117bb.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-09 14:52:23', '2025-09-09 14:52:23'),
-(17, 'chocolate hamper', 'chocolates', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Chocolate_Hamper_20250921_153359_68c977.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:33:59', '2025-09-21 13:33:59'),
-(18, 'wedding set', 'set in wedding', 6000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Celebrate_life_s_special_moments_with____20250921_153611_602073.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:36:11', '2025-09-21 13:36:11'),
-(19, 'boquetes', 'pink flowers', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/_artsybaken_20250921_153825_9108f6.jpg', 2, 5, 'in_stock', 0, 'active', '2025-09-21 13:38:25', '2025-09-21 13:38:25'),
-(20, 'trolly hamper', 'birthday hamper', 1000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Birthday_hamper_20250921_153957_58a57d.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:39:57', '2025-09-21 13:39:57'),
-(21, 'shirt box', 'shirt hamper', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/_trousseau__weddingpackaging__giftboxforhim__hamperbox__sliderbox__birthdayhamper__hamperforher__hamperforhim__nammasalem_hamper__hampers__giftbox__instagramreels_r_20250921_154121_26dfde.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-21 13:41:21', '2025-09-21 13:41:21'),
-(22, 'nutt box', 'nuts box', 500.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__3__20250923_162849_9b1084.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-23 14:28:49', '2025-09-23 14:28:49'),
-(23, 'perfume box', 'perfume+watch', 1000.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/Perfume_Gift_ideas_watch_gift_ideas_20250923_163345_8fe78d.jpg', 1, 5, 'in_stock', 0, 'active', '2025-09-23 14:33:45', '2025-09-23 14:33:45'),
-(24, 'poloroid boquetes', 'boquestes with poloroid', 500.04, 'http://localhost/my_little_thingz/backend/uploads/artworks/beautiful_photos_bouquet______20250923_163516_fd2fb9.jpg', 2, 5, 'in_stock', 0, 'active', '2025-09-23 14:35:16', '2025-09-23 14:35:16'),
-(25, 'kinderjoy boquetes', 'kinderjoy boquetes', 600.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__6__20250923_163633_52f745.jpg', 2, 5, 'in_stock', 0, 'active', '2025-09-23 14:36:33', '2025-09-23 14:36:33'),
-(26, 'chocolate tower', 'chocolate tower', 1999.99, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__7__20250923_163827_9b978d.jpg', 5, 5, 'in_stock', 0, 'active', '2025-09-23 14:38:27', '2025-09-23 14:38:27'),
-(27, 'custom chocoltes', 'choocoo', 25.00, 'http://localhost/my_little_thingz/backend/uploads/artworks/mschocoworld_-_9952979286_20250923_164331_87efb6.jpg', 5, 5, 'in_stock', 0, 'active', '2025-09-23 14:43:31', '2025-09-23 14:43:31');
+INSERT INTO `artworks` (`id`, `title`, `description`, `price`, `weight`, `offer_price`, `offer_percent`, `offer_starts_at`, `offer_ends_at`, `force_offer_badge`, `image_url`, `category_id`, `artist_id`, `is_combo`, `availability`, `requires_customization`, `status`, `created_at`, `updated_at`) VALUES
+(2, 'wedding card', 'per card 50 rupees', 50.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/wedding_card_20250909_162709_3882f9.png', 6, 5, 0, 'in_stock', 1, 'active', '2025-09-09 14:27:09', '2025-09-12 05:19:12'),
+(3, 'poloroids', '20 photos 150 ruppes', 150.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid_20250909_162827_bad52f.png', 4, 5, 0, 'in_stock', 1, 'active', '2025-09-09 14:28:27', '2025-09-12 05:19:12'),
+(4, '4 * 4 frame', 'mini frame', 120.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/4_4_frame_20250909_163041_e6da75.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:30:41', '2025-09-09 14:30:41'),
+(5, '6 * 4', 'best friends frames', 250.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/6_4_frame_20250909_163511_f22d0e.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:35:11', '2025-09-09 14:35:11'),
+(6, 'A3 frame', 'cartoon frame', 749.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/A3_frame_20250909_163546_05748c.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:35:46', '2025-09-09 14:35:46'),
+(7, 'album', 'carboard sheet album', 200.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/album_20250909_163744_d02862.png', 8, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:37:44', '2025-09-09 14:37:44'),
+(8, 'boaqutes', 'red rose boaqutes', 400.00, 0.50, 300.00, 99.25, '2025-09-25 12:07:00', '2025-09-26 12:07:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/boaqutes_20250909_163941_3994ac.png', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:39:41', '2025-09-25 06:38:02'),
+(9, 'chocolates', 'per chocolates 30', 30.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/custom_chocolate_20250909_164039_e9be6c.png', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:40:39', '2025-09-09 14:40:39'),
+(10, 'Custom Drawing', 'Sketches', 1000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/drawings_20250909_164237_1da7b5.png', 7, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:42:37', '2025-09-09 14:42:37'),
+(11, 'gift set', 'it consist of gift box boaqutes frames', 3000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_set_20250909_164422_32ae0c.png', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:44:22', '2025-09-09 14:44:22'),
+(12, 'gift box', 'giftbox consist of chocolates and watch', 2000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_20250909_164839_021d32.png', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:48:39', '2025-09-09 14:48:39'),
+(13, 'Micro frame', 'micro frame', 90.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/micro_frame_20250909_164926_56f796.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:49:26', '2025-09-09 14:49:26'),
+(14, 'mini frame', 'mini frame', 149.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/mini_frame_20250909_165028_7eaa02.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:50:28', '2025-09-09 14:50:28'),
+(15, 'album', '20  photos 150', 150.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid__2__20250909_165107_4ac16f.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:51:07', '2025-09-09 14:51:07'),
+(16, 'Hamper', 'wedding hamper', 2000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Wedding_hamper_20250909_165223_b117bb.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:52:23', '2025-09-09 14:52:23'),
+(17, 'chocolate hamper', 'chocolates', 500.00, 0.50, 400.00, 99.20, '2025-09-25 12:24:00', '2025-09-26 12:24:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Chocolate_Hamper_20250921_153359_68c977.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:33:59', '2025-09-25 06:55:09'),
+(18, 'wedding set', 'set in wedding', 6000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Celebrate_life_s_special_moments_with____20250921_153611_602073.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:36:11', '2025-10-01 07:57:57'),
+(19, 'boquetes', 'pink flowers', 500.00, 0.50, 320.00, 99.40, '2025-10-08 19:09:00', '2025-10-09 19:09:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/_artsybaken_20250921_153825_9108f6.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:38:25', '2025-10-08 13:39:52'),
+(20, 'trolly hamper', 'birthday hamper', 1000.00, 0.50, 599.99, 99.40, '2025-10-01 14:28:00', '2025-10-09 14:28:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Birthday_hamper_20250921_153957_58a57d.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:39:57', '2025-10-01 08:58:56'),
+(21, 'shirt box', 'shirt hamper', 500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/_trousseau__weddingpackaging__giftboxforhim__hamperbox__sliderbox__birthdayhamper__hamperforher__hamperforhim__nammasalem_hamper__hampers__giftbox__instagramreels_r_20250921_154121_26dfde.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:41:21', '2025-09-21 13:41:21'),
+(22, 'nutt box', 'nuts box', 1000.00, 0.50, 910.00, 99.10, '2025-09-25 19:07:00', '2025-09-30 19:08:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__3__20250923_162849_9b1084.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:28:49', '2025-09-25 13:38:27'),
+(23, 'perfume box', 'perfume+watch', 1000.00, 0.50, 800.00, 20.00, '2025-10-01 14:05:00', '2025-10-10 14:05:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Perfume_Gift_ideas_watch_gift_ideas_20250923_163345_8fe78d.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:33:45', '2025-10-01 08:35:47'),
+(24, 'poloroid boquetes', 'boquestes with poloroid', 500.04, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/beautiful_photos_bouquet______20250923_163516_fd2fb9.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:35:16', '2025-09-23 14:35:16'),
+(25, 'kinderjoy boquetes', 'kinderjoy boquetes', 600.00, 0.50, 400.00, 99.33, '2025-10-01 14:02:00', '2025-10-08 14:02:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__6__20250923_163633_52f745.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:36:33', '2025-10-01 08:33:06'),
+(26, 'chocolate tower', 'chocolate tower', 1999.99, 0.50, 1800.00, 10.00, '2025-09-25 11:47:00', '2025-09-27 11:47:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__7__20250923_163827_9b978d.jpg', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:38:27', '2025-09-25 06:17:28'),
+(27, 'custom chocoltes', 'choocoo', 25.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/mschocoworld_-_9952979286_20250923_164331_87efb6.jpg', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:43:31', '2025-09-23 14:43:31'),
+(29, 'birthday gift', 'gift box', 2000.00, 0.50, NULL, 20.00, '2025-09-24 21:09:00', '2025-09-26 21:10:00', 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__8__20250924_174025_9f9ae8.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-24 15:40:25', '2025-09-24 15:40:25'),
+(32, 'heart boquetes', 'valentin\'s day gift', 600.00, 0.50, 399.96, NULL, '2025-09-25 11:04:00', '2025-09-27 11:04:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__9__20250925_073531_8b855b.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-25 05:35:31', '2025-09-25 05:35:31'),
+(33, 'wedding card', 'blue theme', 54.98, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__11__20250925_154744_c5c9fc.jpg', 6, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:47:44', '2025-09-25 13:47:44'),
+(34, 'wedding card', 'red theme', 50.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/31_Wedding_Card_Ideas_20250925_154819_53c009.jpg', 6, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:48:19', '2025-09-25 13:48:19'),
+(36, 'birthday card', 'consist of chocolate and pen', 19.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__10__20250925_155002_5379f7.jpg', NULL, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:50:02', '2025-09-25 13:50:02'),
+(37, 'nuts hamper', 'nuts', 1500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Nuts_hamper____20250925_155054_4b299e.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:50:54', '2025-09-25 13:50:54');
 
 -- --------------------------------------------------------
 
@@ -151,6 +164,23 @@ INSERT INTO `categories` (`id`, `name`, `description`, `status`, `created_at`) V
 (6, 'Wedding card', 'Wedding card', 'active', '2025-09-09 10:36:50'),
 (7, 'drawings', 'drawings', 'active', '2025-09-09 10:36:50'),
 (8, 'album', 'album', 'active', '2025-09-09 10:36:50');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `courier_serviceability_cache`
+--
+
+CREATE TABLE `courier_serviceability_cache` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `pickup_pincode` varchar(10) NOT NULL,
+  `delivery_pincode` varchar(10) NOT NULL,
+  `weight` decimal(10,2) NOT NULL,
+  `cod` tinyint(1) NOT NULL DEFAULT 0,
+  `courier_data` text NOT NULL COMMENT 'JSON data of available couriers',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -306,14 +336,6 @@ CREATE TABLE `offers_promos` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `offers_promos`
---
-
-INSERT INTO `offers_promos` (`id`, `title`, `image_url`, `status`, `sort_order`, `created_at`, `updated_at`) VALUES
-(1, 'onam offer', 'http://localhost/my_little_thingz/backend/uploads/offers/offer_20250923_181914_9b8121.jpg', 'active', 0, '2025-09-23 16:19:14', '2025-09-23 16:19:14'),
-(2, 'special offfer', 'http://localhost/my_little_thingz/backend/uploads/offers/offer_20250923_185404_ccb62b.jpg', 'active', 0, '2025-09-23 16:54:04', '2025-09-23 16:54:04');
-
 -- --------------------------------------------------------
 
 --
@@ -336,40 +358,65 @@ CREATE TABLE `orders` (
   `shipping_cost` decimal(10,2) DEFAULT NULL,
   `shipping_address` text DEFAULT NULL,
   `tracking_number` varchar(100) DEFAULT NULL,
+  `shiprocket_order_id` int(11) DEFAULT NULL COMMENT 'Shiprocket order ID',
+  `shiprocket_shipment_id` int(11) DEFAULT NULL COMMENT 'Shiprocket shipment ID',
+  `courier_id` int(11) DEFAULT NULL COMMENT 'Courier company ID',
+  `courier_name` varchar(100) DEFAULT NULL COMMENT 'Courier company name',
+  `awb_code` varchar(100) DEFAULT NULL COMMENT 'AWB tracking code',
+  `pickup_scheduled_date` datetime DEFAULT NULL COMMENT 'Scheduled pickup date',
+  `pickup_token_number` varchar(100) DEFAULT NULL COMMENT 'Pickup token number',
+  `shipment_status` varchar(100) DEFAULT NULL,
+  `current_status` varchar(100) DEFAULT NULL,
+  `tracking_updated_at` timestamp NULL DEFAULT NULL,
+  `label_url` varchar(500) DEFAULT NULL COMMENT 'Shipping label URL',
+  `manifest_url` varchar(500) DEFAULT NULL COMMENT 'Manifest URL',
+  `shipping_charges` decimal(10,2) DEFAULT 0.00 COMMENT 'Actual shipping charges',
+  `weight` decimal(10,2) DEFAULT 0.50 COMMENT 'Package weight in kg',
+  `length` decimal(10,2) DEFAULT 10.00 COMMENT 'Package length in cm',
+  `breadth` decimal(10,2) DEFAULT 10.00 COMMENT 'Package breadth in cm',
+  `height` decimal(10,2) DEFAULT 10.00 COMMENT 'Package height in cm',
   `estimated_delivery` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `shipped_at` timestamp NULL DEFAULT NULL,
   `delivered_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Customer orders with Shiprocket integration';
 
 --
 -- Dumping data for table `orders`
 --
 
-INSERT INTO `orders` (`id`, `user_id`, `order_number`, `status`, `payment_method`, `payment_status`, `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`, `total_amount`, `subtotal`, `tax_amount`, `shipping_cost`, `shipping_address`, `tracking_number`, `estimated_delivery`, `created_at`, `shipped_at`, `delivered_at`) VALUES
-(2, 1, 'ORD-20250912-064702-f270cb', 'processing', 'razorpay', 'paid', 'order_RGYzo1NeNPAuPc', 'pay_RGZ4lD3DDSOyGz', 'ea2a3513a18b17f2c8a1fa49876ba53062ff73ff0a70c64c231acf292c98284d', 2250.00, 2250.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 04:47:02', NULL, NULL),
-(3, 1, 'ORD-20250912-065609-408699', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, '2025-09-12 04:56:09', NULL, NULL),
-(4, 1, 'ORD-20250912-070324-5de70f', 'pending', NULL, 'pending', NULL, NULL, NULL, 120.00, 120.00, 0.00, 0.00, 'N/A', NULL, NULL, '2025-09-12 05:03:24', NULL, NULL),
-(5, 1, 'ORD-20250912-070525-6af48e', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, '2025-09-12 05:05:25', NULL, NULL),
-(6, 1, 'ORD-20250912-070628-400786', 'pending', NULL, 'pending', NULL, NULL, NULL, 120.00, 120.00, 0.00, 0.00, 'N/A', NULL, NULL, '2025-09-12 05:06:28', NULL, NULL),
-(7, 1, 'ORD-20250912-072223-f6aba9', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, '2025-09-12 05:22:23', NULL, NULL),
-(8, 1, 'ORD-20250912-081443-57dddd', 'processing', 'razorpay', 'paid', 'order_RGaUSGjDC0uHXD', 'pay_RGaUcMT48bnDTA', '40d3afc1d58693301eff69caa62c0f0fb2c187527d53bc2af48804dc1b0544b8', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 06:14:43', NULL, NULL),
-(9, 1, 'ORD-20250912-081739-c13563', 'processing', 'razorpay', 'paid', 'order_RGaXXYEki73TL2', 'pay_RGaXbwfGwu6ehQ', '112f30fd1accc6144acd19b8e29025d0e119ab56027352c0fbc93502120ea062', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 06:17:39', NULL, NULL),
-(10, 1, 'ORD-20250912-103402-777b98', 'processing', 'razorpay', 'paid', 'order_RGcrctuI0BK3hh', 'pay_RGcrtSGu7IqiYy', 'f23104b8da2aa1cef77e7a1e2c809a0925223c37d00f8e66214a875fa34a7b1c', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 08:34:02', NULL, NULL),
-(11, 1, 'ORD-20250912-121347-6f44d8', 'processing', 'razorpay', 'paid', 'order_RGeYzyLPujcMWV', 'pay_RGeZBvdQrdCUcg', 'f99f22a27c0e97e43c59882968cb4eb73c6689bc592b4d0c0d3789d636705056', 150.00, 150.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 10:13:47', NULL, NULL),
-(12, 1, 'ORD-20250912-121736-dc99c9', 'processing', 'razorpay', 'paid', 'order_RGed1GBd4rgAu6', 'pay_RGedqgO02jPPMx', 'f50daa592861af7d2c6cbbfd562c98a78e647c76889978e80d95e76eb6aa90f5', 250.00, 250.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 10:17:36', NULL, NULL),
-(13, 1, 'ORD-20250912-122449-a40eff', 'pending', 'razorpay', 'pending', 'order_RGekdJLtU2RAX0', NULL, NULL, 2000.00, 2000.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-12 10:24:49', NULL, NULL),
-(14, 1, 'ORD-20250913-061526-12456c', 'processing', 'razorpay', 'paid', 'order_RGwzav8Gn2aqaZ', 'pay_RGwznsPSJHnM9y', '2d16e571c7d5fceb0b5ccfa9dcdae196d3423f6bbd42468b92a189b16c0909c9', 2000.00, 2000.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-13 04:15:26', NULL, NULL),
-(15, 1, 'ORD-20250913-071058-60cbd7', 'processing', 'razorpay', 'paid', 'order_RGxwG25tCUcwDh', 'pay_RGxwwO79h0QoTa', 'ba00aeaeb86242faa5940bc46e77cb8aa4c91efa6f97a79fb5a3fac56178ebbd', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, '2025-09-13 05:10:58', NULL, NULL),
-(16, 1, 'ORD-20250913-075311-390498', 'processing', 'razorpay', 'paid', 'order_RGyeqcfJ05WOD2', 'pay_RGyf5n0arwrKc0', '85af2064c2880c081dc4fa93fb9a99ff888a1603dba24a7cb0625daf219514a8', 3000.00, 3000.00, 0.00, 0.00, 'purathel,anakkal kanjirapally 686598,8765457889', NULL, NULL, '2025-09-13 05:53:11', NULL, NULL),
-(17, 9, 'ORD-20250915-102334-53c51f', 'processing', 'razorpay', 'paid', 'order_RHoHtfe5EAfVBz', 'pay_RHoI4lQmpiAz1w', 'c106ce2b5c40cd9e41b647029c0943f934175264f06099419a966344c1b4ac88', 2000.00, 2000.00, 0.00, 0.00, 'elemashery,kottyam', NULL, NULL, '2025-09-15 08:23:34', NULL, NULL),
-(18, 9, 'ORD-20250915-120710-dbe9c0', 'processing', 'razorpay', 'paid', 'order_RHq3JxbBKgi47N', 'pay_RHq3fwRdV36i5l', 'f5c7811a4a59f13e5bec075714af01f5e7fb2a7fd46b119d7041f8afac617f37', 5000.00, 5000.00, 0.00, 0.00, 'vijetha jinu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nVizhikkathodu, Kottayam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, '2025-09-15 10:07:10', NULL, NULL),
-(19, 11, 'ORD-20250917-082534-7c7848', 'processing', 'razorpay', 'paid', 'order_RIZLX71USIKr5P', 'pay_RIZLnX25ZDWYbV', 'd13d6f9b2e0764fe13c40a6cdf6eb18485722af378d748e1a88c0b0c54dff216', 2000.00, 2000.00, 0.00, 0.00, 'fathima shibu\nMDR\nThoppumpady, Ernakulam\nKochi, Kerala, 682005\nPhone: 9495470077', NULL, NULL, '2025-09-17 06:25:34', NULL, NULL),
-(20, 11, 'ORD-20250918-101700-a9109b', 'processing', 'razorpay', 'paid', 'order_RIzmIerATMwLuP', 'pay_RIzmx2C2bOXE1H', 'b4c50d2acc2e21660f1717aefb0b9e25583a020fb5c370f399e7c87d51feaac6', 3400.00, 3400.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, '2025-09-18 08:17:00', NULL, NULL),
-(21, 1, 'ORD-20250921-151803-e85fbc', 'processing', 'razorpay', 'paid', 'order_RKGVjxclYpiV2l', 'pay_RKGVucYc1R1yVc', '1142036924fd5675d1b433a1806b7d27a69c80ec2f6350277ce736f4a26ef939', 2400.00, 2400.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, '2025-09-21 13:18:03', NULL, NULL),
-(22, 1, 'ORD-20250922-172224-a16dcb', 'pending', 'razorpay', 'pending', 'order_RKhAFZtDXBSYu1', NULL, NULL, 500.00, 500.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nNorth Paravur, Ernakulam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495402077', NULL, NULL, '2025-09-22 15:22:24', NULL, NULL),
-(23, 11, 'ORD-20250923-163030-6d671b', 'pending', 'razorpay', 'pending', 'order_RL4oTN9rVwMl9t', NULL, NULL, 90.00, 90.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nThalassery, Kannur\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495430077', NULL, NULL, '2025-09-23 14:30:30', NULL, NULL),
-(24, 11, 'ORD-20250923-165018-0265ec', 'processing', 'razorpay', 'paid', 'order_RL59MuPwACZ92h', 'pay_RL59fZQUI2o08Y', '375535169f7d71b728e042aead556c67700f896995e4c83aa8f1f375466fbb0f', 25.00, 25.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495400773', NULL, NULL, '2025-09-23 14:50:18', NULL, NULL);
+INSERT INTO `orders` (`id`, `user_id`, `order_number`, `status`, `payment_method`, `payment_status`, `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`, `total_amount`, `subtotal`, `tax_amount`, `shipping_cost`, `shipping_address`, `tracking_number`, `shiprocket_order_id`, `shiprocket_shipment_id`, `courier_id`, `courier_name`, `awb_code`, `pickup_scheduled_date`, `pickup_token_number`, `shipment_status`, `current_status`, `tracking_updated_at`, `label_url`, `manifest_url`, `shipping_charges`, `weight`, `length`, `breadth`, `height`, `estimated_delivery`, `created_at`, `shipped_at`, `delivered_at`) VALUES
+(2, 1, 'ORD-20250912-064702-f270cb', 'delivered', 'razorpay', 'paid', 'order_RGYzo1NeNPAuPc', 'pay_RGZ4lD3DDSOyGz', 'ea2a3513a18b17f2c8a1fa49876ba53062ff73ff0a70c64c231acf292c98284d', 2250.00, 2250.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-12 04:47:02', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(3, 1, 'ORD-20250912-065609-408699', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-12 04:56:09', NULL, NULL),
+(4, 1, 'ORD-20250912-070324-5de70f', 'pending', NULL, 'pending', NULL, NULL, NULL, 120.00, 120.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-12 05:03:24', NULL, NULL),
+(5, 1, 'ORD-20250912-070525-6af48e', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-12 05:05:25', NULL, NULL),
+(6, 1, 'ORD-20250912-070628-400786', 'pending', NULL, 'pending', NULL, NULL, NULL, 120.00, 120.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-12 05:06:28', NULL, NULL),
+(7, 1, 'ORD-20250912-072223-f6aba9', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-12 05:22:23', NULL, NULL),
+(8, 1, 'ORD-20250912-081443-57dddd', 'delivered', 'razorpay', 'paid', 'order_RGaUSGjDC0uHXD', 'pay_RGaUcMT48bnDTA', '40d3afc1d58693301eff69caa62c0f0fb2c187527d53bc2af48804dc1b0544b8', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-12 06:14:43', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(9, 1, 'ORD-20250912-081739-c13563', 'delivered', 'razorpay', 'paid', 'order_RGaXXYEki73TL2', 'pay_RGaXbwfGwu6ehQ', '112f30fd1accc6144acd19b8e29025d0e119ab56027352c0fbc93502120ea062', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-12 06:17:39', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(10, 1, 'ORD-20250912-103402-777b98', 'delivered', 'razorpay', 'paid', 'order_RGcrctuI0BK3hh', 'pay_RGcrtSGu7IqiYy', 'f23104b8da2aa1cef77e7a1e2c809a0925223c37d00f8e66214a875fa34a7b1c', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-12 08:34:02', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(11, 1, 'ORD-20250912-121347-6f44d8', 'delivered', 'razorpay', 'paid', 'order_RGeYzyLPujcMWV', 'pay_RGeZBvdQrdCUcg', 'f99f22a27c0e97e43c59882968cb4eb73c6689bc592b4d0c0d3789d636705056', 150.00, 150.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-12 10:13:47', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(12, 1, 'ORD-20250912-121736-dc99c9', 'delivered', 'razorpay', 'paid', 'order_RGed1GBd4rgAu6', 'pay_RGedqgO02jPPMx', 'f50daa592861af7d2c6cbbfd562c98a78e647c76889978e80d95e76eb6aa90f5', 250.00, 250.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-12 10:17:36', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(13, 1, 'ORD-20250912-122449-a40eff', 'pending', 'razorpay', 'pending', 'order_RGekdJLtU2RAX0', NULL, NULL, 2000.00, 2000.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-12 10:24:49', NULL, NULL),
+(14, 1, 'ORD-20250913-061526-12456c', 'delivered', 'razorpay', 'paid', 'order_RGwzav8Gn2aqaZ', 'pay_RGwznsPSJHnM9y', '2d16e571c7d5fceb0b5ccfa9dcdae196d3423f6bbd42468b92a189b16c0909c9', 2000.00, 2000.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-13 04:15:26', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(15, 1, 'ORD-20250913-071058-60cbd7', 'delivered', 'razorpay', 'paid', 'order_RGxwG25tCUcwDh', 'pay_RGxwwO79h0QoTa', 'ba00aeaeb86242faa5940bc46e77cb8aa4c91efa6f97a79fb5a3fac56178ebbd', 50.00, 50.00, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-13 05:10:58', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(16, 1, 'ORD-20250913-075311-390498', 'delivered', 'razorpay', 'paid', 'order_RGyeqcfJ05WOD2', 'pay_RGyf5n0arwrKc0', '85af2064c2880c081dc4fa93fb9a99ff888a1603dba24a7cb0625daf219514a8', 3000.00, 3000.00, 0.00, 0.00, 'purathel,anakkal kanjirapally 686598,8765457889', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-13 05:53:11', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(17, 9, 'ORD-20250915-102334-53c51f', 'delivered', 'razorpay', 'paid', 'order_RHoHtfe5EAfVBz', 'pay_RHoI4lQmpiAz1w', 'c106ce2b5c40cd9e41b647029c0943f934175264f06099419a966344c1b4ac88', 2000.00, 2000.00, 0.00, 0.00, 'elemashery,kottyam', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-15 08:23:34', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(18, 9, 'ORD-20250915-120710-dbe9c0', 'delivered', 'razorpay', 'paid', 'order_RHq3JxbBKgi47N', 'pay_RHq3fwRdV36i5l', 'f5c7811a4a59f13e5bec075714af01f5e7fb2a7fd46b119d7041f8afac617f37', 5000.00, 5000.00, 0.00, 0.00, 'vijetha jinu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nVizhikkathodu, Kottayam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-15 10:07:10', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(19, 11, 'ORD-20250917-082534-7c7848', 'delivered', 'razorpay', 'paid', 'order_RIZLX71USIKr5P', 'pay_RIZLnX25ZDWYbV', 'd13d6f9b2e0764fe13c40a6cdf6eb18485722af378d748e1a88c0b0c54dff216', 2000.00, 2000.00, 0.00, 0.00, 'fathima shibu\nMDR\nThoppumpady, Ernakulam\nKochi, Kerala, 682005\nPhone: 9495470077', NULL, 991031262, 987435320, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-17 06:25:34', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(20, 11, 'ORD-20250918-101700-a9109b', 'delivered', 'razorpay', 'paid', 'order_RIzmIerATMwLuP', 'pay_RIzmx2C2bOXE1H', 'b4c50d2acc2e21660f1717aefb0b9e25583a020fb5c370f399e7c87d51feaac6', 3400.00, 3400.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, 991031240, 987435298, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 1.00, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-18 08:17:00', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(21, 1, 'ORD-20250921-151803-e85fbc', 'delivered', 'razorpay', 'paid', 'order_RKGVjxclYpiV2l', 'pay_RKGVucYc1R1yVc', '1142036924fd5675d1b433a1806b7d27a69c80ec2f6350277ce736f4a26ef939', 2400.00, 2400.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495470077', NULL, 991031223, 987435281, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 1.00, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-21 13:18:03', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(22, 1, 'ORD-20250922-172224-a16dcb', 'pending', 'razorpay', 'pending', 'order_RKhAFZtDXBSYu1', NULL, NULL, 500.00, 500.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nNorth Paravur, Ernakulam\nAnakkal ,Kanjirapally, kerala, 686508\nPhone: 9495402077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-22 15:22:24', NULL, NULL),
+(23, 11, 'ORD-20250923-163030-6d671b', 'pending', 'razorpay', 'pending', 'order_RL4oTN9rVwMl9t', NULL, NULL, 90.00, 90.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nThalassery, Kannur\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495430077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-23 14:30:30', NULL, NULL),
+(24, 11, 'ORD-20250923-165018-0265ec', 'delivered', 'razorpay', 'paid', 'order_RL59MuPwACZ92h', 'pay_RL59fZQUI2o08Y', '375535169f7d71b728e042aead556c67700f896995e4c83aa8f1f375466fbb0f', 25.00, 25.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495400773', NULL, 991031188, 987435246, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-09-23 14:50:18', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(25, 11, 'ORD-20250924-051144-b530cc', 'pending', 'razorpay', 'pending', 'order_RLHmadGMPG9CKn', NULL, NULL, 500.00, 500.00, 0.00, 0.00, 'fathima shibu\nMannarakkayam - Koovappally Road\nKoovapally, Kottayam\nKoovapally, Kerala, 686518\nIndia\nPhone: 9475486254', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-24 03:11:44', NULL, NULL),
+(26, 11, 'ORD-20250925-060512-02775c', 'pending', 'razorpay', 'pending', 'order_RLhEAs5STcXVHz', NULL, NULL, 1600.00, 1600.00, 0.00, 0.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nKoovapally, Kottayam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-25 04:05:12', NULL, NULL),
+(27, 11, 'ORD-20250925-081812-1cac7a', 'pending', NULL, 'pending', NULL, NULL, NULL, 1999.99, 1999.99, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-25 06:18:12', NULL, NULL),
+(28, 11, 'ORD-20250925-104439-c14ecc', 'pending', NULL, 'pending', NULL, NULL, NULL, 50.00, 50.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-09-25 08:44:39', NULL, NULL),
+(29, 11, 'ORD-20251006-130915-760c8b', 'delivered', 'razorpay', 'paid', 'order_RQAKRa4eO4puQS', 'pay_RQAKmkiRdRNV73', 'eaadb8f1570a17c30148758d919b1e00fe2eba0e62281599e8a585e68c61e8e5', 625.00, 625.00, 0.00, 0.00, 'shijin thomas\n42/3154A Prathibha Road\nPadivattom, Ernakulam\nErnakulam, Kerala, 682025\nIndia\nPhone: 9495470077', NULL, 991031157, 987435211, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 1.00, 10.00, 10.00, 10.00, '2025-10-12', '2025-10-06 11:09:15', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(30, 11, 'ORD-20251006-132257-145f7d', 'delivered', 'razorpay', 'paid', 'order_RQAYuFp8lVqAGN', 'pay_RQAZ5mrLeR2mVy', 'a711ddae23919099cced893e0624d715c6b709be8f67190cd9d1d359897aaced', 50.00, 50.00, 0.00, 0.00, 'binil  jacob\n42/3154A Prathibha Road\nPadivattom, Ernakulam\nErnakulam, Kerala, 682025\nIndia\nPhone: 9495470077', NULL, 991030333, 987434391, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-10-06 11:22:57', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
+(31, 11, 'ORD-20251006-161503-57a92f', 'pending', 'razorpay', 'pending', 'order_RQDUi4Szzuc3an', NULL, NULL, 400.00, 400.00, 0.00, 0.00, 'vijetha  jinu\nDD Golden Gate\nKakkanad West, Ernakulam\nErnakulam, Kerala, 682037\nIndia\nPhone: 8864947452', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-06 14:15:03', NULL, NULL),
+(32, 11, 'ORD-20251006-163704-0a0322', 'delivered', 'razorpay', 'paid', 'order_RQDrxNZ9MDI765', 'pay_RQDsNer3E0XVww', 'e125a822b944c5a42956ac0c022e23725ef72d5ac6b7784ad9a0662388aaa017', 460.00, 400.00, 0.00, 60.00, 'vij jinu\nDD Golden Gate\nKakkanad West, Ernakulam\nErnakulam, Kerala, 682037\nIndia\nPhone: 7895641589', NULL, 991095374, 987499414, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-10-06 14:37:04', '2025-10-07 06:39:12', '2025-10-07 06:55:04');
 
 -- --------------------------------------------------------
 
@@ -418,7 +465,16 @@ INSERT INTO `order_items` (`id`, `order_id`, `artwork_id`, `quantity`, `price`) 
 (30, 21, 12, 1, 2000.00),
 (31, 22, 21, 1, 500.00),
 (32, 23, 13, 1, 90.00),
-(33, 24, 27, 1, 25.00);
+(33, 24, 27, 1, 25.00),
+(34, 25, 22, 1, 500.00),
+(35, 26, 29, 1, 1600.00),
+(36, 27, 26, 1, 1999.99),
+(37, 28, 2, 1, 50.00),
+(38, 29, 27, 1, 25.00),
+(39, 29, 32, 1, 600.00),
+(40, 30, 34, 1, 50.00),
+(41, 31, 25, 1, 400.00),
+(42, 32, 25, 1, 400.00);
 
 -- --------------------------------------------------------
 
@@ -555,7 +611,8 @@ INSERT INTO `purchase_orders` (`id`, `admin_id`, `order_number`, `total_amount`,
 (11, 5, 'PO-20250921-141045-68613f', 9000.00, 'INR', 'razorpay', 'paid', 'processing', 'order_RKFMennITtuAMq', 'pay_RKFMlqIOqCwrOq', '54040c0b6500e5650ddbdd592ef9c12b6c80d6090b853b9172d2f5dfc6c9f080', 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:10:45', '2025-09-21 12:11:05'),
 (12, 5, 'PO-20250921-145848-888f99', 9000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RKGBPrdIgQ06DH', NULL, NULL, 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 12:58:48', '2025-09-21 12:58:49'),
 (13, 5, 'PO-20250921-150129-99449a', 9000.00, 'INR', 'razorpay', 'paid', 'processing', 'order_RKGEEcXnzRpJVm', 'pay_RKGERtnyLKaBrM', '769a597d0e97cfd5b4662d8513a22b2913ff793742f83679f43defc9802f0ad1', 'Purathel, Anakkal PO, Kanjirapally 686508\nPhone: 9495470077', '2025-09-21 13:01:29', '2025-09-21 13:01:55'),
-(14, 5, 'PO-20250923-170930-3ea50c', 600.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RL5Tdpv5FMekIP', NULL, NULL, 'Purathel\nAnakkal PO\nKanjirapally, Kerala, 686508\nIndia\nPhone: 9495470077', '2025-09-23 15:09:30', '2025-09-23 15:09:30');
+(14, 5, 'PO-20250923-170930-3ea50c', 600.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RL5Tdpv5FMekIP', NULL, NULL, 'Purathel\nAnakkal PO\nKanjirapally, Kerala, 686508\nIndia\nPhone: 9495470077', '2025-09-23 15:09:30', '2025-09-23 15:09:30'),
+(15, 5, 'PO-20251006-164057-5eb1ea', 1000.00, 'INR', 'razorpay', 'pending', 'pending', 'order_RQDw376Z48bOJn', NULL, NULL, 'Purathel\nAnakkal PO\nKanjirapally, Kerala, 686508\nIndia\nPhone: 9495470077', '2025-10-06 14:40:57', '2025-10-06 14:40:57');
 
 -- --------------------------------------------------------
 
@@ -596,7 +653,8 @@ INSERT INTO `purchase_order_items` (`id`, `purchase_order_id`, `supplier_product
 (13, 11, NULL, 1, 'flower', 0.00, 1, 8, '2025-09-21 12:10:45', '[{\"color\":\"red\",\"qty\":1}]'),
 (14, 12, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 12:58:48', '[{\"color\":\"grren\",\"qty\":1}]'),
 (15, 13, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 13:01:29', '[{\"color\":\"grren\",\"qty\":1}]'),
-(16, 14, 7, NULL, 'nuts box', 600.00, 1, 8, '2025-09-23 15:09:30', '[{\"color\":\"red\",\"qty\":1}]');
+(16, 14, 7, NULL, 'nuts box', 600.00, 1, 8, '2025-09-23 15:09:30', '[{\"color\":\"red\",\"qty\":1}]'),
+(17, 15, 6, NULL, 'wedding hamper', 1000.00, 1, 8, '2025-10-06 14:40:57', '[{\"color\":\"pink\",\"qty\":1}]');
 
 -- --------------------------------------------------------
 
@@ -617,6 +675,24 @@ INSERT INTO `roles` (`id`, `name`) VALUES
 (1, 'admin'),
 (2, 'customer'),
 (3, 'supplier');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `shipment_tracking_history`
+--
+
+CREATE TABLE `shipment_tracking_history` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `awb_code` varchar(100) NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `status_code` varchar(50) DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `tracking_date` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -756,8 +832,9 @@ CREATE TABLE `wishlist` (
 --
 
 INSERT INTO `wishlist` (`id`, `user_id`, `artwork_id`, `added_at`) VALUES
-(14, 11, 16, '2025-09-18 07:27:05'),
-(15, 1, 2, '2025-09-21 13:17:35');
+(15, 1, 2, '2025-09-21 13:17:35'),
+(20, 1, 12, '2025-09-29 09:52:28'),
+(22, 11, 27, '2025-10-06 11:22:01');
 
 --
 -- Indexes for dumped tables
@@ -796,6 +873,14 @@ ALTER TABLE `categories`
   ADD UNIQUE KEY `uq_category_name` (`name`);
 
 --
+-- Indexes for table `courier_serviceability_cache`
+--
+ALTER TABLE `courier_serviceability_cache`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pincodes` (`pickup_pincode`,`delivery_pincode`),
+  ADD KEY `idx_expires` (`expires_at`);
+
+--
 -- Indexes for table `custom_requests`
 --
 ALTER TABLE `custom_requests`
@@ -827,7 +912,11 @@ ALTER TABLE `offers_promos`
 --
 ALTER TABLE `orders`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `order_number` (`order_number`);
+  ADD UNIQUE KEY `order_number` (`order_number`),
+  ADD KEY `idx_shiprocket_order_id` (`shiprocket_order_id`),
+  ADD KEY `idx_shiprocket_shipment_id` (`shiprocket_shipment_id`),
+  ADD KEY `idx_awb_code` (`awb_code`),
+  ADD KEY `idx_courier_id` (`courier_id`);
 
 --
 -- Indexes for table `order_items`
@@ -887,6 +976,14 @@ ALTER TABLE `roles`
   ADD UNIQUE KEY `name` (`name`);
 
 --
+-- Indexes for table `shipment_tracking_history`
+--
+ALTER TABLE `shipment_tracking_history`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_order_id` (`order_id`),
+  ADD KEY `idx_awb_code` (`awb_code`);
+
+--
 -- Indexes for table `supplier_products`
 --
 ALTER TABLE `supplier_products`
@@ -933,7 +1030,7 @@ ALTER TABLE `wishlist`
 -- AUTO_INCREMENT for table `artworks`
 --
 ALTER TABLE `artworks`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `auth_providers`
@@ -945,13 +1042,19 @@ ALTER TABLE `auth_providers`
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2913;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4065;
+
+--
+-- AUTO_INCREMENT for table `courier_serviceability_cache`
+--
+ALTER TABLE `courier_serviceability_cache`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `custom_requests`
@@ -981,13 +1084,13 @@ ALTER TABLE `offers_promos`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `order_payments`
@@ -1017,19 +1120,25 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `purchase_orders`
 --
 ALTER TABLE `purchase_orders`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `purchase_order_items`
 --
 ALTER TABLE `purchase_order_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
   MODIFY `id` tinyint(3) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `shipment_tracking_history`
+--
+ALTER TABLE `shipment_tracking_history`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `supplier_products`
@@ -1047,7 +1156,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `wishlist`
 --
 ALTER TABLE `wishlist`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- Constraints for dumped tables
@@ -1083,6 +1192,12 @@ ALTER TABLE `order_requirements`
 --
 ALTER TABLE `order_requirement_messages`
   ADD CONSTRAINT `fk_req_msg` FOREIGN KEY (`requirement_id`) REFERENCES `order_requirements` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `shipment_tracking_history`
+--
+ALTER TABLE `shipment_tracking_history`
+  ADD CONSTRAINT `shipment_tracking_history_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `user_roles`

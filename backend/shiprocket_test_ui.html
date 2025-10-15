@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shiprocket API Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .response pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .success {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+        
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Shiprocket API Tester</h1>
+        
+        <div class="card">
+            <div class="info-box">
+                <h3>ℹ️ Instructions</h3>
+                <p>This tool helps you test Shiprocket API endpoints. Make sure you have:</p>
+                <ul>
+                    <li>Updated the Shiprocket token in config/shiprocket.php</li>
+                    <li>Run the database migration</li>
+                    <li>Created at least one test order</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <!-- Generate Token -->
+            <div class="card">
+                <h2>🔑 Generate Token</h2>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="token-email" value="fathima686231@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="token-password" placeholder="Enter password">
+                </div>
+                <button onclick="generateToken()">Generate Token</button>
+                <div id="token-response" class="response" style="display:none;"></div>
+            </div>
+            
+            <!-- Calculate Shipping -->
+            <div class="card">
+                <h2>📦 Calculate Shipping</h2>
+                <div class="form-group">
+                    <label>Pincode:</label>
+                    <input type="text" id="calc-pincode" value="400001" maxlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Weight (kg):</label>
+                    <input type="number" id="calc-weight" value="0.5" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Payment Type:</label>
+                    <select id="calc-cod">
+                        <option value="0">Prepaid</option>
+                        <option value="1">COD</option>
+                    </select>
+                </div>
+                <button onclick="calculateShipping()">Calculate</button>
+                <div id="calc-response" class="response" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <!-- Create Shipment -->
+            <div class="card">
+                <h2>📮 Create Shipment</h2>
+                <div class="form-group">
+                    <label>Order ID:</label>
+                    <input type="number" id="create-order-id" value="2">
+                </div>
+                <div class="form-group">
+                    <label>Admin User ID:</label>
+                    <input type="number" id="create-admin-id" value="5">
+                </div>
+                <div class="form-group">
+                    <label>Weight (kg):</label>
+                    <input type="number" id="create-weight" value="0.5" step="0.1">
+                </div>
+                <button onclick="createShipment()">Create Shipment</button>
+                <div id="create-response" class="response" style="display:none;"></div>
+            </div>
+            
+            <!-- Get Couriers -->
+            <div class="card">
+                <h2>🚚 Get Available Couriers</h2>
+                <div class="form-group">
+                    <label>Order ID:</label>
+                    <input type="number" id="courier-order-id" value="2">
+                </div>
+                <div class="form-group">
+                    <label>Admin User ID:</label>
+                    <input type="number" id="courier-admin-id" value="5">
+                </div>
+                <button onclick="getCouriers()">Get Couriers</button>
+                <div id="courier-response" class="response" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <!-- Assign Courier -->
+            <div class="card">
+                <h2>✅ Assign Courier</h2>
+                <div class="form-group">
+                    <label>Order ID:</label>
+                    <input type="number" id="assign-order-id" value="2">
+                </div>
+                <div class="form-group">
+                    <label>Courier ID:</label>
+                    <input type="number" id="assign-courier-id" placeholder="Get from couriers list">
+                </div>
+                <div class="form-group">
+                    <label>Admin User ID:</label>
+                    <input type="number" id="assign-admin-id" value="5">
+                </div>
+                <button onclick="assignCourier()">Assign Courier</button>
+                <div id="assign-response" class="response" style="display:none;"></div>
+            </div>
+            
+            <!-- Schedule Pickup -->
+            <div class="card">
+                <h2>📅 Schedule Pickup</h2>
+                <div class="form-group">
+                    <label>Order ID:</label>
+                    <input type="number" id="pickup-order-id" value="2">
+                </div>
+                <div class="form-group">
+                    <label>Admin User ID:</label>
+                    <input type="number" id="pickup-admin-id" value="5">
+                </div>
+                <button onclick="schedulePickup()">Schedule Pickup</button>
+                <div id="pickup-response" class="response" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>🔍 Track Shipment</h2>
+            <div class="form-group">
+                <label>Order ID:</label>
+                <input type="number" id="track-order-id" value="2">
+            </div>
+            <div class="form-group">
+                <label>User ID:</label>
+                <input type="number" id="track-user-id" value="1">
+            </div>
+            <button onclick="trackShipment()">Track Shipment</button>
+            <div id="track-response" class="response" style="display:none;"></div>
+        </div>
+    </div>
+    
+    <script>
+        const BASE_URL = 'http://localhost/my_little_thingz/backend';
+        
+        function showResponse(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'response ' + (isSuccess ? 'success' : 'error');
+            element.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+        
+        async function generateToken() {
+            const email = document.getElementById('token-email').value;
+            const password = document.getElementById('token-password').value;
+            
+            if (!password) {
+                alert('Please enter password');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('email', email);
+                formData.append('password', password);
+                
+                const response = await fetch(`${BASE_URL}/generate_shiprocket_token.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showResponse('token-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('token-response', { error: error.message }, false);
+            }
+        }
+        
+        async function calculateShipping() {
+            const pincode = document.getElementById('calc-pincode').value;
+            const weight = document.getElementById('calc-weight').value;
+            const cod = document.getElementById('calc-cod').value;
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/customer/calculate-shipping.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ pincode, weight: parseFloat(weight), cod: parseInt(cod) })
+                });
+                
+                const data = await response.json();
+                showResponse('calc-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('calc-response', { error: error.message }, false);
+            }
+        }
+        
+        async function createShipment() {
+            const orderId = document.getElementById('create-order-id').value;
+            const adminId = document.getElementById('create-admin-id').value;
+            const weight = document.getElementById('create-weight').value;
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin/create-shipment.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': adminId
+                    },
+                    body: JSON.stringify({
+                        order_id: parseInt(orderId),
+                        weight: parseFloat(weight),
+                        length: 10,
+                        breadth: 10,
+                        height: 10
+                    })
+                });
+                
+                const data = await response.json();
+                showResponse('create-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('create-response', { error: error.message }, false);
+            }
+        }
+        
+        async function getCouriers() {
+            const orderId = document.getElementById('courier-order-id').value;
+            const adminId = document.getElementById('courier-admin-id').value;
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin/assign-courier.php?order_id=${orderId}`, {
+                    headers: {
+                        'X-User-ID': adminId
+                    }
+                });
+                
+                const data = await response.json();
+                showResponse('courier-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('courier-response', { error: error.message }, false);
+            }
+        }
+        
+        async function assignCourier() {
+            const orderId = document.getElementById('assign-order-id').value;
+            const courierId = document.getElementById('assign-courier-id').value;
+            const adminId = document.getElementById('assign-admin-id').value;
+            
+            if (!courierId) {
+                alert('Please enter courier ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin/assign-courier.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': adminId
+                    },
+                    body: JSON.stringify({
+                        order_id: parseInt(orderId),
+                        courier_id: parseInt(courierId)
+                    })
+                });
+                
+                const data = await response.json();
+                showResponse('assign-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('assign-response', { error: error.message }, false);
+            }
+        }
+        
+        async function schedulePickup() {
+            const orderId = document.getElementById('pickup-order-id').value;
+            const adminId = document.getElementById('pickup-admin-id').value;
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin/schedule-pickup.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': adminId
+                    },
+                    body: JSON.stringify({
+                        order_id: parseInt(orderId)
+                    })
+                });
+                
+                const data = await response.json();
+                showResponse('pickup-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('pickup-response', { error: error.message }, false);
+            }
+        }
+        
+        async function trackShipment() {
+            const orderId = document.getElementById('track-order-id').value;
+            const userId = document.getElementById('track-user-id').value;
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/customer/track-shipment.php?order_id=${orderId}`, {
+                    headers: {
+                        'X-User-ID': userId
+                    }
+                });
+                
+                const data = await response.json();
+                showResponse('track-response', data, data.status === 'success');
+            } catch (error) {
+                showResponse('track-response', { error: error.message }, false);
+            }
+        }
+    </script>
+</body>
+</html>

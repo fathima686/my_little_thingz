@@ -31,6 +31,7 @@ export default function CartPage() {
   const [country, setCountry] = useState('India');
   const [phone, setPhone] = useState('');
   const [locating, setLocating] = useState(false);
+  const [shippingCharges, setShippingCharges] = useState(0);
 
   // Compose a single shipping string to send to backend (DB stores one field)
   const normalizedShippingAddress = useMemo(() => {
@@ -170,6 +171,11 @@ export default function CartPage() {
         return;
       }
       const { key_id, order } = data;
+      
+      // Update shipping charges from backend response
+      if (order.shipping) {
+        setShippingCharges(order.shipping);
+      }
 
       const rzp = new window.Razorpay({
         key: key_id,
@@ -386,7 +392,13 @@ export default function CartPage() {
 
           <aside className="cart-summary">
             <div className="row"><span>Subtotal</span><strong>₹{subtotal.toFixed(2)}</strong></div>
-            <div className="row"><span>Shipping</span><strong>Calculated at checkout</strong></div>
+            <div className="row"><span>Shipping</span><strong>{shippingCharges > 0 ? `₹${shippingCharges.toFixed(2)}` : 'Calculated at checkout'}</strong></div>
+            {shippingCharges > 0 && (
+              <div className="row" style={{ borderTop: '2px solid #6b46c1', paddingTop: '8px', marginTop: '8px' }}>
+                <span style={{ fontWeight: 600 }}>Grand Total</span>
+                <strong style={{ fontSize: '1.2em', color: '#6b46c1' }}>₹{(subtotal + shippingCharges).toFixed(2)}</strong>
+              </div>
+            )}
 
             {/* Shipping Address (normalized fields) */}
             <div className="row" style={{ display: 'block' }}>
