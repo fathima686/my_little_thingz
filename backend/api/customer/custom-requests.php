@@ -57,6 +57,7 @@ function ensure_schema(mysqli $db) {
     budget_max DECIMAL(10,2) NULL,
     deadline DATE NULL,
     special_instructions TEXT NULL,
+    gift_tier ENUM('budget','premium') NULL DEFAULT 'budget',
     source ENUM('form','cart') NOT NULL DEFAULT 'form',
     status ENUM('pending','in_progress','completed','cancelled') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -87,6 +88,15 @@ function ensure_schema(mysqli $db) {
   } catch (Throwable $e) {
     // ignore; inserts will fallback if column missing
   }
+
+  // Ensure gift_tier column exists
+  try {
+    if (!hasColumn($db, 'custom_requests', 'gift_tier')) {
+      $db->query("ALTER TABLE custom_requests ADD COLUMN gift_tier ENUM('budget','premium') NULL DEFAULT 'budget' AFTER special_instructions");
+    }
+  } catch (Throwable $e) {
+    // ignore; inserts will fallback if column missing
+  }
 }
 
 try { ensure_schema($mysqli); } catch (Throwable $e) {}
@@ -101,10 +111,12 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 try {
   if ($method === 'GET') {
-    // List this user's requests (works even if 'occasion' column doesn't exist)
+    // List this user's requests (works even if 'occasion' or 'gift_tier' column doesn't exist)
     $hasOccasion = hasColumn($mysqli, 'custom_requests', 'occasion');
+    $hasGiftTier = hasColumn($mysqli, 'custom_requests', 'gift_tier');
     $occasionSelect = $hasOccasion ? 'cr.occasion,' : "'' AS occasion,";
-    $sql = "SELECT cr.id, cr.title, cr.description, $occasionSelect cr.budget_min, cr.budget_max, cr.deadline, cr.status, cr.created_at, cr.category_id, c.name AS category_name
+    $giftTierSelect = $hasGiftTier ? 'cr.gift_tier,' : "'' AS gift_tier,";
+    $sql = "SELECT cr.id, cr.title, cr.description, $occasionSelect cr.budget_min, cr.budget_max, $giftTierSelect cr.deadline, cr.status, cr.created_at, cr.category_id, c.name AS category_name
             FROM custom_requests cr
             LEFT JOIN categories c ON c.id = cr.category_id
             WHERE cr.user_id = ?
@@ -163,12 +175,13 @@ try {
   }
 
   if ($method === 'POST') {
-    // Accept only: title, occasion, description, budget, date, images
+    // Accept only: title, occasion, description, budget, date, gift_tier, images
     $title = $_POST['title'] ?? '';
     $occasion = $_POST['occasion'] ?? null;
     $description = $_POST['description'] ?? '';
     $budget = $_POST['budget'] ?? null; // map to budget_min
     $deadline = $_POST['date'] ?? ($_POST['deadline'] ?? null); // allow either 'date' or 'deadline'
+    $gift_tier = $_POST['gift_tier'] ?? 'budget'; // default to budget
     $source = isset($_POST['source']) && strtolower((string)$_POST['source']) === 'cart' ? 'cart' : 'form';
     
     if ($source === 'cart') {
@@ -209,16 +222,36 @@ try {
     // Insert minimal record, handle absence of columns gracefully
     $hasOccasionIns = hasColumn($mysqli, 'custom_requests', 'occasion');
     $hasSourceIns = hasColumn($mysqli, 'custom_requests', 'source');
-    if ($hasOccasionIns && $hasSourceIns) {
+    $hasGiftTierIns = hasColumn($mysqli, 'custom_requests', 'gift_tier');
+    
+    if ($hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
+      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, gift_tier, source, status, created_at)
+              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, ?, 'pending', NOW())";
+      $st = $mysqli->prepare($sql);
+    } elseif ($hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
       $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, source, status, created_at)
               VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, 'pending', NOW())";
       $st = $mysqli->prepare($sql);
-    } elseif ($hasOccasionIns && !$hasSourceIns) {
+    } elseif ($hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
+      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, gift_tier, status, created_at)
+              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, 'pending', NOW())";
+      $st = $mysqli->prepare($sql);
+    } elseif ($hasOccasionIns && !$hasSourceIns && !$hasGiftTierIns) {
       $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, status, created_at)
               VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', 'pending', NOW())";
       $st = $mysqli->prepare($sql);
-    } elseif (!$hasOccasionIns && $hasSourceIns) {
+    } elseif (!$hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
+      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, gift_tier, source, status, created_at)
+              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, ?, 'pending', NOW())";
+      $st = $mysqli->prepare($sql);
+      $occasion = null;
+    } elseif (!$hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
       $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, source, status, created_at)
+              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, 'pending', NOW())";
+      $st = $mysqli->prepare($sql);
+      $occasion = null;
+    } elseif (!$hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
+      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, gift_tier, status, created_at)
               VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, 'pending', NOW())";
       $st = $mysqli->prepare($sql);
       $occasion = null;
@@ -238,13 +271,21 @@ try {
 
     // Bind using strings for nullable values to avoid type errors when NULL is passed
     $budgetStr = $budgetVal !== null ? (string)$budgetVal : null;
-    if ($hasOccasionIns && $hasSourceIns) {
+    
+    if ($hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
+      $st->bind_param('isssssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $gift_tier, $source);
+    } elseif ($hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
       $st->bind_param('issssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $source);
-      // types: i, s, s, s, s, s, s
-    } elseif ($hasOccasionIns && !$hasSourceIns) {
+    } elseif ($hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
+      $st->bind_param('issssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $gift_tier);
+    } elseif ($hasOccasionIns && !$hasSourceIns && !$hasGiftTierIns) {
       $st->bind_param('isssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal);
-    } elseif (!$hasOccasionIns && $hasSourceIns) {
+    } elseif (!$hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
+      $st->bind_param('issssss', $userId, $title, $description, $budgetStr, $deadlineVal, $gift_tier, $source);
+    } elseif (!$hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
       $st->bind_param('isssss', $userId, $title, $description, $budgetStr, $deadlineVal, $source);
+    } elseif (!$hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
+      $st->bind_param('issss', $userId, $title, $description, $budgetStr, $deadlineVal, $gift_tier);
     } else {
       $st->bind_param('issss', $userId, $title, $description, $budgetStr, $deadlineVal);
     }

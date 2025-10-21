@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LuShoppingCart, LuTrash2, LuPlus, LuMinus, LuArrowLeft, LuX, LuWand } from 'react-icons/lu';
 import { useAuth } from '../contexts/AuthContext';
 import CustomizationModal from '../components/customer/CustomizationModal';
+import AddonSuggestions from '../components/customer/AddonSuggestions';
 import '../styles/customization-modal.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
@@ -16,9 +17,11 @@ export default function CartPage() {
   const [error, setError] = useState('');
   const [showCustomizationModal, setShowCustomizationModal] = useState(false);
   const [customizationArtwork, setCustomizationArtwork] = useState(null);
+  const [selectedOptionsMap, setSelectedOptionsMap] = useState({}); // artwork_id -> {selected_options, total}
   const [showCustomizationOptions, setShowCustomizationOptions] = useState(false);
   const [customizationStatus, setCustomizationStatus] = useState(null);
   const [showApprovalPopup, setShowApprovalPopup] = useState(false);
+  const [selectedAddons, setSelectedAddons] = useState([]); // Track selected addons
 
   // Normalized address fields
   const [firstName, setFirstName] = useState('');
@@ -56,7 +59,23 @@ export default function CartPage() {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        setItems(Array.isArray(data.cart_items) ? data.cart_items : []);
+        const arr = Array.isArray(data.cart_items) ? data.cart_items : [];
+        setItems(arr);
+        // Initialize selectedOptionsMap from cart.selected_options if present
+        const nextMap = {};
+        for (const it of arr) {
+          const raw = it?.selected_options;
+          let parsed = {};
+          if (raw && typeof raw === 'string') {
+            try { parsed = JSON.parse(raw) || {}; } catch {}
+          } else if (raw && typeof raw === 'object') {
+            parsed = raw;
+          }
+          if (Object.keys(parsed).length > 0 && it.artwork_id) {
+            nextMap[it.artwork_id] = { selected_options: parsed };
+          }
+        }
+        if (Object.keys(nextMap).length > 0) setSelectedOptionsMap(nextMap);
       } else {
         setError(data.message || 'Failed to load cart');
         window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to load cart' } }));
@@ -162,7 +181,19 @@ export default function CartPage() {
           'X-User-ID': String(auth?.user_id ?? ''),
           'Authorization': `Bearer ${auth?.token ?? ''}`
         },
-        body: JSON.stringify({ user_id: auth?.user_id, shipping_address: normalizedShippingAddress || 'N/A' })
+        body: JSON.stringify({ 
+          user_id: auth?.user_id, 
+          shipping_address: normalizedShippingAddress || 'N/A',
+          items: items.map(it => ({
+            artwork_id: it.artwork_id,
+            selected_options: selectedOptionsMap[it.artwork_id]?.selected_options || {}
+          })),
+          selected_addons: selectedAddons.map(addon => ({
+            id: addon.id,
+            name: addon.name,
+            price: addon.price
+          }))
+        })
       });
       const data = await res.json();
       if (data.status !== 'success') {
@@ -300,7 +331,18 @@ export default function CartPage() {
       const res = await fetch(`${API_BASE}/customer/checkout.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-User-ID': auth?.user_id, 'Authorization': `Bearer ${auth?.token}` },
-        body: JSON.stringify({ shipping_address: normalizedShippingAddress || 'N/A' })
+        body: JSON.stringify({ 
+          shipping_address: normalizedShippingAddress || 'N/A',
+          items: items.map(it => ({
+            artwork_id: it.artwork_id,
+            selected_options: selectedOptionsMap[it.artwork_id]?.selected_options || {}
+          })),
+          selected_addons: selectedAddons.map(addon => ({
+            id: addon.id,
+            name: addon.name,
+            price: addon.price
+          }))
+        })
       });
       const data = await res.json();
       if (data.status === 'success') {
@@ -345,6 +387,24 @@ export default function CartPage() {
                 <img src={item.image_url || '/api/placeholder/80/80'} alt={item.title} className="thumb" />
                 <div className="info">
                   <div className="title">{item.title}</div>
+                  {(() => {
+                    const raw = item?.selected_options;
+                    let opts = null;
+                    if (raw && typeof raw === 'string') { try { opts = JSON.parse(raw); } catch { opts = null; } }
+                    if (!opts && raw && typeof raw === 'object') opts = raw;
+                    if (opts && Object.keys(opts).length > 0) {
+                      return (
+                        <div className="selected-options" style={{ fontSize: 12, color: '#374151' }}>
+                          {Object.entries(opts).map(([k, v]) => (
+                            <span key={k} style={{ marginRight: 8, background:'#f3f4f6', padding:'2px 6px', borderRadius:6 }}>
+                              {String(k)}: {String(v)}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   <div className="meta">
                     {(() => {
                       const base = parsePrice(item.price);
@@ -393,10 +453,13 @@ export default function CartPage() {
           <aside className="cart-summary">
             <div className="row"><span>Subtotal</span><strong>₹{subtotal.toFixed(2)}</strong></div>
             <div className="row"><span>Shipping</span><strong>{shippingCharges > 0 ? `₹${shippingCharges.toFixed(2)}` : 'Calculated at checkout'}</strong></div>
-            {shippingCharges > 0 && (
+            {selectedAddons.length > 0 && (
+              <div className="row"><span>Add-ons</span><strong style={{ color: '#a855f7' }}>₹{selectedAddons.reduce((sum, a) => sum + (a.price || 0), 0).toFixed(2)}</strong></div>
+            )}
+            {(shippingCharges > 0 || selectedAddons.length > 0) && (
               <div className="row" style={{ borderTop: '2px solid #6b46c1', paddingTop: '8px', marginTop: '8px' }}>
                 <span style={{ fontWeight: 600 }}>Grand Total</span>
-                <strong style={{ fontSize: '1.2em', color: '#6b46c1' }}>₹{(subtotal + shippingCharges).toFixed(2)}</strong>
+                <strong style={{ fontSize: '1.2em', color: '#6b46c1' }}>₹{(subtotal + shippingCharges + selectedAddons.reduce((sum, a) => sum + (a.price || 0), 0)).toFixed(2)}</strong>
               </div>
             )}
 
@@ -534,6 +597,19 @@ export default function CartPage() {
               </div>
             </div>
             
+            {/* Add-on Suggestions Component */}
+            {items.length > 0 && (
+              <AddonSuggestions 
+                cartTotal={subtotal} 
+                auth={auth}
+                cartItems={items}
+                onAddonSelected={(selectedAddonObjects, count) => {
+                  // Store selected addons for checkout
+                  setSelectedAddons(selectedAddonObjects);
+                }}
+              />
+            )}
+
             {/* Hidden Customization Options */}
             <div 
               className="customization-options"
@@ -816,6 +892,12 @@ export default function CartPage() {
         isOpen={showCustomizationModal}
         onClose={() => setShowCustomizationModal(false)}
         onSuccess={handleCustomizationSuccess}
+        onOptionsChange={(artworkId, selectedOptions, total) => {
+          setSelectedOptionsMap(prev => ({
+            ...prev,
+            [artworkId]: { selected_options: selectedOptions, total }
+          }));
+        }}
       />
 
       {/* Approval Pending Popup */}

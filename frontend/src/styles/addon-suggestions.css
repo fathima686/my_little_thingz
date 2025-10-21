@@ -1,0 +1,307 @@
+/* Add-on Suggestions Component Styles */
+
+.addon-suggestions {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(168, 85, 247, 0.06) 100%);
+  border: 2px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.08);
+  transition: all 0.3s ease;
+}
+
+.addon-suggestions:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.12);
+}
+
+/* Header Section */
+.addon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 0 4px;
+  transition: opacity 0.2s ease;
+}
+
+.addon-header:hover {
+  opacity: 0.8;
+}
+
+.addon-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.addon-icon {
+  color: #a855f7;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.addon-title-text {
+  flex: 1;
+}
+
+.addon-title-text h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.2;
+}
+
+.addon-rule {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #a855f7;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.chevron {
+  color: #a855f7;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.chevron.expanded {
+  transform: rotate(90deg);
+}
+
+/* Content Section */
+.addon-content {
+  margin-top: 16px;
+  animation: slideDown 0.3s ease forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.addon-reasoning {
+  background: rgba(255, 255, 255, 0.6);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 16px;
+  border-left: 4px solid #a855f7;
+  line-height: 1.5;
+}
+
+/* Add-on List */
+.addon-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.addon-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid rgba(139, 92, 246, 0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.addon-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
+  transform: translateX(4px);
+}
+
+.addon-item.selected {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: #a855f7;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
+}
+
+/* Checkbox */
+.addon-checkbox {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  margin-right: 12px;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: #a855f7;
+  transition: all 0.2s ease;
+}
+
+.addon-checkbox:hover {
+  transform: scale(1.1);
+}
+
+/* Label */
+.addon-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  flex: 1;
+  gap: 16px;
+}
+
+.addon-info {
+  flex: 1;
+}
+
+.addon-header-small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.addon-icon-emoji {
+  font-size: 18px;
+}
+
+.addon-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 15px;
+}
+
+.addon-description {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.addon-price {
+  white-space: nowrap;
+  font-weight: 600;
+  color: #a855f7;
+  font-size: 15px;
+  text-align: right;
+}
+
+/* Summary Section */
+.addon-summary {
+  background: rgba(168, 85, 247, 0.08);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addon-summary-text {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.addon-summary-price {
+  margin: 0;
+  font-size: 15px;
+  color: #a855f7;
+  font-weight: 700;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .addon-suggestions {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .addon-title-text h3 {
+    font-size: 15px;
+  }
+
+  .addon-rule {
+    font-size: 12px;
+  }
+
+  .addon-item {
+    padding: 10px;
+  }
+
+  .addon-icon-emoji {
+    font-size: 16px;
+  }
+
+  .addon-name {
+    font-size: 14px;
+  }
+
+  .addon-description {
+    font-size: 12px;
+  }
+
+  .addon-price {
+    font-size: 14px;
+  }
+
+  .addon-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .addon-price {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .addon-suggestions {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border-color: rgba(168, 85, 247, 0.3);
+  }
+
+  .addon-reasoning {
+    background: rgba(55, 65, 81, 0.6);
+    color: #d1d5db;
+  }
+
+  .addon-item {
+    background: rgba(55, 65, 81, 0.5);
+    color: #e5e7eb;
+  }
+
+  .addon-item.selected {
+    background: rgba(168, 85, 247, 0.2);
+  }
+
+  .addon-title-text h3,
+  .addon-name {
+    color: #f3f4f6;
+  }
+
+  .addon-description {
+    color: #9ca3af;
+  }
+
+  .addon-summary {
+    background: rgba(168, 85, 247, 0.1);
+  }
+
+  .addon-summary-text {
+    color: #d1d5db;
+  }
+}

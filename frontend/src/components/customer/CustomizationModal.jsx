@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import PriceCalculator from './PriceCalculator';
 import { LuX, LuUpload, LuImage, LuCalendar, LuDollarSign, LuMessageSquare } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
-const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess }) => {
+const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChange }) => {
   const { auth } = useAuth();
   const [formData, setFormData] = useState({
     description: '',
@@ -166,6 +167,15 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="customization-form">
+            <div className="form-group">
+              <label>Customize and see price</label>
+              <PriceCalculator artwork={artwork} onChange={({ selectedOptions, total }) => {
+                setFormData(prev => ({ ...prev, selected_options: selectedOptions, computed_total: total }));
+                if (typeof onOptionsChange === 'function' && artwork?.id) {
+                  onOptionsChange(artwork.id, selectedOptions, total);
+                }
+              }} />
+            </div>
             <div className="form-group">
               <label htmlFor="description">Description *</label>
               <textarea

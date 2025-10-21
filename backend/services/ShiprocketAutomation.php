@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../models/Shiprocket.php';
+require_once __DIR__ . '/BayesianCourierScorer.php';
 require_once __DIR__ . '/../config/database.php';
 
 class ShiprocketAutomation {
@@ -255,9 +256,21 @@ class ShiprocketAutomation {
             $availableCount = count($couriers['data']['available_courier_companies']);
             $this->log("Found $availableCount available couriers for order #$orderId");
             
-            // Select courier based on strategy
+            // Optionally re-rank using Bayesian strategy
+            $available = $couriers['data']['available_courier_companies'];
+            if (($this->config['courier_selection_strategy'] ?? '') === 'bayesian') {
+                try {
+                    $scorer = new BayesianCourierScorer($this->config);
+                    $available = $scorer->scoreAndSortCouriers($order, $deliveryPincode, $available);
+                    $this->log('Applied Bayesian re-ranking to available couriers');
+                } catch (Exception $e) {
+                    $this->log('Bayesian re-ranking failed: ' . $e->getMessage(), 'error');
+                }
+            }
+
+            // Select courier based on strategy (now possibly re-ranked)
             $selectedCourier = $this->selectCourier(
-                $couriers['data']['available_courier_companies'],
+                $available,
                 $this->config['courier_selection_strategy']
             );
             

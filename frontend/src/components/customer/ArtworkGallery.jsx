@@ -582,11 +582,8 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                 </div>
               </div>
               <div className="artwork-info">
-                <div className="row1">
-                  <h3>{artwork.title}</h3>
-                  {artwork.category_name && <span className="badge">{artwork.category_name}</span>}
-                </div>
-                <p className="artwork-artist">by {artwork.artist_name}</p>
+                <h3>{artwork.title}</h3>
+                {artwork.category_name && <span className="artwork-category">{artwork.category_name}</span>}
                 <div className="artwork-price">
                   {(() => {
                     const base = parsePriceValue(artwork.price);
@@ -854,6 +851,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
           gap: 24px;
+          auto-rows: auto;
         }
 
         .artwork-card {
@@ -861,6 +859,9 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           border-radius: 12px;
           overflow: hidden;
           transition: transform 0.2s, box-shadow 0.2s;
+          display: flex;
+          flex-direction: column;
+          background: white;
         }
 
         .artwork-card:hover {
@@ -872,6 +873,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           position: relative;
           aspect-ratio: 1;
           overflow: hidden;
+          flex-shrink: 0;
         }
 
         .artwork-image img {
@@ -964,43 +966,45 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
         }
 
         .artwork-info {
-          padding: 16px;
+          padding: 12px 16px;
+          background: white;
+          flex-grow: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          min-height: 110px;
         }
 
         .artwork-info h3 {
-          margin: 0 0 4px 0;
-          font-size: 16px;
-          font-weight: 600;
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+          color: #1a202c;
+          line-height: 1.3;
+          text-align: left;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
 
-        .artwork-info .row1 {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        .badge {
+        .artwork-category {
           font-size: 12px;
-          padding: 2px 8px;
-          border-radius: 999px;
-          background: #eaf3ff;
-          color: #2563eb;
-          border: 1px solid #dbeafe;
-          white-space: nowrap;
-        }
-
-        .artwork-artist {
-          margin: 0 0 8px 0;
-          color: #666;
-          font-size: 14px;
+          color: #5a6c7d;
+          text-transform: uppercase;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          text-align: left;
         }
 
         .artwork-price {
           margin: 0;
           font-size: 18px;
           font-weight: 700;
-          color: #2c3e50;
+          color: #e11d48;
+          text-align: left;
+          margin-top: auto;
+          padding-top: 4px;
         }
 
         .artwork-detail {

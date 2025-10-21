@@ -47,6 +47,15 @@ function ensure_schema(mysqli $db) {
       $db->query("ALTER TABLE custom_requests ADD COLUMN source ENUM('form','cart') NOT NULL DEFAULT 'form' AFTER special_instructions");
     }
   } catch (Throwable $e) {}
+
+  // Ensure custom_requests has 'gift_tier' column
+  try {
+    $rs = $db->query("SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='custom_requests' AND COLUMN_NAME='gift_tier'");
+    $rw = $rs->fetch_assoc();
+    if ((int)$rw['c'] === 0) {
+      $db->query("ALTER TABLE custom_requests ADD COLUMN gift_tier ENUM('budget','premium') NULL DEFAULT 'budget' AFTER special_instructions");
+    }
+  } catch (Throwable $e) {}
 }
 
 try { ensure_schema($mysqli); } catch (Throwable $e) {}
@@ -86,7 +95,7 @@ try {
                    cr.title, cr.occasion, cr.description,
                    cr.category_id, c.name AS category_name,
                    cr.budget_min, cr.budget_max, cr.deadline,
-                   cr.special_instructions, cr.source, cr.status, cr.created_at,
+                   cr.special_instructions, cr.gift_tier, cr.source, cr.status, cr.created_at,
                    (
                      SELECT COUNT(*) FROM custom_request_images cri WHERE cri.request_id=cr.id
                    ) AS images_count

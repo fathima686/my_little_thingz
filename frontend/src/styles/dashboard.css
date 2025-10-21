@@ -122,6 +122,10 @@ body { background: var(--dash-bg); color: var(--text); font-synthesis-weight: no
 .product-title { font-weight: 700; margin: 0 0 4px; font-size: .98rem; }
 .product-sub { margin: 0; color: var(--muted); font-size: .86rem; }
 
+/* Recommendations Section */
+.recommendations-section { padding: 28px 0; background: linear-gradient(135deg, rgba(59,130,246,.03) 0%, rgba(96,165,250,.02) 100%); }
+.recommendations-section .recommendations-container { width: 100%; }
+
 /* Responsive */
 @media (max-width: 980px) {
   .dash-header-inner { grid-template-columns: 1fr; gap: 10px; }

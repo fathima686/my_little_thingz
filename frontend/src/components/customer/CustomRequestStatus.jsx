@@ -88,6 +88,9 @@ export default function CustomRequestStatus({ onClose }) {
                     {(req.budget_min || req.budget_max) && (
                       <span><strong>Budget:</strong> {req.budget_min || req.budget_max}</span>
                     )}
+                    {req.gift_tier && (
+                      <span><strong>Tier:</strong> <span style={{textTransform: 'capitalize'}}>{req.gift_tier === 'premium' ? '✨ Premium' : '🎁 Budget-Friendly'}</span></span>
+                    )}
                     {req.category_name && <span><strong>Category:</strong> {req.category_name}</span>}
                   </div>
                   <div className="req-progress">
@@ -134,6 +137,9 @@ export default function CustomRequestStatus({ onClose }) {
                 {selected.deadline && <p><strong>Deadline:</strong> {new Date(selected.deadline).toLocaleDateString()}</p>}
                 {(selected.budget_min || selected.budget_max) && (
                   <p><strong>Budget:</strong> {selected.budget_min || selected.budget_max}</p>
+                )}
+                {selected.gift_tier && (
+                  <p><strong>Gift Tier:</strong> <span style={{textTransform: 'capitalize'}}>{selected.gift_tier === 'premium' ? '✨ Premium' : '🎁 Budget-Friendly'}</span></p>
                 )}
                 <p><small>Requested on {new Date(selected.created_at).toLocaleString()}</small></p>
 

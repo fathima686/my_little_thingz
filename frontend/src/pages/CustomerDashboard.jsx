@@ -12,6 +12,7 @@ const CustomRequestStatus = React.lazy(() => import("../components/customer/Cust
 import WishlistManager from "../components/customer/WishlistManager";
 import CartDrawer from "../components/customer/CartDrawer";
 import CustomizationModal from "../components/customer/CustomizationModal";
+import PurchaseHistoryRecommendations from "../components/customer/PurchaseHistoryRecommendations";
 // import Recommendations from "../components/customer/Recommendations";
 
 import logo from "../assets/logo.png";
@@ -544,6 +545,21 @@ export default function CustomerDashboard() {
               })}
             </div>
           </article>
+        </div>
+      </section>
+
+      {/* Purchase History Recommendations */}
+      <section className="recommendations-section">
+        <div className="container">
+          <PurchaseHistoryRecommendations
+            userId={auth?.user_id}
+            title="💝 Just for You"
+            limit={8}
+            showAddToCart={true}
+            showWishlist={true}
+            showAnalysis={false}
+            onCustomizationRequest={handleCustomizationRequest}
+          />
         </div>
       </section>
 

@@ -14,6 +14,7 @@ const CustomGiftRequest = ({ onClose }) => {
     budget_min: '',
     budget_max: '',
     deadline: '',
+    gift_tier: 'budget', // Default to budget
     special_instructions: '',
     reference_images: []
   });
@@ -85,6 +86,7 @@ const CustomGiftRequest = ({ onClose }) => {
       const budgetSingle = formData.budget_max || formData.budget_min || '';
       submitData.append('budget', budgetSingle);
       submitData.append('date', formData.deadline || '');
+      submitData.append('gift_tier', formData.gift_tier || 'budget');
 
       // Add user ID (header is primary, but include for completeness)
       submitData.append('user_id', auth?.user_id);
@@ -228,6 +230,26 @@ const CustomGiftRequest = ({ onClose }) => {
                 onChange={handleInputChange}
                 min={today}
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="gift_tier">
+                Gift Tier Classification
+              </label>
+              <select
+                id="gift_tier"
+                name="gift_tier"
+                value={formData.gift_tier}
+                onChange={handleInputChange}
+              >
+                <option value="budget">🎁 Budget-Friendly</option>
+                <option value="premium">✨ Premium</option>
+              </select>
+              <small style={{ marginTop: '0.5rem', display: 'block', color: '#666' }}>
+                {formData.gift_tier === 'budget' 
+                  ? 'Best for cost-effective, thoughtful gifts' 
+                  : 'For luxurious, high-end customizations'}
+              </small>
             </div>
           </div>
 

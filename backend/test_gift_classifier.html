@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Classifier Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        input[type="text"],
+        select {
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .loading {
+            display: none;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .results {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .prediction-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .prediction-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        
+        .gift-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .prediction-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .detail-item {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 0.85em;
+            text-transform: uppercase;
+        }
+        
+        .detail-value {
+            font-size: 1.3em;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .action-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .action-auto_assign {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .action-suggest {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .action-manual_review {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .suggestions {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .suggestions-title {
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .suggestion-item {
+            display: inline-block;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border: 2px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #004085;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #999;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab:hover {
+            color: #667eea;
+            transform: none;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎁 Gift Classifier Tester</h1>
+            <p>Test the Bayesian Classification System</p>
+        </div>
+        
+        <div class="content">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="predictor">Predictor</button>
+                <button class="tab" data-tab="admin">Admin Tools</button>
+                <button class="tab" data-tab="docs">Documentation</button>
+            </div>
+            
+            <!-- PREDICTOR TAB -->
+            <div id="predictor" class="tab-content active">
+                <div class="section">
+                    <h2>🔮 Single Gift Prediction</h2>
+                    <div class="info-box">
+                        Enter a gift name to get category predictions with confidence scores.
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="text" id="giftName" placeholder="e.g., Birthday Greeting Card">
+                        <input type="number" id="confidenceThreshold" min="0.1" max="0.99" step="0.05" value="0.75" placeholder="Confidence: 0.75">
+                        <button onclick="predictSingle()">Predict</button>
+                    </div>
+                    
+                    <div class="loading" id="singleLoading">⏳ Classifying...</div>
+                    <div id="singleResults"></div>
+                </div>
+                
+                <div class="section">
+                    <h2>📋 Batch Prediction</h2>
+                    <div class="info-box">
+                        Predict multiple gifts at once. Enter one name per line.
+                    </div>
+                    
+                    <textarea id="batchGifts" style="width: 100%; height: 120px; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-family: monospace; resize: vertical;" placeholder="Birthday Card&#10;Wedding Hamper&#10;Custom Chocolate Box"></textarea>
+                    
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button onclick="predictBatch()" style="flex: 1;">Predict All</button>
+                        <button onclick="clearBatch()" style="background: #999;">Clear</button>
+                    </div>
+                    
+                    <div class="loading" id="batchLoading">⏳ Classifying...</div>
+                    <div id="batchResults"></div>
+                </div>
+            </div>
+            
+            <!-- ADMIN TAB -->
+            <div id="admin" class="tab-content">
+                <div class="section">
+                    <h2>📊 Classification Statistics</h2>
+                    
+                    <button onclick="getStats()">Load Statistics</button>
+                    <div class="loading" id="statsLoading">⏳ Loading...</div>
+                    <div id="statsResults"></div>
+                </div>
+                
+                <div class="section">
+                    <h2>🔄 Uncategorized Gifts</h2>
+                    <div class="info-box">
+                        View gifts without categories and see AI predictions.
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Limit: </label>
+                        <input type="number" id="uncategorizedLimit" min="1" max="50" value="10" style="width: 80px;">
+                        <button onclick="getUncategorized()">Load Uncategorized</button>
+                    </div>
+                    
+                    <div class="loading" id="uncategorizedLoading">⏳ Loading...</div>
+                    <div id="uncategorizedResults"></div>
+                </div>
+                
+                <div class="section">
+                    <h2>⚙️ Bulk Classification</h2>
+                    <div class="info-box">
+                        Auto-classify uncategorized gifts. Start with DRY RUN to preview changes.
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="number" id="bulkThreshold" min="0.1" max="0.99" step="0.05" value="0.8" placeholder="Confidence threshold">
+                        <button onclick="bulkClassifyDryRun()">🔍 Dry Run</button>
+                        <button onclick="bulkClassifyLive()" style="background: #e74c3c;">⚡ Apply for Real</button>
+                    </div>
+                    
+                    <div class="loading" id="bulkLoading">⏳ Processing...</div>
+                    <div id="bulkResults"></div>
+                </div>
+            </div>
+            
+            <!-- DOCS TAB -->
+            <div id="docs" class="tab-content">
+                <div class="section">
+                    <h2>📚 API Documentation</h2>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #666;">Prediction API</h3>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto;">GET /backend/api/customer/gift-classifier.php?gift_name=Birthday%20Card
+GET /backend/api/customer/gift-classifier.php?gift_names[]=Gift&gift_names[]=Card</pre>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #666;">Admin Stats API</h3>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto;">GET /backend/api/admin/gift-classifier-manage.php?action=stats
+GET /backend/api/admin/gift-classifier-manage.php?action=uncategorized</pre>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #666;">Bulk Classification API</h3>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto;">POST /backend/api/admin/gift-classifier-manage.php
+{
+  "action": "apply_bulk_classification",
+  "confidence_threshold": 0.8,
+  "dry_run": true
+}</pre>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #666;">How It Works</h3>
+                    <ul style="margin-left: 20px; line-height: 1.8;">
+                        <li><strong>Keyword Matching:</strong> Analyzes gift names for category-specific keywords</li>
+                        <li><strong>Confidence Scoring:</strong> Returns 0.0-1.0 confidence based on match strength</li>
+                        <li><strong>Smart Actions:</strong>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>≥ 0.75: Auto-assign (high confidence)</li>
+                                <li>0.50-0.75: Suggest (medium confidence)</li>
+                                <li>&lt; 0.50: Manual review (low confidence)</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #666;">Response Format</h3>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto; max-height: 250px; overflow-y: auto;">{
+  "status": "success",
+  "predictions": [
+    {
+      "input_name": "Birthday Card",
+      "predicted_category": "Greeting Card",
+      "confidence": 0.87,
+      "confidence_percent": 87.0,
+      "suggested_categories": {
+        "Wedding card": 0.65
+      },
+      "action": "auto_assign",
+      "reason": "Matched keywords: greeting card, card, birthday card"
+    }
+  ]
+}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const BASE_URL = 'http://localhost/my_little_thingz';
+        
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Hide all
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                
+                // Show selected
+                document.getElementById(tabName).classList.add('active');
+                tab.classList.add('active');
+            });
+        });
+        
+        // PREDICTION FUNCTIONS
+        async function predictSingle() {
+            const name = document.getElementById('giftName').value.trim();
+            const threshold = document.getElementById('confidenceThreshold').value;
+            
+            if (!name) {
+                showError('singleResults', 'Please enter a gift name');
+                return;
+            }
+            
+            try {
+                document.getElementById('singleLoading').style.display = 'block';
+                
+                const url = `${BASE_URL}/backend/api/customer/gift-classifier.php?gift_name=${encodeURIComponent(name)}&confidence_threshold=${threshold}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                document.getElementById('singleLoading').style.display = 'none';
+                
+                if (data.status === 'success' && data.predictions) {
+                    displayPredictions(data.predictions, 'singleResults');
+                } else {
+                    showError('singleResults', data.message || 'Classification failed');
+                }
+            } catch (error) {
+                document.getElementById('singleLoading').style.display = 'none';
+                showError('singleResults', `Error: ${error.message}`);
+            }
+        }
+        
+        async function predictBatch() {
+            const text = document.getElementById('batchGifts').value.trim();
+            const names = text.split('\n').map(n => n.trim()).filter(n => n);
+            
+            if (names.length === 0) {
+                showError('batchResults', 'Please enter at least one gift name');
+                return;
+            }
+            
+            try {
+                document.getElementById('batchLoading').style.display = 'block';
+                
+                const params = names.map((n, i) => `gift_names[]=${encodeURIComponent(n)}`).join('&');
+                const url = `${BASE_URL}/backend/api/customer/gift-classifier.php?${params}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                document.getElementById('batchLoading').style.display = 'none';
+                
+                if (data.status === 'success' && data.predictions) {
+                    displayPredictions(data.predictions, 'batchResults');
+                } else {
+                    showError('batchResults', data.message || 'Classification failed');
+                }
+            } catch (error) {
+                document.getElementById('batchLoading').style.display = 'none';
+                showError('batchResults', `Error: ${error.message}`);
+            }
+        }
+        
+        function clearBatch() {
+            document.getElementById('batchGifts').value = '';
+            document.getElementById('batchResults').innerHTML = '';
+        }
+        
+        // ADMIN FUNCTIONS
+        async function getStats() {
+            try {
+                document.getElementById('statsLoading').style.display = 'block';
+                
+                const response = await fetch(`${BASE_URL}/backend/api/admin/gift-classifier-manage.php?action=stats`);
+                const data = await response.json();
+                
+                document.getElementById('statsLoading').style.display = 'none';
+                
+                if (data.status === 'success') {
+                    const stats = data.stats;
+                    const rate = data.categorization_rate;
+                    
+                    const html = `
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${stats.total_artworks}</div>
+                                <div class="stat-label">Total Gifts</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #48c774 0%, #3fb950 100%);">
+                                <div class="stat-value">${stats.categorized}</div>
+                                <div class="stat-label">Categorized</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #d1342f 0%, #da3633 100%);">
+                                <div class="stat-value">${stats.uncategorized}</div>
+                                <div class="stat-label">Uncategorized</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #ff9011 0%, #f08500 100%);">
+                                <div class="stat-value">${stats.unique_categories}</div>
+                                <div class="stat-label">Categories</div>
+                            </div>
+                        </div>
+                        <div class="results">
+                            <strong>Categorization Rate: ${rate}</strong>
+                        </div>
+                    `;
+                    document.getElementById('statsResults').innerHTML = html;
+                } else {
+                    showError('statsResults', data.message || 'Failed to load stats');
+                }
+            } catch (error) {
+                document.getElementById('statsLoading').style.display = 'none';
+                showError('statsResults', `Error: ${error.message}`);
+            }
+        }
+        
+        async function getUncategorized() {
+            const limit = document.getElementById('uncategorizedLimit').value;
+            
+            try {
+                document.getElementById('uncategorizedLoading').style.display = 'block';
+                
+                const response = await fetch(`${BASE_URL}/backend/api/admin/gift-classifier-manage.php?action=uncategorized&limit=${limit}`);
+                const data = await response.json();
+                
+                document.getElementById('uncategorizedLoading').style.display = 'none';
+                
+                if (data.status === 'success' && data.artworks) {
+                    let html = `<div class="results"><p><strong>${data.uncategorized_count} uncategorized gifts found</strong></p>`;
+                    
+                    data.artworks.forEach(art => {
+                        const pred = art.prediction;
+                        html += `
+                            <div class="prediction-card">
+                                <div class="gift-name">🎨 ${art.title}</div>
+                                <div class="prediction-details">
+                                    <div class="detail-item">
+                                        <div class="detail-label">Predicted Category</div>
+                                        <div class="detail-value">${pred.predicted_category || 'N/A'}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Confidence</div>
+                                        <div class="detail-value">${pred.confidence_percent}%</div>
+                                        <div class="confidence-bar">
+                                            <div class="confidence-fill" style="width: ${pred.confidence_percent}%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Action</div>
+                                        <div class="action-badge action-${pred.action}">${pred.action}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    document.getElementById('uncategorizedResults').innerHTML = html;
+                } else {
+                    showError('uncategorizedResults', data.message || 'Failed to load uncategorized gifts');
+                }
+            } catch (error) {
+                document.getElementById('uncategorizedLoading').style.display = 'none';
+                showError('uncategorizedResults', `Error: ${error.message}`);
+            }
+        }
+        
+        async function bulkClassifyDryRun() {
+            await bulkClassify(true);
+        }
+        
+        async function bulkClassifyLive() {
+            if (!confirm('⚠️ This will apply classifications to your database. Are you sure?')) {
+                return;
+            }
+            await bulkClassify(false);
+        }
+        
+        async function bulkClassify(dryRun) {
+            const threshold = document.getElementById('bulkThreshold').value;
+            
+            try {
+                document.getElementById('bulkLoading').style.display = 'block';
+                
+                const response = await fetch(`${BASE_URL}/backend/api/admin/gift-classifier-manage.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'apply_bulk_classification',
+                        confidence_threshold: parseFloat(threshold),
+                        dry_run: dryRun
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('bulkLoading').style.display = 'none';
+                
+                if (data.status === 'success') {
+                    let html = `
+                        <div class="results">
+                            <div class="${dryRun ? 'info-box' : 'success'}">
+                                <strong>${dryRun ? '🔍 DRY RUN RESULTS' : '✅ CLASSIFICATION APPLIED'}</strong>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <p><strong>Total Processed:</strong> ${data.total_processed}</p>
+                                <p><strong>Applied/Would Apply:</strong> ${data.applied_count}</p>
+                                <p><strong>Skipped:</strong> ${data.skipped_count}</p>
+                            </div>
+                    `;
+                    
+                    if (data.applied && data.applied.length > 0) {
+                        html += '<h4 style="margin-top: 20px; color: #333;">Applied Classifications:</h4>';
+                        data.applied.forEach(item => {
+                            html += `
+                                <div style="background: white; padding: 10px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #667eea;">
+                                    <strong>${item.title}</strong> → <span style="color: #667eea;">${item.predicted_category}</span> (${item.confidence}%)
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    if (data.skipped && data.skipped.length > 0) {
+                        html += '<h4 style="margin-top: 20px; color: #999;">Sample Skipped (Low Confidence):</h4>';
+                        data.skipped.slice(0, 5).forEach(item => {
+                            html += `
+                                <div style="background: #f5f5f5; padding: 10px; margin: 8px 0; border-radius: 6px;">
+                                    <strong>${item.title}</strong> - ${item.confidence}% (${item.reason})
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    html += '</div>';
+                    document.getElementById('bulkResults').innerHTML = html;
+                } else {
+                    showError('bulkResults', data.message || 'Bulk classification failed');
+                }
+            } catch (error) {
+                document.getElementById('bulkLoading').style.display = 'none';
+                showError('bulkResults', `Error: ${error.message}`);
+            }
+        }
+        
+        // DISPLAY FUNCTIONS
+        function displayPredictions(predictions, elementId) {
+            let html = '<div class="results">';
+            
+            predictions.forEach((pred, idx) => {
+                const suggestionsList = Object.entries(pred.suggested_categories || {})
+                    .map(([cat, conf]) => `<div class="suggestion-item">${cat} (${(conf * 100).toFixed(0)}%)</div>`)
+                    .join('');
+                
+                html += `
+                    <div class="prediction-card">
+                        <div class="gift-name">🎁 ${pred.input_name}</div>
+                        <div class="prediction-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Predicted Category</div>
+                                <div class="detail-value">${pred.predicted_category || 'Not determined'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Confidence</div>
+                                <div class="detail-value">${pred.confidence_percent}%</div>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: ${pred.confidence_percent}%"></div>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Action</div>
+                                <div class="action-badge action-${pred.action}">${pred.action.replace(/_/g, ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                        ${suggestionsList ? `
+                            <div class="suggestions">
+                                <div class="suggestions-title">💡 Other Suggestions:</div>
+                                ${suggestionsList}
+                            </div>
+                        ` : ''}
+                        <div style="margin-top: 12px; font-size: 0.9em; color: #999;">${pred.reason}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById(elementId).innerHTML = html;
+        }
+        
+        function showError(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+    </script>
+</body>
+</html>

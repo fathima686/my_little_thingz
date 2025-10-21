@@ -74,6 +74,21 @@ try {
             } catch (Throwable $e) {}
         }
 
+        // Include selected_options if column exists on cart
+        $hasSel = false;
+        try {
+            $col = $db->query("SHOW COLUMNS FROM cart LIKE 'selected_options'");
+            if ($col && $col->rowCount() > 0) { $hasSel = true; }
+        } catch (Throwable $e) { $hasSel = false; }
+
+        if ($hasSel) {
+            $selectCols = "c.id, c.artwork_id, c.quantity, c.added_at, c.selected_options, a.title, a.price, a.image_url, a.availability, CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name";
+            if ($hasOfferCols) {
+                $selectCols .= ", a.offer_price, a.offer_percent, a.offer_starts_at, a.offer_ends_at";
+                try { $col2 = $db->query("SHOW COLUMNS FROM artworks LIKE 'force_offer_badge'"); if ($col2 && $col2->rowCount() > 0) { $selectCols .= ", a.force_offer_badge"; } } catch (Throwable $e) {}
+            }
+        }
+
         $query = "SELECT $selectCols
                   FROM cart c
                   JOIN artworks a ON c.artwork_id = a.id
@@ -135,10 +150,11 @@ try {
         ]);
 
     } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Add item to cart
+        // Add item to cart (with optional selected_options)
         $input = json_decode(file_get_contents('php://input'), true);
         $artwork_id = $input['artwork_id'] ?? null;
         $quantity = $input['quantity'] ?? 1;
+        $selected_options = isset($input['selected_options']) && is_array($input['selected_options']) ? json_encode($input['selected_options']) : null;
 
         if (!$artwork_id) {
             echo json_encode([
@@ -179,17 +195,32 @@ try {
         $check_stmt->execute([$user_id, $artwork_id]);
         $existing_item = $check_stmt->fetch();
 
+        $hasSelCol = false;
+        try { $chk = $db->query("SHOW COLUMNS FROM cart LIKE 'selected_options'"); $hasSelCol = $chk && $chk->rowCount() > 0; } catch (Throwable $e) {}
+
         if ($existing_item) {
-            // Update quantity
+            // Update quantity (and selected_options if provided)
             $new_quantity = $existing_item['quantity'] + $quantity;
-            $update_query = "UPDATE cart SET quantity = ? WHERE id = ?";
-            $update_stmt = $db->prepare($update_query);
-            $result = $update_stmt->execute([$new_quantity, $existing_item['id']]);
+            if ($hasSelCol && $selected_options !== null) {
+                $update_query = "UPDATE cart SET quantity = ?, selected_options = ? WHERE id = ?";
+                $update_stmt = $db->prepare($update_query);
+                $result = $update_stmt->execute([$new_quantity, $selected_options, $existing_item['id']]);
+            } else {
+                $update_query = "UPDATE cart SET quantity = ? WHERE id = ?";
+                $update_stmt = $db->prepare($update_query);
+                $result = $update_stmt->execute([$new_quantity, $existing_item['id']]);
+            }
         } else {
             // Add new item
-            $insert_query = "INSERT INTO cart (user_id, artwork_id, quantity, added_at) VALUES (?, ?, ?, NOW())";
-            $insert_stmt = $db->prepare($insert_query);
-            $result = $insert_stmt->execute([$user_id, $artwork_id, $quantity]);
+            if ($hasSelCol) {
+                $insert_query = "INSERT INTO cart (user_id, artwork_id, quantity, selected_options, added_at) VALUES (?, ?, ?, ?, NOW())";
+                $insert_stmt = $db->prepare($insert_query);
+                $result = $insert_stmt->execute([$user_id, $artwork_id, $quantity, $selected_options]);
+            } else {
+                $insert_query = "INSERT INTO cart (user_id, artwork_id, quantity, added_at) VALUES (?, ?, ?, NOW())";
+                $insert_stmt = $db->prepare($insert_query);
+                $result = $insert_stmt->execute([$user_id, $artwork_id, $quantity]);
+            }
         }
 
         if ($result) {
@@ -205,10 +236,11 @@ try {
         }
 
     } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-        // Update cart item quantity
+        // Update cart item quantity and selected_options
         $input = json_decode(file_get_contents('php://input'), true);
         $cart_id = $input['cart_id'] ?? null;
         $quantity = $input['quantity'] ?? null;
+        $selected_options = isset($input['selected_options']) && is_array($input['selected_options']) ? json_encode($input['selected_options']) : null;
 
         if (!$cart_id || !$quantity) {
             echo json_encode([
@@ -218,10 +250,20 @@ try {
             exit;
         }
 
-        $update_query = "UPDATE cart SET quantity = ? WHERE id = ? AND user_id = ?";
-        $update_stmt = $db->prepare($update_query);
-        
-        if ($update_stmt->execute([$quantity, $cart_id, $user_id])) {
+        $hasSelCol2 = false;
+        try { $chk = $db->query("SHOW COLUMNS FROM cart LIKE 'selected_options'"); $hasSelCol2 = $chk && $chk->rowCount() > 0; } catch (Throwable $e) {}
+
+        if ($hasSelCol2 && $selected_options !== null) {
+            $update_query = "UPDATE cart SET quantity = ?, selected_options = ? WHERE id = ? AND user_id = ?";
+            $update_stmt = $db->prepare($update_query);
+            $ok = $update_stmt->execute([$quantity, $selected_options, $cart_id, $user_id]);
+        } else {
+            $update_query = "UPDATE cart SET quantity = ? WHERE id = ? AND user_id = ?";
+            $update_stmt = $db->prepare($update_query);
+            $ok = $update_stmt->execute([$quantity, $cart_id, $user_id]);
+        }
+
+        if ($ok) {
             echo json_encode([
                 'status' => 'success',
                 'message' => 'Cart updated'
