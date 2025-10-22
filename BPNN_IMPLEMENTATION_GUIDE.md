@@ -274,3 +274,10 @@ This BPNN implementation is part of the "My Little Thingz" project and follows t
 
 **Note**: This system requires PHP 7.4+ and MySQL 5.7+ for optimal performance. Ensure your server has sufficient memory for neural network training (recommended: 2GB+ RAM).
 
+
+
+
+
+
+
+

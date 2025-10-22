@@ -316,3 +316,10 @@ function enrichRecommendations($db, $recommendations)
     return $enrichedRecommendations;
 }
 
+
+
+
+
+
+
+

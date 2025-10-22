@@ -44,3 +44,7 @@
 2025-10-16 06:23:52 [error] AWB assignment failed for order #33: AWB assignment failed
 2025-10-16 06:23:52 [error] Courier assignment failed for order #33: AWB assignment failed: AWB assignment failed
 2025-10-16 16:04:15 [error] Shipment creation failed for order #35: Shiprocket authentication failed: {"error":"{\"error\":\"invalid token\"}","http_code":401}
+2025-10-21 10:04:12 [error] Shipment creation failed for order #41: Shiprocket authentication failed: {"error":"{\"error\":\"invalid token\"}","http_code":401}
+2025-10-22 06:03:44 [error] Shipment creation failed for order #43: Shiprocket authentication failed: {"error":"{\"error\":\"invalid token\"}","http_code":401}
+2025-10-22 06:40:21 [error] Shipment creation failed for order #44: Shiprocket authentication failed: {"error":"{\"error\":\"invalid token\"}","http_code":401}
+2025-10-22 07:00:45 [error] Shipment creation failed for order #45: Shiprocket authentication failed: {"error":"{\"error\":\"invalid token\"}","http_code":401}

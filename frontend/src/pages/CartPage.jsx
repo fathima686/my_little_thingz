@@ -361,10 +361,11 @@ export default function CartPage() {
     <div className="cart-page container">
       <header className="cart-page-header">
         <button
-          className="btn btn-soft"
+          className="btn-back"
           onClick={() => navigate('/dashboard')}
+          title="Back to Dashboard"
         >
-          <LuArrowLeft /> Back
+          <LuArrowLeft />
         </button>
         <h1><LuShoppingCart /> My Cart</h1>
         <div />
@@ -664,6 +665,10 @@ export default function CartPage() {
         .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
         .cart-page-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 16px; }
         .cart-page-header h1 { display: flex; align-items: center; gap: 10px; justify-self: center; margin: 0; }
+        .btn-back { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #cbd5e1; color: #1e3a8a; background: linear-gradient(135deg, #f8fafc, #e2e8f0); box-shadow: 0 2px 4px rgba(147, 197, 253, 0.2); transition: all .2s ease; }
+        .btn-back svg { font-size: 18px; opacity: .9; }
+        .btn-back:hover { background: linear-gradient(135deg, #93c5fd, #60a5fa); color: #fff; border-color: #60a5fa; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,.3); }
+        .btn-back:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(59,130,246,.2); }
         .cart-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
         .cart-list { display: grid; gap: 10px; }
         .cart-row { display: grid; grid-template-columns: 80px 1fr 32px; gap: 12px; align-items: center; padding: 10px; border: 1px solid #eee; border-radius: 10px; }
@@ -883,6 +888,24 @@ export default function CartPage() {
           display: flex;
           justify-content: flex-end;
           gap: 12px;
+        }
+
+        /* New styles for Back button */
+        .btn-back {
+          background: #f3f4f6;
+          color: #4b5563;
+          padding: 8px 12px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+          background: #e5e7eb;
+          color: #374151;
         }
       `}</style>
 

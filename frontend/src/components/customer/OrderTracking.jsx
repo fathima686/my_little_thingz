@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye, LuRefreshCw, LuExternalLink } from 'react-icons/lu';
+import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye, LuRefreshCw, LuExternalLink, LuDownload } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
@@ -160,6 +160,55 @@ const OrderTracking = ({ onClose }) => {
     }
   };
 
+  const handleDownloadInvoice = async (order) => {
+    try {
+      const url = `${API_BASE}/customer/download-invoice.php?order_id=${order.id}`;
+      
+      // Create a temporary link to download the invoice
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${order.order_number}.html`;
+      
+      // Add authentication headers by using fetch first
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-User-ID': String(auth?.user_id ?? ''),
+          'Authorization': `Bearer ${auth?.token ?? ''}`
+        }
+      });
+      
+      if (response.ok) {
+        // Get the blob content
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // Create and click the download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = blobUrl;
+        downloadLink.download = `Invoice-${order.order_number}.html`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(blobUrl);
+        
+        // Show success message
+        window.dispatchEvent(new CustomEvent('toast', { 
+          detail: { type: 'success', message: 'Invoice downloaded successfully!' } 
+        }));
+      } else {
+        throw new Error('Failed to download invoice');
+      }
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      window.dispatchEvent(new CustomEvent('toast', { 
+        detail: { type: 'error', message: 'Failed to download invoice. Please try again.' } 
+      }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="modal-overlay">
@@ -292,6 +341,15 @@ const OrderTracking = ({ onClose }) => {
                 >
                   <LuEye /> View Live Tracking
                 </button>
+                {(order.payment_status === 'paid' || order.status === 'processing' || order.status === 'shipped' || order.status === 'delivered') && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => handleDownloadInvoice(order)}
+                    title="Download Invoice"
+                  >
+                    <LuDownload /> Download Invoice
+                  </button>
+                )}
                 {order.awb_code && (
                   <span className="tracking-status">
                     🚚 Tracking Available
@@ -317,6 +375,15 @@ const OrderTracking = ({ onClose }) => {
               <div className="modal-header">
                 <h2>🚚 Order #{selectedOrder.order_number}</h2>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  {(selectedOrder.payment_status === 'paid' || selectedOrder.status === 'processing' || selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered') && (
+                    <button 
+                      className="btn btn-primary small"
+                      onClick={() => handleDownloadInvoice(selectedOrder)}
+                      title="Download Invoice"
+                    >
+                      <LuDownload /> Invoice
+                    </button>
+                  )}
                   {(selectedOrder.awb_code || selectedOrder.shiprocket_shipment_id) && (
                     <button 
                       className="btn btn-soft small"

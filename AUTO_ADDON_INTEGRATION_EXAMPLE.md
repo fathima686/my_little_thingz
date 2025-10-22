@@ -312,3 +312,10 @@ const AutoAddonDisplay = React.lazy(() => import('./components/customer/AutoAddo
 
 This auto add-on display provides a seamless way to increase average order value while enhancing the customer experience with intelligent, context-aware recommendations! 🎁
 
+
+
+
+
+
+
+

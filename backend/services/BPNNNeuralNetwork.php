@@ -425,3 +425,10 @@ class BPNNNeuralNetwork
     }
 }
 
+
+
+
+
+
+
+

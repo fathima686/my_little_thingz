@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuX, LuHeart, LuShoppingCart, LuTrash2, LuShare2, LuEye, LuSettings } from 'react-icons/lu';
+import { LuX, LuHeart, LuShoppingCart, LuTrash2, LuEye } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
@@ -9,8 +9,6 @@ const WishlistManager = ({ onClose }) => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [filter, setFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('date_added');
 
   useEffect(() => {
     fetchWishlist();
@@ -106,68 +104,12 @@ const WishlistManager = ({ onClose }) => {
     }
   };
 
-  const shareWishlist = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/customer/wishlist-share.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth?.token}`,
-          'X-User-ID': auth?.user_id
-        }
-      });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        const shareUrl = `${window.location.origin}/wishlist/shared/${data.share_token}`;
-        
-        if (navigator.share) {
-          await navigator.share({
-            title: 'My Wishlist - My Little Thingz',
-            text: 'Check out my wishlist!',
-            url: shareUrl
-          });
-        } else {
-          // Fallback: copy to clipboard
-          await navigator.clipboard.writeText(shareUrl);
-          window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Wishlist link copied to clipboard' } }));
-        }
-      } else {
-        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to generate share link' } }));
-      }
-    } catch (error) {
-      console.error('Error sharing wishlist:', error);
-      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Error sharing wishlist' } }));
-    }
-  };
 
   const getSortedAndFilteredItems = () => {
-    let filtered = [...wishlistItems];
-
-    // Apply filters
-    if (filter === 'available') {
-      filtered = filtered.filter(item => item.availability === 'available');
-    } else if (filter === 'out_of_stock') {
-      filtered = filtered.filter(item => item.availability === 'out_of_stock');
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date_added':
-          return new Date(b.added_at) - new Date(a.added_at);
-        case 'price_low':
-          return parseFloat(a.price) - parseFloat(b.price);
-        case 'price_high':
-          return parseFloat(b.price) - parseFloat(a.price);
-        case 'name':
-          return a.title.localeCompare(b.title);
-        default:
-          return 0;
-      }
+    // Return items sorted by date added (newest first)
+    return [...wishlistItems].sort((a, b) => {
+      return new Date(b.added_at) - new Date(a.added_at);
     });
-
-    return filtered;
   };
 
   const formatDate = (dateString) => {
@@ -196,41 +138,12 @@ const WishlistManager = ({ onClose }) => {
         <div className="modal-header">
           <h2>My Wishlist ({wishlistItems.length} items)</h2>
           <div className="header-actions">
-            {wishlistItems.length > 0 && (
-              <button className="btn btn-outline" onClick={shareWishlist}>
-                <LuShare2 /> Share Wishlist
-              </button>
-            )}
             <button className="btn-close" onClick={onClose}>
               <LuX />
             </button>
           </div>
         </div>
 
-        {wishlistItems.length > 0 && (
-          <div className="wishlist-controls">
-            <div className="filter-controls">
-              <div className="filter-group">
-                <label>Filter:</label>
-                <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-                  <option value="all">All Items</option>
-                  <option value="available">Available</option>
-                  <option value="out_of_stock">Out of Stock</option>
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <label>Sort by:</label>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  <option value="date_added">Date Added</option>
-                  <option value="name">Name</option>
-                  <option value="price_low">Price: Low to High</option>
-                  <option value="price_high">Price: High to Low</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
 
         {sortedItems.length > 0 ? (
           <div className="wishlist-grid">
@@ -461,36 +374,6 @@ const WishlistManager = ({ onClose }) => {
           background: #f5f5f5;
         }
 
-        .wishlist-controls {
-          margin-bottom: 24px;
-          padding: 16px;
-          background: #f8f9fa;
-          border-radius: 8px;
-        }
-
-        .filter-controls {
-          display: flex;
-          gap: 24px;
-          align-items: center;
-        }
-
-        .filter-group {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .filter-group label {
-          font-weight: 500;
-          color: #2c3e50;
-        }
-
-        .filter-group select {
-          padding: 6px 12px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          background: white;
-        }
 
         .wishlist-grid {
           display: grid;
@@ -743,12 +626,6 @@ const WishlistManager = ({ onClose }) => {
         @media (max-width: 768px) {
           .item-detail {
             grid-template-columns: 1fr;
-          }
-          
-          .filter-controls {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
           }
           
           .header-actions {

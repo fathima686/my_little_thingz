@@ -147,12 +147,19 @@ export default function Register() {
   }), [formData.password]);
 
   const validateAll = () => {
-    const next = Object.fromEntries(
-      Object.entries(formData)
-        .filter(([k]) => !!validators[k]) // only validate fields that have validators
-        .map(([k, v]) => [k, validators[k](k === 'shop_name' ? v : v, formData.role, formData)])
-    );
-    Object.keys(next).forEach((k) => next[k] === null && delete next[k]);
+    const effectiveRole = formData.role || googleRole;
+    const next = {};
+    
+    // Validate each field with proper role context
+    Object.entries(formData).forEach(([key, value]) => {
+      if (validators[key]) {
+        const error = validators[key](value, effectiveRole, formData);
+        if (error) {
+          next[key] = error;
+        }
+      }
+    });
+    
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -171,22 +178,54 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateAll()) return;
+    
+    // Debug logging
+    console.log('Form data:', formData);
+    console.log('Google role:', googleRole);
+    
+    if (!validateAll()) {
+      console.log('Validation failed:', errors);
+      return;
+    }
 
     try {
       setSubmitting(true);
-      if (!formData.role) {
+      // Determine effective role (supports future Google flow reuse)
+      const effectiveRole = parseInt(formData.role || googleRole || '0', 10);
+      if (!effectiveRole) {
         alert("Please select a role before creating your account.");
+        setSubmitting(false);
         return;
       }
+
+      // Ensure shop name is provided for suppliers
+      const trimmedShop = String(formData.shop_name || '').trim();
+      console.log('Effective role:', effectiveRole, 'Shop name:', trimmedShop);
+      
+      if (String(effectiveRole) === '3' && !trimmedShop) {
+        setErrors((p) => ({ ...p, shop_name: 'Shop name is required for suppliers' }));
+        setSubmitting(false);
+        return;
+      }
+
+      const payload = {
+        ...formData,
+        role: effectiveRole,
+        shop_name: trimmedShop,
+      };
+      
+      console.log('Sending payload:', payload);
+
       const res = await fetch(`${API_BASE}/auth/register.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, role: parseInt(formData.role, 10) }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
+      console.log('Response:', data);
+      
       if (res.ok && data.status === "success") {
-        const isSupplier = (data.role === 'supplier' || String(formData.role) === '3');
+        const isSupplier = (data.role === 'supplier' || String(effectiveRole) === '3');
         if (isSupplier) {
           setBanner({ type: 'info', text: 'Registration submitted. Your supplier account is pending admin approval.' });
           // Stay on the same page; no redirect
@@ -198,6 +237,7 @@ export default function Register() {
         setBanner({ type: 'error', text: data.message || 'Registration failed' });
       }
     } catch (err) {
+      console.error('Registration error:', err);
       setBanner({ type: 'error', text: 'Network error during registration' });
     } finally {
       setSubmitting(false);

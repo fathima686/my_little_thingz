@@ -771,3 +771,10 @@ class PurchaseHistoryAnalyzer
     }
 }
 
+
+
+
+
+
+
+

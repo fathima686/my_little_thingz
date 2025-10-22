@@ -98,6 +98,54 @@ export default function AdminDashboard() {
 
   // Lightbox for images
   const [lightboxUrl, setLightboxUrl] = useState(null);
+
+  // Comprehensive refresh function for all sections
+  const refreshAllData = async () => {
+    try {
+      // Refresh all data based on current active section
+      switch (activeSection) {
+        case 'overview':
+          await Promise.all([
+            fetchSuppliers(),
+            fetchRequests(reqFilter),
+            fetchRequirements(),
+            fetchArtworks()
+          ]);
+          break;
+        case 'suppliers':
+          await fetchSuppliers();
+          break;
+        case 'supplier-products':
+          await fetchSupplierProducts();
+          break;
+        case 'supplier-inventory':
+          await fetchSupplierInventory();
+          break;
+        case 'custom-requests':
+          await fetchRequests(reqFilter);
+          break;
+        case 'artworks':
+          await Promise.all([fetchCategories(), fetchArtworks()]);
+          break;
+        case 'requirements':
+          await fetchRequirements();
+          break;
+        default:
+          // Refresh all data for unknown sections
+          await Promise.all([
+            fetchSuppliers(),
+            fetchSupplierProducts(),
+            fetchSupplierInventory(),
+            fetchRequests(reqFilter),
+            fetchCategories(),
+            fetchArtworks(),
+            fetchRequirements()
+          ]);
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  };
   const [lightboxAlt, setLightboxAlt] = useState("");
   // Message thread modal state (shows history + send box)
   const [messageModal, setMessageModal] = useState({ open: false, requirement: null, text: '' });
@@ -754,18 +802,20 @@ export default function AdminDashboard() {
           <div className="brand-name">Admin</div>
         </div>
         <nav className="nav">
-          <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => setActiveSection('overview')}>Overview</button>
-          <button className={activeSection === 'suppliers' ? 'active' : ''} onClick={() => { setActiveSection('suppliers'); fetchSuppliers(filter); fetchAll(); }}>Suppliers</button>
-          <button className={activeSection === 'supplier-products' ? 'active' : ''} onClick={() => { setActiveSection('supplier-products'); fetchSupplierProducts(); }}>Supplier Trending Products</button>
-          <button className={activeSection === 'supplier-inventory' ? 'active' : ''} onClick={() => { setActiveSection('supplier-inventory'); fetchSupplierInventory(); }}>Supplier Inventory</button>
-          <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }}>Custom Requests</button>
-          <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }}>Artworks</button>
-          <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }}>Order Requirements</button>
+          <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => { setActiveSection('overview'); refreshAllData(); }} title="Dashboard Overview">Overview</button>
+          <button className={activeSection === 'suppliers' ? 'active' : ''} onClick={() => { setActiveSection('suppliers'); fetchSuppliers(filter); fetchAll(); }} title="Suppliers Management">Suppliers</button>
+          <button className={activeSection === 'supplier-products' ? 'active' : ''} onClick={() => { setActiveSection('supplier-products'); fetchSupplierProducts(); }} title="Supplier Trending Products">Supplier Trending Products</button>
+          <button className={activeSection === 'supplier-inventory' ? 'active' : ''} onClick={() => { setActiveSection('supplier-inventory'); fetchSupplierInventory(); }} title="Supplier Inventory">Supplier Inventory</button>
+          <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }} title="Custom Requests">Custom Requests</button>
+          <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }} title="Artwork Gallery">Artworks</button>
+          <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }} title="Order Requirements">Order Requirements</button>
           {/* Promotional Offers removed as requested */}
           <div className="cart-mini" style={{marginTop:12, padding:'10px 8px', background:'#f8f7ff', borderRadius:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <div style={{fontWeight:600}}>Cart</div>
-              <button className="btn btn-soft tiny" onClick={()=> setShowCartDrawer(true)}>Open Cart</button>
+              <div style={{display:'flex', gap:'8px'}}>
+                <button className="btn btn-soft tiny" onClick={()=> setShowCartDrawer(true)}>Open Cart</button>
+              </div>
             </div>
             <div className="muted" style={{marginTop:4, fontSize:12}}>{adminCart.length} items • Rs {cartSubtotal.toFixed(2)}</div>
           </div>
@@ -853,7 +903,7 @@ export default function AdminDashboard() {
           <div className="topbar-inner container">
             <div className="topbar-title">Admin Dashboard</div>
             <div className="topbar-actions">
-              <button className="btn btn-soft">Refresh</button>
+              {/* Refresh removed as requested */}
             </div>
           </div>
         </div>
@@ -865,8 +915,12 @@ export default function AdminDashboard() {
                 {/* Hero */}
                 <section className="hero">
                   <div className="hero-card">
-                    <h1>Welcome back</h1>
-                    <p className="muted">Manage suppliers, users, and approvals efficiently.</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <div>
+                        <h1>Welcome back</h1>
+                        <p className="muted">Manage suppliers, users, and approvals efficiently.</p>
+                      </div>
+                    </div>
                     <div className="hero-mark">⚙️</div>
                   </div>
                 </section>
@@ -931,7 +985,6 @@ export default function AdminDashboard() {
                     <option value="rejected">Rejected</option>
                     <option value="all">All</option>
                   </select>
-                  <button className="btn btn-emph" onClick={() => fetchSuppliers()}>Refresh</button>
                 </div>
               </div>
               <div className="widget-body">
@@ -984,7 +1037,6 @@ export default function AdminDashboard() {
                   </select>
                   <input className="input" placeholder="Supplier ID" value={spSupplierId} onChange={e=>setSpSupplierId(e.target.value)} style={{ width:120 }} />
                   <input className="input" placeholder="Search (name, SKU, category, supplier)" value={spQuery} onChange={e=>setSpQuery(e.target.value)} />
-                  <button className="btn btn-emph" onClick={()=>fetchSupplierProducts()}>Refresh</button>
                 </div>
               </div>
               <div className="widget-body">
@@ -1264,7 +1316,6 @@ export default function AdminDashboard() {
                   <input className="input" placeholder="Supplier ID" value={siSupplierId} onChange={e=>setSiSupplierId(e.target.value)} style={{ width:120 }} />
                   <input className="input" placeholder="Category" value={siCategory} onChange={e=>setSiCategory(e.target.value)} style={{ width:160 }} />
                   <input className="input" placeholder="Search (name, SKU, tags, brand)" value={siQuery} onChange={e=>setSiQuery(e.target.value)} />
-                  <button className="btn btn-emph" onClick={()=>fetchSupplierInventory()}>Refresh</button>
                   <button className="btn" onClick={exportSupplierInventoryCSV}>Export CSV</button>
                 </div>
               </div>
@@ -1345,7 +1396,6 @@ export default function AdminDashboard() {
                     <option value="cancelled">Cancelled</option>
                     <option value="all">All</option>
                   </select>
-                  <button className="btn btn-emph" onClick={() => fetchRequests(reqFilter)}>Refresh</button>
                 </div>
               </div>
               <div className="widget-body">
@@ -1425,7 +1475,6 @@ export default function AdminDashboard() {
               <div className="widget-head">
                 <h4>Artwork Gallery</h4>
                 <div className="controls">
-                  <button className="btn btn-emph" onClick={fetchArtworks}>Refresh</button>
                 </div>
               </div>
 
@@ -1644,7 +1693,6 @@ export default function AdminDashboard() {
               <div className="widget-head">
                 <h4>Order Requirements</h4>
                 <div className="controls">
-                  <button className="btn btn-emph" onClick={fetchRequirements}>Refresh</button>
                 </div>
               </div>
               <div className="widget-body">

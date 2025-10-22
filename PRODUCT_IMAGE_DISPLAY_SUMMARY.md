@@ -178,3 +178,10 @@ The component will automatically:
 
 Your product images will now display perfectly with professional styling and error handling! 🖼️✨
 
+
+
+
+
+
+
+

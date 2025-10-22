@@ -146,7 +146,6 @@ try {
   $orderStmt->execute([$local_order_id]);
   $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
   
-  // Get order items with artwork details
   $itemsStmt = $db->prepare("SELECT 
     oi.quantity, 
     oi.price, 
@@ -157,24 +156,162 @@ try {
     WHERE oi.order_id = ?");
   $itemsStmt->execute([$local_order_id]);
   $order_items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
-  
-  // Add items to order details
-  if ($order) {
-    $order['items'] = $order_items;
+
+  $hasAddonsTable = false;
+  try {
+    $addonsCheck = $db->query("SHOW TABLES LIKE 'order_addons'");
+    $hasAddonsTable = $addonsCheck && $addonsCheck->rowCount() > 0;
+  } catch (Throwable $e) {
+    $hasAddonsTable = false;
+  }
+
+  $order_addons = [];
+  $addon_total = 0.0;
+  if ($hasAddonsTable) {
+    $addonsStmt = $db->prepare("SELECT addon_name, addon_price FROM order_addons WHERE order_id = ?");
+    $addonsStmt->execute([$local_order_id]);
+    $order_addons = $addonsStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($order_addons as $addonRow) {
+      $addon_total += (float)($addonRow['addon_price'] ?? 0);
+    }
+  }
+
+  $hasInvoicesTable = false;
+  try {
+    $invoiceCheck = $db->query("SHOW TABLES LIKE 'invoices'");
+    $hasInvoicesTable = $invoiceCheck && $invoiceCheck->rowCount() > 0;
+  } catch (Throwable $e) {
+    $hasInvoicesTable = false;
+  }
+
+  if (!$hasInvoicesTable) {
+    $createInvoiceSql = "CREATE TABLE IF NOT EXISTS invoices (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      order_id INT NOT NULL,
+      invoice_number VARCHAR(100) NOT NULL,
+      invoice_date DATETIME NOT NULL,
+      billing_name VARCHAR(191) DEFAULT NULL,
+      billing_email VARCHAR(191) DEFAULT NULL,
+      billing_address TEXT,
+      subtotal DECIMAL(10,2) DEFAULT 0.00,
+      tax_amount DECIMAL(10,2) DEFAULT 0.00,
+      shipping_cost DECIMAL(10,2) DEFAULT 0.00,
+      addon_total DECIMAL(10,2) DEFAULT 0.00,
+      total_amount DECIMAL(10,2) NOT NULL,
+      items_json LONGTEXT,
+      addons_json LONGTEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_invoice_number (invoice_number),
+      UNIQUE KEY uniq_invoice_order (order_id),
+      CONSTRAINT invoices_order_fk FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+    try {
+      $db->exec($createInvoiceSql);
+      $hasInvoicesTable = true;
+    } catch (Throwable $e) {
+      $hasInvoicesTable = false;
+    }
+  }
+
+  if ($hasInvoicesTable && $order) {
+    $invoiceItems = [];
+    foreach ($order_items as $itemRow) {
+      $qty = (int)($itemRow['quantity'] ?? 0);
+      $price = (float)($itemRow['price'] ?? 0);
+      $invoiceItems[] = [
+        'name' => $itemRow['artwork_name'] ?? '',
+        'quantity' => $qty,
+        'price' => $price,
+        'line_total' => $qty * $price
+      ];
+    }
+    $invoiceAddons = [];
+    foreach ($order_addons as $addonRow) {
+      $invoiceAddons[] = [
+        'name' => $addonRow['addon_name'] ?? '',
+        'price' => (float)($addonRow['addon_price'] ?? 0)
+      ];
+    }
+    $invoiceNumberBase = (string)($order['order_number'] ?? '');
+    $invoiceNumber = 'INV-' . preg_replace('/^ORD-/', '', $invoiceNumberBase);
+    if ($invoiceNumber === 'INV-' || strlen($invoiceNumber) < 5) {
+      try {
+        $invoiceNumber .= strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+      } catch (Throwable $e) {
+        $invoiceNumber .= strtoupper(substr(md5((string)$local_order_id), 0, 6));
+      }
+    }
+    $billingName = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
+    $billingEmail = $user['email'] ?? null;
+    $invoiceDate = date('Y-m-d H:i:s');
+    $invoiceFetch = $db->prepare("SELECT id, invoice_number FROM invoices WHERE order_id = ? LIMIT 1");
+    $invoiceFetch->execute([$local_order_id]);
+    $invoiceRecord = $invoiceFetch->fetch(PDO::FETCH_ASSOC);
+    if ($invoiceRecord) {
+      $invoiceNumber = $invoiceRecord['invoice_number'] ?? $invoiceNumber;
+      $updateInvoice = $db->prepare("UPDATE invoices SET invoice_number = ?, invoice_date = ?, billing_name = ?, billing_email = ?, billing_address = ?, subtotal = ?, tax_amount = ?, shipping_cost = ?, addon_total = ?, total_amount = ?, items_json = ?, addons_json = ? WHERE order_id = ?");
+      $updateInvoice->execute([
+        $invoiceNumber,
+        $invoiceDate,
+        $billingName !== '' ? $billingName : null,
+        $billingEmail,
+        $order['shipping_address'] ?? null,
+        (float)($order['subtotal'] ?? 0),
+        (float)($order['tax_amount'] ?? 0),
+        (float)($order['shipping_cost'] ?? 0),
+        $addon_total,
+        (float)($order['total_amount'] ?? 0),
+        json_encode($invoiceItems),
+        json_encode($invoiceAddons),
+        $local_order_id
+      ]);
+    } else {
+      $insertInvoice = $db->prepare("INSERT INTO invoices (order_id, invoice_number, invoice_date, billing_name, billing_email, billing_address, subtotal, tax_amount, shipping_cost, addon_total, total_amount, items_json, addons_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $insertInvoice->execute([
+        $local_order_id,
+        $invoiceNumber,
+        $invoiceDate,
+        $billingName !== '' ? $billingName : null,
+        $billingEmail,
+        $order['shipping_address'] ?? null,
+        (float)($order['subtotal'] ?? 0),
+        (float)($order['tax_amount'] ?? 0),
+        (float)($order['shipping_cost'] ?? 0),
+        $addon_total,
+        (float)($order['total_amount'] ?? 0),
+        json_encode($invoiceItems),
+        json_encode($invoiceAddons)
+      ]);
+    }
+    $invoiceFinalize = $db->prepare("SELECT invoice_number FROM invoices WHERE order_id = ? LIMIT 1");
+    $invoiceFinalize->execute([$local_order_id]);
+    $invoiceData = $invoiceFinalize->fetch(PDO::FETCH_ASSOC);
+    if ($invoiceData && isset($invoiceData['invoice_number'])) {
+      $order['invoice_number'] = $invoiceData['invoice_number'];
+    } else {
+      $order['invoice_number'] = $invoiceNumber;
+    }
+    $order['invoices_enabled'] = true;
   }
   
-  // Send payment success email
+  if ($order) {
+    $order['items'] = $order_items;
+    if (!empty($order_addons)) {
+      $order['addons'] = $order_addons;
+    }
+    $order['addon_total'] = $addon_total;
+  }
+  
   if ($user && $order) {
     $emailSender = new SimpleEmailSender();
     $fullName = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
-    // Send to customer
     $emailSender->sendPaymentSuccessEmail(
       $user['email'], 
       $fullName !== '' ? $fullName : 'Customer', 
       $order
     );
 
-    // Also notify admin
     $email_config = require __DIR__ . '/../../config/email.php';
     $adminEmail = $email_config['admin_email'] ?? ($email_config['from_email'] ?? null);
     if ($adminEmail) {

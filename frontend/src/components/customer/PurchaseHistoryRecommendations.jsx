@@ -1,237 +1,211 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { LuHeart, LuShoppingCart, LuGift, LuTrendingUp, LuHistory, LuSparkles } from 'react-icons/lu';
-import { useAuth } from '../../contexts/AuthContext';
-import '../../styles/recommendations.css';
+﻿import React, { useState, useEffect } from "react";
+import { LuHeart, LuShoppingCart, LuWand, LuEye } from "react-icons/lu";
 
-const API_BASE = "http://localhost/my_little_thingz/backend/api";
-
-const PurchaseHistoryRecommendations = ({
-  userId = null,
-  title = "Based on Your Purchases",
-  limit = 8,
-  onCustomizationRequest = null,
-  showAddToCart = true,
-  showWishlist = true,
-  showAnalysis = false
+const PurchaseHistoryRecommendations = ({ 
+  userId, 
+  title = "💝 Just for You", 
+  limit = 8, 
+  showAddToCart = true, 
+  showWishlist = true, 
+  showAnalysis = false, 
+  onCustomizationRequest 
 }) => {
-  const { auth } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
-  const trackRef = useRef(null);
+  const [wishlist, setWishlist] = useState([]);
 
-  const scrollByAmount = 320;
-  const scrollLeft = useCallback(() => {
-    if (trackRef.current) {
-      trackRef.current.scrollBy({ left: -scrollByAmount, behavior: 'smooth' });
-    }
-  }, []);
-  const scrollRight = useCallback(() => {
-    if (trackRef.current) {
-      trackRef.current.scrollBy({ left: scrollByAmount, behavior: 'smooth' });
-    }
-  }, []);
-
+  // Load wishlist
   useEffect(() => {
-    fetchRecommendations();
-  }, [userId, auth?.user_id]);
-
-  const fetchRecommendations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const targetUserId = userId || auth?.user_id;
-      if (!targetUserId) {
-        setError('User ID required for purchase history recommendations');
-        setLoading(false);
-        return;
-      }
-
-      const params = new URLSearchParams({
-        user_id: targetUserId,
-        limit: limit,
-        analysis: showAnalysis
-      });
-
-      const response = await fetch(`${API_BASE}/customer/purchase_history_recommendations.php?${params}`);
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        setRecommendations(data.recommendations || []);
-        if (data.analysis) {
-          setAnalysis(data.analysis);
+    if (!userId) return;
+    
+    const loadWishlist = async () => {
+      try {
+        const response = await fetch(`http://localhost/my_little_thingz/backend/api/customer/wishlist.php?user_id=${encodeURIComponent(userId)}`);
+        const data = await response.json();
+        if (data.status === 'success') {
+          setWishlist(data.wishlist?.map(item => String(item.artwork_id || item.id)) || []);
         }
-      } else {
-        setError(data.message || 'Failed to load purchase history recommendations');
+      } catch (error) {
+        console.error('Error loading wishlist:', error);
       }
-    } catch (err) {
-      setError('Network error loading recommendations');
-      console.error('Purchase History Recommendations error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    loadWishlist();
+  }, [userId]);
 
-  const handleAddToCart = async (artwork) => {
-    if (!auth?.user_id) {
-      alert('Please login to add items to cart');
+  // Load recommendations
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
       return;
     }
 
+    const loadRecommendations = async () => {
+      try {
+        setLoading(true);
+        
+        // First, get user's purchase history
+        const ordersResponse = await fetch(`http://localhost/my_little_thingz/backend/api/customer/orders.php?user_id=${encodeURIComponent(userId)}`);
+        const ordersData = await ordersResponse.json();
+        
+        let purchasedCategories = [];
+        let purchasedArtists = [];
+        
+        if (ordersData.status === 'success' && ordersData.orders) {
+          // Extract categories and artists from purchase history
+          ordersData.orders.forEach(order => {
+            if (order.items) {
+              order.items.forEach(item => {
+                if (item.category_name) purchasedCategories.push(item.category_name);
+                if (item.artist_name) purchasedArtists.push(item.artist_name);
+              });
+            }
+          });
+        }
+        
+        // Get all artworks
+        const artworksResponse = await fetch('http://localhost/my_little_thingz/backend/api/customer/artworks.php');
+        const artworksData = await artworksResponse.json();
+        
+        if (artworksData.status === 'success' && artworksData.artworks) {
+          let recommended = artworksData.artworks.filter(artwork => {
+            // Exclude already purchased items
+            const isPurchased = ordersData.orders?.some(order => 
+              order.items?.some(item => item.artwork_id === artwork.id)
+            );
+            return !isPurchased;
+          });
+          
+          // Score recommendations based on purchase history
+          recommended = recommended.map(artwork => {
+            let score = 0;
+            
+            // Higher score for same categories
+            if (purchasedCategories.includes(artwork.category_name)) {
+              score += 3;
+            }
+            
+            // Higher score for same artists
+            if (purchasedArtists.includes(artwork.artist_name)) {
+              score += 5;
+            }
+            
+            // Premium classification bonus
+            if (artwork.category_tier === 'Premium') {
+              score += 4; // Premium items get higher priority
+            }
+            
+            // Bonus for popular items (lower price = more accessible)
+            if (artwork.price && parseFloat(artwork.price) < 100) {
+              score += 1;
+            }
+            
+            // Bonus for items on offer
+            if (artwork.is_on_offer) {
+              score += 2;
+            }
+            
+            return { ...artwork, recommendationScore: score };
+          });
+          
+          // Sort by recommendation score and limit results
+          recommended = recommended
+            .sort((a, b) => b.recommendationScore - a.recommendationScore)
+            .slice(0, limit);
+          
+          setRecommendations(recommended);
+        }
+      } catch (error) {
+        console.error('Error loading recommendations:', error);
+        setRecommendations([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadRecommendations();
+  }, [userId, limit]);
+
+  const toggleWishlist = async (artworkId) => {
+    if (!userId) return;
+    
     try {
-      const response = await fetch(`${API_BASE}/customer/cart.php`, {
+      const isInWishlist = wishlist.includes(String(artworkId));
+      const action = isInWishlist ? 'remove' : 'add';
+      
+      const response = await fetch('http://localhost/my_little_thingz/backend/api/customer/wishlist.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-ID': auth.user_id
+          'X-User-ID': userId
         },
         body: JSON.stringify({
-          artwork_id: artwork.artwork_id,
+          artwork_id: artworkId,
+          action: action
+        })
+      });
+      
+      if (response.ok) {
+        if (isInWishlist) {
+          setWishlist(prev => prev.filter(id => id !== String(artworkId)));
+        } else {
+          setWishlist(prev => [...prev, String(artworkId)]);
+        }
+        
+        // Show toast notification
+        window.dispatchEvent(new CustomEvent('toast', { 
+          detail: { 
+            type: 'success', 
+            message: isInWishlist ? 'Removed from wishlist' : 'Added to wishlist' 
+          } 
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating wishlist:', error);
+    }
+  };
+
+  const addToCart = async (artworkId) => {
+    if (!userId) return;
+    
+    try {
+      const response = await fetch('http://localhost/my_little_thingz/backend/api/customer/cart.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        },
+        body: JSON.stringify({
+          artwork_id: artworkId,
           quantity: 1
         })
       });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        alert('Added to cart!');
-        // Track the behavior
-        trackBehavior('add_to_cart', artwork.artwork_id);
-        // Dispatch custom event for cart updates
-        window.dispatchEvent(new CustomEvent('cart-updated'));
-      } else {
-        alert(data.message || 'Failed to add to cart');
+      
+      if (response.ok) {
+        window.dispatchEvent(new CustomEvent('toast', { 
+          detail: { 
+            type: 'success', 
+            message: 'Added to cart successfully!' 
+          } 
+        }));
       }
-    } catch (err) {
-      alert('Network error adding to cart');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
     }
   };
 
-  const handleAddToWishlist = async (artwork) => {
-    if (!auth?.user_id) {
-      alert('Please login to add items to wishlist');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE}/customer/wishlist.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': auth.user_id
-        },
-        body: JSON.stringify({
-          artwork_id: artwork.artwork_id
-        })
-      });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        alert('Added to wishlist!');
-        // Track the behavior
-        trackBehavior('add_to_wishlist', artwork.artwork_id);
-      } else {
-        alert(data.message || 'Failed to add to wishlist');
-      }
-    } catch (err) {
-      alert('Network error adding to wishlist');
-    }
-  };
-
-  const handleCustomizationRequest = (artwork) => {
-    if (onCustomizationRequest) {
-      onCustomizationRequest(artwork);
-    }
-  };
-
-  const trackBehavior = async (behaviorType, artworkId) => {
-    if (!auth?.user_id) return;
-
-    try {
-      await fetch(`${API_BASE}/customer/track_behavior.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: auth.user_id,
-          artwork_id: artworkId,
-          behavior_type: behaviorType,
-          additional_data: {
-            session_id: sessionStorage.getItem('session_id') || null,
-            timestamp: new Date().toISOString()
-          }
-        })
-      });
-    } catch (err) {
-      console.error('Failed to track behavior:', err);
-    }
-  };
-
-  const handleItemClick = (artwork) => {
-    // Track view behavior
-    trackBehavior('view', artwork.artwork_id);
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 0.8) return '#10b981'; // Green
-    if (score >= 0.6) return '#f59e0b'; // Yellow
-    if (score >= 0.4) return '#f97316'; // Orange
-    return '#ef4444'; // Red
-  };
-
-  const getScoreLabel = (score) => {
-    if (score >= 0.8) return 'Perfect Match';
-    if (score >= 0.6) return 'Great Match';
-    if (score >= 0.4) return 'Good Match';
-    return 'Fair Match';
-  };
-
-  const formatPrice = (price, offerPrice = null) => {
-    const effectivePrice = offerPrice || price;
-    if (offerPrice && offerPrice < price) {
-      return (
-        <div className="price-container">
-          <span className="original-price">₹{price}</span>
-          <span className="offer-price">₹{effectivePrice}</span>
-        </div>
-      );
-    }
-    return <span className="price">₹{effectivePrice}</span>;
+  const ensureCurrencyText = (raw) => {
+    const text = String(raw ?? '').trim();
+    if (!text) return '₹0.00';
+    return text.includes('₹') ? text : `₹${text}`;
   };
 
   if (loading) {
     return (
-      <div className="recommendations-container">
-        <div className="recommendations-header">
-          <h2 className="recommendations-title">
-            <LuHistory className="title-icon" />
-            {title}
-          </h2>
-        </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Analyzing your purchase history...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="recommendations-container">
-        <div className="recommendations-header">
-          <h2 className="recommendations-title">
-            <LuHistory className="title-icon" />
-            {title}
-          </h2>
-        </div>
-        <div className="error-container">
-          <p>{error}</p>
-          <button onClick={fetchRecommendations} className="retry-button">
-            Try Again
-          </button>
+      <div className="recommendations-widget">
+        <h3>{title}</h3>
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ fontSize: '14px', color: '#666' }}>Loading personalized recommendations...</div>
         </div>
       </div>
     );
@@ -239,169 +213,238 @@ const PurchaseHistoryRecommendations = ({
 
   if (recommendations.length === 0) {
     return (
-      <div className="recommendations-container">
-        <div className="recommendations-header">
-          <h2 className="recommendations-title">
-            <LuHistory className="title-icon" />
-            {title}
-          </h2>
-        </div>
-        <div className="empty-container">
-          <LuGift className="empty-icon" />
-          <p>No purchase history found. Start shopping to get personalized recommendations!</p>
+      <div className="recommendations-widget">
+        <h3>{title}</h3>
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ fontSize: '14px', color: '#666' }}>
+            {userId ? 'No recommendations available yet. Start shopping to get personalized suggestions!' : 'Please log in to see personalized recommendations.'}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="recommendations-container">
-      <div className="recommendations-header">
-        <h2 className="recommendations-title">
-          <LuHistory className="title-icon" />
-          {title}
-        </h2>
-        {analysis && (
-          <div className="analysis-info">
-            <LuTrendingUp className="info-icon" />
-            <span>{analysis.total_purchases} purchases • {analysis.categories_purchased.length} categories</span>
-          </div>
-        )}
-      </div>
-
-      {analysis && showAnalysis && (
-        <div className="purchase-analysis">
-          <div className="analysis-item">
-            <span className="analysis-label">Categories Purchased:</span>
-            <span className="analysis-value">{analysis.categories_purchased.join(', ')}</span>
-          </div>
-          {analysis.occasions_detected.length > 0 && (
-            <div className="analysis-item">
-              <span className="analysis-label">Occasions Detected:</span>
-              <span className="analysis-value">{analysis.occasions_detected.join(', ')}</span>
-            </div>
-          )}
-          <div className="analysis-item">
-            <span className="analysis-label">Price Range:</span>
-            <span className="analysis-value">{analysis.price_range}</span>
-          </div>
-          <div className="analysis-item">
-            <span className="analysis-label">Most Active Season:</span>
-            <span className="analysis-value">{analysis.most_active_season}</span>
-          </div>
-        </div>
-      )}
-
-      <div className="recommendations-track" ref={trackRef}>
-        <button className="scroll-button scroll-left" onClick={scrollLeft}>
-          ‹
-        </button>
-        
-        <div className="recommendations-list">
-          {recommendations.map((artwork) => (
-            <div key={artwork.artwork_id} className="recommendation-item" onClick={() => handleItemClick(artwork)}>
-              <div className="artwork-image-container">
-                <img 
-                  src={artwork.image_url} 
-                  alt={artwork.title}
-                  className="artwork-image"
-                  loading="lazy"
-                />
-                {artwork.has_offer && (
-                  <div className="offer-badge">
-                    {artwork.offer_percent ? `${artwork.offer_percent}% OFF` : 'OFFER'}
-                  </div>
-                )}
-                <div 
-                  className="match-badge"
-                  style={{ backgroundColor: getScoreColor(artwork.score) }}
-                >
-                  <LuSparkles className="match-icon" />
-                  {getScoreLabel(artwork.score)}
-                </div>
-              </div>
+    <div className="recommendations-widget">
+      <h3>{title}</h3>
+      <div className="recommendations-grid" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+        gap: '16px',
+        marginTop: '16px'
+      }}>
+        {recommendations.map(artwork => (
+          <div key={artwork.id} className="recommendation-card" style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            background: '#fff',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}>
+            <div style={{ position: 'relative' }}>
+              <img 
+                src={artwork.image_url || '/api/placeholder/200/200'} 
+                alt={artwork.title}
+                style={{
+                  width: '100%',
+                  height: '150px',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
               
-              <div className="artwork-info">
-                <h3 className="artwork-title">{artwork.title}</h3>
-                <p className="artwork-category">{artwork.category_name}</p>
-                <div className="price-section">
-                  {formatPrice(artwork.price, artwork.effective_price)}
+              {/* Recommendation Badge */}
+              {artwork.recommendationScore > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: 'linear-gradient(135deg, #93c5fd, #60a5fa)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                }}>
+                  RECOMMENDED
                 </div>
-                
-                {artwork.reason && (
-                  <div className="recommendation-reason">
-                    <LuGift className="reason-icon" />
-                    <span className="reason-text">{artwork.reason}</span>
-                  </div>
-                )}
-                
-                <div className="match-indicator">
-                  <div className="match-bar">
-                    <div 
-                      className="match-fill"
-                      style={{ 
-                        width: `${artwork.score * 100}%`,
-                        backgroundColor: getScoreColor(artwork.score)
-                      }}
-                    ></div>
-                  </div>
-                  <span className="match-text">
-                    {Math.round(artwork.score * 100)}% match
-                  </span>
-                </div>
-              </div>
+              )}
 
-              <div className="artwork-actions">
+              {/* Premium Tier Badge */}
+              {artwork.category_tier === 'Premium' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  left: '8px',
+                  background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 2px 4px rgba(251, 191, 36, 0.4)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  💎 Premium
+                </div>
+              )}
+              
+              {/* Action Buttons */}
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                left: '8px',
+                display: 'flex',
+                gap: '4px',
+                opacity: 0,
+                transition: 'opacity 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}>
+                <button 
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    color: '#3b82f6',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleWishlist(artwork.id);
+                  }}
+                  title="Add to Wishlist"
+                >
+                  <LuHeart style={{ 
+                    color: wishlist.includes(String(artwork.id)) ? '#ef4444' : '#3b82f6' 
+                  }} />
+                </button>
+                
                 {showAddToCart && (
                   <button 
-                    className="action-button add-to-cart"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '28px',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      color: '#3b82f6',
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleAddToCart(artwork);
+                      addToCart(artwork.id);
                     }}
+                    title="Add to Cart"
                   >
-                    <LuShoppingCart className="action-icon" />
-                    Add to Cart
+                    <LuShoppingCart />
                   </button>
                 )}
                 
-                {showWishlist && (
-                  <button 
-                    className="action-button add-to-wishlist"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToWishlist(artwork);
-                    }}
-                  >
-                    <LuHeart className="action-icon" />
-                    Wishlist
-                  </button>
-                )}
-
-                {onCustomizationRequest && (
-                  <button 
-                    className="action-button customize"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCustomizationRequest(artwork);
-                    }}
-                  >
-                    <LuGift className="action-icon" />
-                    Customize
-                  </button>
+                <button 
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    color: '#3b82f6',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onCustomizationRequest) {
+                      onCustomizationRequest(artwork);
+                    }
+                  }}
+                  title="Request Customization"
+                >
+                  <LuWand />
+                </button>
+              </div>
+            </div>
+            
+            <div style={{ padding: '12px' }}>
+              <h4 style={{
+                margin: '0 0 4px 0',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#1f2937',
+                lineHeight: '1.3'
+              }}>
+                {artwork.title}
+              </h4>
+              
+              {artwork.artist_name && (
+                <p style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '12px',
+                  color: '#6b7280'
+                }}>
+                  by {artwork.artist_name}
+                </p>
+              )}
+              
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  color: '#1e40af'
+                }}>
+                  {ensureCurrencyText(artwork.price)}
+                </span>
+                
+                {artwork.is_on_offer && (
+                  <span style={{
+                    fontSize: '10px',
+                    background: '#fef3c7',
+                    color: '#d97706',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontWeight: '600'
+                  }}>
+                    OFFER
+                  </span>
                 )}
               </div>
             </div>
-          ))}
-        </div>
-        
-        <button className="scroll-button scroll-right" onClick={scrollRight}>
-          ›
-        </button>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
 export default PurchaseHistoryRecommendations;
-

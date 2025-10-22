@@ -185,8 +185,8 @@ try {
     // Create local pending order first
     $db->beginTransaction();
     $order_number = 'ORD-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)),0,6);
-    $ins = $db->prepare("INSERT INTO orders (user_id, order_number, status, payment_method, payment_status, total_amount, subtotal, tax_amount, shipping_cost, weight, shipping_address, created_at) VALUES (?, ?, 'pending', 'razorpay', 'pending', ?, ?, ?, ?, ?, ?, NOW())");
-    $ins->execute([$user_id, $order_number, $total, $subtotal, $tax, $shipping, $totalWeight, $shipping_address]);
+    $ins = $db->prepare("INSERT INTO orders (user_id, order_number, status, payment_method, payment_status, total_amount, subtotal, tax_amount, shipping_cost, shipping_charges, weight, shipping_address, created_at) VALUES (?, ?, 'pending', 'razorpay', 'pending', ?, ?, ?, ?, ?, ?, ?, NOW())");
+    $ins->execute([$user_id, $order_number, $total, $subtotal, $tax, $shipping, $shipping, $totalWeight, $shipping_address]);
     $order_id = (int)$db->lastInsertId();
 
     // Insert order items (persist selected_options if column exists)

@@ -23,13 +23,20 @@ try {
         $minPrice    = isset($_GET['min_price']) && $_GET['min_price'] !== '' ? (float)$_GET['min_price'] : null;
         $maxPrice    = isset($_GET['max_price']) && $_GET['max_price'] !== '' ? (float)$_GET['max_price'] : null;
         $sort        = isset($_GET['sort']) ? strtolower(trim($_GET['sort'])) : '';
+        $tier        = isset($_GET['tier']) ? trim($_GET['tier']) : ''; // New: Budget/Premium filter
 
         // Base query (include offer columns if present)
         $hasOfferCols = false;
+        $hasTierCol = false;
         try {
             $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'offer_price'");
             if ($col && $col->rowCount() > 0) { $hasOfferCols = true; }
         } catch (Throwable $e) { $hasOfferCols = false; }
+        
+        try {
+            $col = $db->query("SHOW COLUMNS FROM artworks LIKE 'category_tier'");
+            if ($col && $col->rowCount() > 0) { $hasTierCol = true; }
+        } catch (Throwable $e) { $hasTierCol = false; }
 
         $selectCols = "a.id, a.title, a.description, a.price, a.image_url, a.category_id, a.availability, a.created_at, CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,'')) AS artist_name, c.name as category_name";
         if ($hasOfferCols) {
@@ -40,6 +47,9 @@ try {
                     $selectCols .= ", a.force_offer_badge";
                 }
             } catch (Throwable $e) {}
+        }
+        if ($hasTierCol) {
+            $selectCols .= ", a.category_tier";
         }
 
         $sql = "SELECT $selectCols
@@ -67,6 +77,10 @@ try {
         if ($maxPrice !== null) {
             $sql .= " AND a.price <= :max_price";
             $params[':max_price'] = $maxPrice;
+        }
+        if ($tier !== '' && $hasTierCol) {
+            $sql .= " AND a.category_tier = :tier";
+            $params[':tier'] = $tier;
         }
 
         // Sorting

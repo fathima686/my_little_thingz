@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  LuGift, LuHeart, LuPackage, LuUser, LuLogOut, LuSearch, LuShoppingBag, LuWand
+  LuGift, LuHeart, LuPackage, LuUser, LuLogOut, LuSearch, LuShoppingBag, LuWand, LuTruck
 } from "react-icons/lu";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -570,7 +570,7 @@ export default function CustomerDashboard() {
             <div className="modal-header" style={{display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center'}}>
               {/* Highlighted OFFERS title (no small picture) */}
               <h2 className="offers-title">OFFERS</h2>
-              <button className="modal-close" onClick={closeModal}>×</button>
+              <button className="modal-close" onClick={closeModal} title="Close Offers">×</button>
             </div>
             <div className="modal-body" style={{display:'grid', gap:14}}>
               {/* Horizontal strip; clicking opens full view */}
@@ -679,7 +679,7 @@ export default function CustomerDashboard() {
         <ArtworkGallery 
           onClose={closeModal} 
           onOpenWishlist={() => setActiveModal('wishlist')} 
-          onOpenCart={() => setCartOpen(true)}
+          onOpenCart={() => navigate('/cart')}
         />
       )}
       {activeModal === 'custom-request' && <CustomGiftRequest onClose={closeModal} />}
@@ -711,10 +711,22 @@ export default function CustomerDashboard() {
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
+          gap: 6px;
+          padding: 6px 10px;
           border-radius: 6px;
-          transition: background-color 0.2s;
+          transition: all 0.2s ease;
+          font-size: 14px;
+        }
+
+        .nav-item svg {
+          font-size: 16px;
+          opacity: 0.8;
+          transition: all 0.2s ease;
+        }
+
+        .nav-item:hover svg {
+          opacity: 1;
+          transform: scale(1.1);
         }
 
         .nav-item:hover {
@@ -743,7 +755,16 @@ export default function CustomerDashboard() {
         }
 
         .action-card .action-icon {
-          margin-bottom: 16px;
+          margin-bottom: 12px;
+          font-size: 20px;
+          color: #3b82f6;
+          opacity: 0.8;
+          transition: all 0.2s ease;
+        }
+
+        .action-card:hover .action-icon {
+          opacity: 1;
+          transform: scale(1.05);
         }
 
         .action-card h3 {
@@ -788,23 +809,71 @@ export default function CustomerDashboard() {
         }
 
         .product-overlay .btn-icon {
-          background: white;
-          border: none;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid #e5efff;
           border-radius: 50%;
-          width: 40px;
-          height: 40px;
+          width: 28px;
+          height: 28px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: transform 0.2s;
-          color: #6b46c1;
+          transition: all 0.2s ease;
+          color: #3b82f6;
+          font-size: 12px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .product-overlay .btn-icon:hover {
           transform: scale(1.1);
-          background: #6b46c1;
+          background: #3b82f6;
           color: white;
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Widget header icons - make smaller and more elegant */
+        .widget-head h4 svg {
+          font-size: 14px;
+          margin-right: 6px;
+          opacity: 0.7;
+          color: #3b82f6;
+        }
+
+        /* Hero mark icon */
+        .hero-mark {
+          font-size: 24px;
+          color: #3b82f6;
+          opacity: 0.6;
+        }
+
+        /* Modal close button styling */
+        .modal-close {
+          background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+          border: 1px solid #cbd5e1;
+          font-size: 16px;
+          cursor: pointer;
+          padding: 6px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          color: #475569;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-close:hover {
+          background: linear-gradient(135deg, #93c5fd, #60a5fa);
+          border-color: #3b82f6;
+          color: white;
+          transform: scale(1.05);
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .modal-close:active {
+          transform: scale(0.95);
         }
       `}</style>
     </div>

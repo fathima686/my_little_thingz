@@ -104,6 +104,7 @@ try {
             $order['subtotal'] = $order['subtotal'] ? number_format($order['subtotal'], 2) : null;
             $order['tax_amount'] = $order['tax_amount'] ? number_format($order['tax_amount'], 2) : null;
             $order['shipping_cost'] = $order['shipping_cost'] ? number_format($order['shipping_cost'], 2) : null;
+            $order['shipping_charges'] = $order['shipping_charges'] ? number_format($order['shipping_charges'], 2) : null;
 
             // Format dates
             $order['created_at'] = date('Y-m-d H:i:s', strtotime($order['created_at']));

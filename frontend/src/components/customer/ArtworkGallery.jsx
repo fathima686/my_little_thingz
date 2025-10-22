@@ -165,7 +165,8 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
     minPrice: '',
     maxPrice: '',
     sort: 'price-asc',
-    priceChip: '' // e.g., 'lte-100', 'lte-200', 'lte-300', 'lte-400', 'gte-500'
+    priceChip: '', // e.g., 'lte-100', 'lte-200', 'lte-300', 'lte-400', 'gte-500'
+    tier: '' // New: Budget/Premium filter
   });
   const [categories, setCategories] = useState([]);
   const [wishlist, setWishlist] = useState([]);
@@ -258,6 +259,14 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
       return Number.isFinite(val) ? val : NaN;
     };
 
+    // Derive tier when backend hasn't sent category_tier
+    const getTier = (item) => {
+      if (item && item.category_tier) return item.category_tier;
+      const price = getPriceNumber(item);
+      if (!Number.isFinite(price)) return '';
+      return price >= 1000 ? 'Premium' : 'Budget';
+    };
+
     let filtered = [...artworks];
 
     if (filters.search) {
@@ -280,6 +289,11 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
 
     if (filters.category) {
       filtered = filtered.filter(artwork => String(artwork.category_id) === String(filters.category));
+    }
+
+    // Tier filter (Budget/Premium) with fallback derivation
+    if (filters.tier) {
+      filtered = filtered.filter(artwork => getTier(artwork) === filters.tier);
     }
 
     // Quick chips
@@ -326,7 +340,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
         const ap = getPriceNumber(a);
         const bp = getPriceNumber(b);
         if (Number.isNaN(ap) && Number.isNaN(bp)) return 0;
-        if (Number.isNaN(ap)) return 1;  // push unknown prices to end
+        if (Number.isNaN(ap)) return 1;
         if (Number.isNaN(bp)) return -1;
         return ap - bp;
       });
@@ -455,11 +469,11 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
   }
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay artwork-gallery-modal">
       <div className="modal-content extra-large">
         <div className="modal-header">
           <h2>Artwork Gallery</h2>
-          <button className="btn-close" onClick={onClose}>
+          <button className="btn-close" onClick={onClose} title="Close Gallery">
             <LuX />
           </button>
         </div>
@@ -489,6 +503,18 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                   {category.name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Tier Filter */}
+          <div className="filter-group">
+            <select
+              value={filters.tier}
+              onChange={(e) => setFilters(prev => ({ ...prev, tier: e.target.value }))}
+            >
+              <option value="">All Tiers</option>
+              <option value="Budget">🏷️ Budget</option>
+              <option value="Premium">💎 Premium</option>
             </select>
           </div>
 
@@ -537,82 +563,160 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
 
         {/* Gallery Grid */}
         <div className="artwork-grid">
-          {filteredArtworks.map(artwork => (
-            <div key={artwork.id} className="artwork-card">
-              <div className="artwork-image">
-                <img 
-                  src={artwork.image_url || '/api/placeholder/300/300'} 
-                  alt={artwork.title}
-                  onClick={() => setSelectedArtwork(artwork)}
-                />
-                {artwork.is_on_offer && (
-                  <>
-                    <div className="offer-ribbon">OFFER</div>
-                  </>
-                )}
-                <div className="artwork-overlay">
-                  <button 
-                    className="btn-icon"
-                    onClick={() => setSelectedArtwork(artwork)}
-                    title="View Details"
-                  >
-                    <LuEye />
-                  </button>
-                  <button 
-                    className={`btn-icon ${wishlist.includes(String(artwork.id)) ? 'active' : ''}`}
-                    onClick={() => toggleWishlist(artwork.id)}
-                    title="Add to Wishlist"
-                  >
-                    <LuHeart />
-                  </button>
-                  <button 
-                    className="btn-icon"
-                    onClick={() => handleCustomizationRequest(artwork)}
-                    title="Request Customization"
-                  >
-                    <LuWand />
-                  </button>
-                  <button 
-                    className="btn-icon"
-                    onClick={() => addToCart(artwork.id)}
-                    title="Add to Cart"
-                  >
-                    <LuShoppingCart />
-                  </button>
-                </div>
-              </div>
-              <div className="artwork-info">
-                <h3>{artwork.title}</h3>
-                {artwork.category_name && <span className="artwork-category">{artwork.category_name}</span>}
-                <div className="artwork-price">
-                  {(() => {
-                    const base = parsePriceValue(artwork.price);
-                    const effCandidate =
-                      artwork.effective_price ??
-                      artwork.offer_price ??
-                      (base > 0 && artwork.offer_percent != null && artwork.offer_percent !== ''
-                        ? base * (1 - (parseFloat(artwork.offer_percent) || 0) / 100)
-                        : null);
-                    const eff = parsePriceValue(effCandidate);
-                    const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
-                    if (!showOffer) return <span>{ensureCurrencyText(artwork.price)}</span>;
-                    const pct = Math.round(((base - eff) / base) * 100);
-                    return (
-                      <>
-                        <div style={{ lineHeight: 1 }}>
-                          <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>{formatCurrency(base)}</span>
-                        </div>
-                        <div style={{ lineHeight: 1.3, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ color: '#c2410c', fontWeight: 800 }}>{formatCurrency(eff)}</span>
-                          <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13 }}>-{pct}%</span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
+          {filteredArtworks.length > 0 && (
+            <div style={{
+              gridColumn: '1 / -1',
+              background: 'linear-gradient(135deg, #93c5fd, #60a5fa)',
+              color: 'white',
+              padding: '10px',
+              textAlign: 'center',
+              fontWeight: 'bold',
+              marginBottom: '20px',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(147, 197, 253, 0.5)'
+            }}>
+              🎨 ARTWORK GALLERY - {filteredArtworks.length} ITEMS AVAILABLE
             </div>
-          ))}
+          )}
+          {filteredArtworks.map(artwork => {
+            const artistName = String(artwork.artist_name ?? artwork.artist ?? artwork.artistName ?? '').trim();
+            const hasArtist = Boolean(artistName);
+            return (
+              <div key={artwork.id} className="artwork-card">
+                {/* PRODUCT NAME DISPLAY - ALWAYS VISIBLE */}
+                <div style={{
+                  position: 'absolute',
+                  top: '0',
+                  left: '0',
+                  right: '0',
+                  background: 'linear-gradient(135deg, #93c5fd, #60a5fa)',
+                  color: 'white',
+                  padding: '5px',
+                  textAlign: 'center',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  zIndex: 1000,
+                  borderRadius: '12px 12px 0 0',
+                  boxShadow: '0 2px 8px rgba(147, 197, 253, 0.5)'
+                }}>
+                  {artwork.title}
+                </div>
+
+                {/* PREMIUM TIER LABEL */}
+                {artwork.category_tier === 'Premium' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '35px',
+                    right: '8px',
+                    background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    zIndex: 1001,
+                    boxShadow: '0 2px 4px rgba(251, 191, 36, 0.4)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    💎 Premium
+                  </div>
+                )}
+                
+                <div className="artwork-image">
+                  <img 
+                    src={artwork.image_url || '/api/placeholder/300/300'} 
+                    alt={artwork.title}
+                    onClick={() => setSelectedArtwork(artwork)}
+                  />
+                  {artwork.is_on_offer && (
+                    <>
+                      <div className="offer-ribbon">OFFER</div>
+                    </>
+                  )}
+                  
+                  {/* Price Display - Always Visible */}
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: '8px',
+                      left: '8px',
+                      right: '8px',
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      border: '2px solid #93c5fd',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontSize: '18px',
+                      fontWeight: '800',
+                      color: '#1e40af',
+                      zIndex: 10,
+                      boxShadow: '0 2px 8px rgba(147, 197, 253, 0.5)',
+                      backdropFilter: 'blur(4px)'
+                    }}
+                    data-debug="price-overlay"
+                  >
+                    {(() => {
+                      console.log('Rendering price for:', artwork.title, 'Price:', artwork.price);
+                      return ensureCurrencyText(artwork.price);
+                    })()}
+                  </div>
+
+                  <div className="artwork-overlay">
+                    <button 
+                      className="btn-icon"
+                      onClick={() => setSelectedArtwork(artwork)}
+                      title="View Details"
+                    >
+                      <LuEye />
+                    </button>
+                    <button 
+                      className={`btn-icon ${wishlist.includes(String(artwork.id)) ? 'active' : ''}`}
+                      onClick={() => toggleWishlist(artwork.id)}
+                      title="Add to Wishlist"
+                    >
+                      <LuHeart />
+                    </button>
+                    <button 
+                      className="btn-icon"
+                      onClick={() => handleCustomizationRequest(artwork)}
+                      title="Request Customization"
+                    >
+                      <LuWand />
+                    </button>
+                    <button 
+                      className="btn-icon"
+                      onClick={() => addToCart(artwork.id)}
+                      title="Add to Cart"
+                    >
+                      <LuShoppingCart />
+                    </button>
+                  </div>
+                </div>
+                <div className="artwork-info">
+                  <h3>{artwork.title}</h3>
+                  {hasArtist && <span className="artwork-artist">by {artistName}</span>}
+                  {!hasArtist && artwork.category_name && <span className="artwork-category">{artwork.category_name}</span>}
+                  
+                  {/* Backup Price Display in Info Section */}
+                  <div style={{
+                    margin: '8px 0 0 0',
+                    padding: '8px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    color: '#1e40af',
+                    background: '#f8fafc',
+                    border: '2px solid #93c5fd',
+                    borderRadius: '6px',
+                    textAlign: 'center',
+                    boxShadow: '0 2px 4px rgba(147, 197, 253, 0.4)'
+                  }}>
+                    Price: {ensureCurrencyText(artwork.price)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {filteredArtworks.length === 0 && (
@@ -627,7 +731,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
             <div className="modal-content large">
               <div className="modal-header">
                 <h2>{selectedArtwork.title}</h2>
-                <button className="btn-close" onClick={() => setSelectedArtwork(null)}>
+                <button className="btn-close" onClick={() => setSelectedArtwork(null)} title="Close Details">
                   <LuX />
                 </button>
               </div>
@@ -665,7 +769,7 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                             <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>{formatCurrency(base)}</span>
                           </div>
                           <div style={{ lineHeight: 1.3, marginTop: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: '#c2410c', fontWeight: 900, fontSize: 28 }}>{formatCurrency(eff)}</span>
+                            <span style={{ color: '#1e40af', fontWeight: 900, fontSize: 28 }}>{formatCurrency(eff)}</span>
                             <span style={{ color: '#16a34a', fontWeight: 800, fontSize: 16 }}>-{pct}%</span>
                           </div>
                         </>
@@ -719,6 +823,11 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
       </div>
 
       <style>{`
+        /* Reset any conflicting styles */
+        .artwork-gallery-modal * {
+          box-sizing: border-box;
+        }
+
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -760,19 +869,32 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
         }
 
         .btn-close {
-          background: none;
-          border: none;
-          font-size: 24px;
+          background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+          border: 1px solid #cbd5e1;
+          font-size: 16px;
           cursor: pointer;
-          padding: 8px;
-          border-radius: 50%;
+          padding: 6px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
+          width: 32px;
+          height: 32px;
+          color: #475569;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .btn-close:hover {
-          background: #f5f5f5;
+          background: linear-gradient(135deg, #93c5fd, #60a5fa);
+          border-color: #3b82f6;
+          color: white;
+          transform: scale(1.05);
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-close:active {
+          transform: scale(0.95);
         }
 
         .gallery-filters {
@@ -855,13 +977,16 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
         }
 
         .artwork-card {
-          border: 1px solid #eee;
+          border: 2px solid #e5e7eb;
           border-radius: 12px;
           overflow: hidden;
           transition: transform 0.2s, box-shadow 0.2s;
           display: flex;
           flex-direction: column;
           background: white;
+          position: relative;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          min-height: 350px;
         }
 
         .artwork-card:hover {
@@ -883,45 +1008,23 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           cursor: pointer;
         }
 
-        /* Corner ribbon shown when item is on offer */
-        /* Image banner overlay positioning */
-        .offer-banner-img {
-          position: absolute;
-          top: 8px;
-          left: 8px;
-          height: 56px; /* scale as needed */
-          width: auto;
-          border-radius: 4px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-          pointer-events: none; /* do not block clicks */
-        }
-        .offer-banner-img.modal {
-          top: 12px;
-          left: 12px;
-          height: 72px;
-        }
+        /* Price Overlay - Always Visible on Image - Using inline styles instead */
 
-        /* Corner ribbon shown when item is on offer (fallback) */
+        /* Corner ribbon shown when item is on offer */
         .offer-ribbon {
           position: absolute;
           top: 12px;
           left: -40px;
-          background: #e11d48; /* red */
+          background: linear-gradient(135deg, #93c5fd, #60a5fa);
           color: #fff;
           padding: 6px 50px;
           font-size: 12px;
           font-weight: 800;
           letter-spacing: 0.5px;
           transform: rotate(-45deg);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-          pointer-events: none; /* keep overlay buttons clickable */
+          box-shadow: 0 2px 6px rgba(147, 197, 253, 0.5);
+          pointer-events: none;
           text-transform: uppercase;
-        }
-        .offer-ribbon.modal {
-          top: 16px;
-          left: -52px;
-          padding: 8px 60px;
-          font-size: 13px;
         }
 
         .artwork-overlay {
@@ -965,17 +1068,21 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           color: white;
         }
 
-        .artwork-info {
-          padding: 12px 16px;
+        /* ISOLATED ARTWORK INFO STYLES - NO CONFLICTS */
+        .artwork-card .artwork-info {
+          padding: 16px;
           background: white;
           flex-grow: 1;
           display: flex;
           flex-direction: column;
           gap: 8px;
-          min-height: 110px;
+          position: relative;
+          z-index: 1;
+          border-top: 1px solid #eee;
+          min-height: 120px;
         }
 
-        .artwork-info h3 {
+        .artwork-card .artwork-info h3 {
           margin: 0;
           font-size: 18px;
           font-weight: 700;
@@ -988,7 +1095,14 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           overflow: hidden;
         }
 
-        .artwork-category {
+        .artwork-card .artwork-artist {
+          font-size: 13px;
+          color: #334155;
+          text-align: left;
+          font-weight: 500;
+        }
+
+        .artwork-card .artwork-category {
           font-size: 12px;
           color: #5a6c7d;
           text-transform: uppercase;
@@ -997,14 +1111,68 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           text-align: left;
         }
 
+        /* CRITICAL PRICE STYLES - MAXIMUM SPECIFICITY */
+        .artwork-card .artwork-info .artwork-price {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          margin: 12px 0 0 0 !important;
+          padding: 12px !important;
+          font-size: 22px !important;
+          font-weight: 900 !important;
+          color: #1e40af !important;
+          background: #fff3f3 !important;
+          border: 3px solid #93c5fd !important;
+          border-radius: 8px !important;
+          text-align: center !important;
+          position: relative !important;
+          z-index: 9999 !important;
+          box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2) !important;
+        }
+
+        .artwork-card .artwork-info .artwork-price span {
+          display: inline !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          color: #1e40af !important;
+          font-size: 22px !important;
+          font-weight: 900 !important;
+        }
+
+        /* ADDITIONAL PRICE OVERRIDES */
         .artwork-price {
-          margin: 0;
-          font-size: 18px;
-          font-weight: 700;
-          color: #e11d48;
-          text-align: left;
-          margin-top: auto;
-          padding-top: 4px;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          margin: 12px 0 0 0 !important;
+          padding: 12px !important;
+          font-size: 22px !important;
+          font-weight: 900 !important;
+          color: #1e40af !important;
+          background: #fff3f3 !important;
+          border: 3px solid #93c5fd !important;
+          border-radius: 8px !important;
+          text-align: center !important;
+          position: relative !important;
+          z-index: 9999 !important;
+        }
+
+        /* FORCE ALL PRICE ELEMENTS TO BE VISIBLE */
+        div[class*="artwork-price"] {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          margin: 12px 0 0 0 !important;
+          padding: 12px !important;
+          font-size: 22px !important;
+          font-weight: 900 !important;
+          color: #1e40af !important;
+          background: #fff3f3 !important;
+          border: 3px solid #93c5fd !important;
+          border-radius: 8px !important;
+          text-align: center !important;
+          position: relative !important;
+          z-index: 9999 !important;
         }
 
         .artwork-detail {

@@ -505,3 +505,10 @@ const BPNNTrainingDashboard = () => {
 
 export default BPNNTrainingDashboard;
 
+
+
+
+
+
+
+

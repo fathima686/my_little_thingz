@@ -309,3 +309,10 @@ const SimilarProducts = ({ products }) => {
 
 This component will beautifully display your custom chocolates product with proper image handling, loading states, and error management! 🍫✨
 
+
+
+
+
+
+
+
