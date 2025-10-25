@@ -28,7 +28,7 @@ try {
     $db = $database->getConnection();
     
     $trainer = new BPNNTrainer($db);
-    $dataProcessor = new BPNNNDataProcessor($db);
+    $dataProcessor = new BPNNDataProcessor($db);
     $behaviorTracker = new UserBehaviorTracker($db);
 
     // Get request parameters
@@ -315,6 +315,15 @@ function enrichRecommendations($db, $recommendations)
 
     return $enrichedRecommendations;
 }
+
+
+
+
+
+
+
+
+
 
 
 

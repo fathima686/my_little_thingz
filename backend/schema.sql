@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 20, 2025 at 08:38 PM
+-- Generation Time: Oct 25, 2025 at 11:20 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -47,46 +47,55 @@ CREATE TABLE `artworks` (
   `requires_customization` tinyint(1) DEFAULT 0,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `average_rating` decimal(3,2) DEFAULT NULL COMMENT 'Average rating (1.00-5.00)',
+  `total_ratings` int(11) DEFAULT 0 COMMENT 'Total number of ratings',
+  `rating_updated_at` timestamp NULL DEFAULT NULL COMMENT 'Last time ratings were calculated'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `artworks`
 --
 
-INSERT INTO `artworks` (`id`, `title`, `description`, `pricing_schema`, `price`, `weight`, `offer_price`, `offer_percent`, `offer_starts_at`, `offer_ends_at`, `force_offer_badge`, `image_url`, `category_id`, `artist_id`, `is_combo`, `availability`, `requires_customization`, `status`, `created_at`, `updated_at`) VALUES
-(2, 'wedding card', 'per card 50 rupees', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 50.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/wedding_card_20250909_162709_3882f9.png', 6, 5, 0, 'in_stock', 1, 'active', '2025-09-09 14:27:09', '2025-10-16 09:19:28'),
-(3, 'poloroids', '20 photos 150 ruppes', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 150.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid_20250909_162827_bad52f.png', 4, 5, 0, 'in_stock', 1, 'active', '2025-09-09 14:28:27', '2025-10-16 09:19:28'),
-(4, '4 * 4 frame', 'mini frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 120.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/4_4_frame_20250909_163041_e6da75.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:30:41', '2025-10-16 09:19:28'),
-(5, '6 * 4', 'best friends frames', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 250.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/6_4_frame_20250909_163511_f22d0e.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:35:11', '2025-10-16 09:19:28'),
-(6, 'A3 frame', 'cartoon frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 749.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/A3_frame_20250909_163546_05748c.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:35:46', '2025-10-16 09:19:28'),
-(7, 'album', 'carboard sheet album', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 200.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/album_20250909_163744_d02862.png', 8, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:37:44', '2025-10-16 09:19:28'),
-(8, 'boaqutes', 'red rose boaqutes', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 400.00, 0.50, 300.00, 99.25, '2025-09-25 12:07:00', '2025-09-26 12:07:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/boaqutes_20250909_163941_3994ac.png', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:39:41', '2025-10-16 09:19:28'),
-(9, 'chocolates', 'per chocolates 30', '{\"options\":{\"flavor\":{\"type\":\"select\",\"values\":[{\"value\":\"milk\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"dark\",\"delta\":{\"type\":\"flat\",\"value\":20}},{\"value\":\"white\",\"delta\":{\"type\":\"flat\",\"value\":10}}]},\"boxSize\":{\"type\":\"select\",\"values\":[{\"value\":\"6pc\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"12pc\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"24pc\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"messageLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 30.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/custom_chocolate_20250909_164039_e9be6c.png', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:40:39', '2025-10-16 09:19:28'),
-(10, 'Custom Drawing', 'Sketches', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/drawings_20250909_164237_1da7b5.png', 7, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:42:37', '2025-10-16 09:19:28'),
-(11, 'gift set', 'it consist of gift box boaqutes frames', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 3000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_set_20250909_164422_32ae0c.png', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:44:22', '2025-10-16 09:19:28'),
-(12, 'gift box', 'giftbox consist of chocolates and watch', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 2000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_20250909_164839_021d32.png', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:48:39', '2025-10-16 09:19:28'),
-(13, 'Micro frame', 'micro frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 90.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/micro_frame_20250909_164926_56f796.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:49:26', '2025-10-16 09:19:28'),
-(14, 'mini frame', 'mini frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 149.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/mini_frame_20250909_165028_7eaa02.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:50:28', '2025-10-16 09:19:28'),
-(15, 'album', '20  photos 150', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 150.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid__2__20250909_165107_4ac16f.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:51:07', '2025-10-16 09:19:28'),
-(16, 'Hamper', 'wedding hamper', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 2000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Wedding_hamper_20250909_165223_b117bb.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:52:23', '2025-10-16 09:19:28'),
-(17, 'chocolate hamper', 'chocolates', '{\"options\":{\"flavor\":{\"type\":\"select\",\"values\":[{\"value\":\"milk\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"dark\",\"delta\":{\"type\":\"flat\",\"value\":20}},{\"value\":\"white\",\"delta\":{\"type\":\"flat\",\"value\":10}}]},\"boxSize\":{\"type\":\"select\",\"values\":[{\"value\":\"6pc\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"12pc\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"24pc\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"messageLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.00, 0.50, 400.00, 99.20, '2025-09-25 12:24:00', '2025-09-26 12:24:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Chocolate_Hamper_20250921_153359_68c977.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:33:59', '2025-10-16 09:19:28'),
-(18, 'wedding set', 'set in wedding', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 6000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Celebrate_life_s_special_moments_with____20250921_153611_602073.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:36:11', '2025-10-16 09:19:28'),
-(19, 'boquetes', 'pink flowers', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.00, 0.50, 320.00, 99.40, '2025-10-08 19:09:00', '2025-10-09 19:09:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/_artsybaken_20250921_153825_9108f6.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:38:25', '2025-10-16 09:19:28'),
-(20, 'trolly hamper', 'birthday hamper', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 599.99, 99.40, '2025-10-01 14:28:00', '2025-10-09 14:28:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Birthday_hamper_20250921_153957_58a57d.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:39:57', '2025-10-16 09:19:28'),
-(21, 'shirt box', 'shirt hamper', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/_trousseau__weddingpackaging__giftboxforhim__hamperbox__sliderbox__birthdayhamper__hamperforher__hamperforhim__nammasalem_hamper__hampers__giftbox__instagramreels_r_20250921_154121_26dfde.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:41:21', '2025-10-16 09:19:28'),
-(22, 'nutt box', 'nuts box', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 910.00, 99.10, '2025-09-25 19:07:00', '2025-09-30 19:08:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__3__20250923_162849_9b1084.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:28:49', '2025-10-16 09:19:28'),
-(23, 'perfume box', 'perfume+watch', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 800.00, 20.00, '2025-10-01 14:05:00', '2025-10-10 14:05:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Perfume_Gift_ideas_watch_gift_ideas_20250923_163345_8fe78d.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:33:45', '2025-10-16 09:19:28'),
-(24, 'poloroid boquetes', 'boquestes with poloroid', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.04, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/beautiful_photos_bouquet______20250923_163516_fd2fb9.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:35:16', '2025-10-16 09:19:28'),
-(25, 'kinderjoy boquetes', 'kinderjoy boquetes', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 600.00, 0.50, 400.00, 99.33, '2025-10-01 14:02:00', '2025-10-08 14:02:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__6__20250923_163633_52f745.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:36:33', '2025-10-16 09:19:28'),
-(26, 'chocolate tower', 'chocolate tower', '{\"options\":{\"flavor\":{\"type\":\"select\",\"values\":[{\"value\":\"milk\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"dark\",\"delta\":{\"type\":\"flat\",\"value\":20}},{\"value\":\"white\",\"delta\":{\"type\":\"flat\",\"value\":10}}]},\"boxSize\":{\"type\":\"select\",\"values\":[{\"value\":\"6pc\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"12pc\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"24pc\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"messageLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1999.99, 0.50, 1800.00, 10.00, '2025-09-25 11:47:00', '2025-09-27 11:47:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__7__20250923_163827_9b978d.jpg', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:38:27', '2025-10-16 09:19:28'),
-(27, 'custom chocoltes', 'choocoo', '{\"options\":{\"flavor\":{\"type\":\"select\",\"values\":[{\"value\":\"milk\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"dark\",\"delta\":{\"type\":\"flat\",\"value\":20}},{\"value\":\"white\",\"delta\":{\"type\":\"flat\",\"value\":10}}]},\"boxSize\":{\"type\":\"select\",\"values\":[{\"value\":\"6pc\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"12pc\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"24pc\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"messageLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 25.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/mschocoworld_-_9952979286_20250923_164331_87efb6.jpg', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:43:31', '2025-10-16 09:19:28'),
-(29, 'birthday gift', 'gift box', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 2000.00, 0.50, NULL, 20.00, '2025-09-24 21:09:00', '2025-09-26 21:10:00', 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__8__20250924_174025_9f9ae8.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-24 15:40:25', '2025-10-16 09:19:28'),
-(32, 'heart boquetes', 'valentin\'s day gift', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 600.00, 0.50, 399.96, NULL, '2025-09-25 11:04:00', '2025-09-27 11:04:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__9__20250925_073531_8b855b.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-25 05:35:31', '2025-10-16 09:19:28'),
-(33, 'wedding card', 'blue theme', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 54.98, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__11__20250925_154744_c5c9fc.jpg', 6, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:47:44', '2025-10-16 09:19:28'),
-(34, 'wedding card', 'red theme', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 50.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/31_Wedding_Card_Ideas_20250925_154819_53c009.jpg', 6, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:48:19', '2025-10-16 09:19:28'),
-(36, 'birthday card', 'consist of chocolate and pen', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 19.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__10__20250925_155002_5379f7.jpg', NULL, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:50:02', '2025-10-16 09:19:28'),
-(37, 'nuts hamper', 'nuts', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Nuts_hamper____20250925_155054_4b299e.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:50:54', '2025-10-16 09:19:28');
+INSERT INTO `artworks` (`id`, `title`, `description`, `pricing_schema`, `price`, `weight`, `offer_price`, `offer_percent`, `offer_starts_at`, `offer_ends_at`, `force_offer_badge`, `image_url`, `category_id`, `artist_id`, `is_combo`, `availability`, `requires_customization`, `status`, `created_at`, `updated_at`, `average_rating`, `total_ratings`, `rating_updated_at`) VALUES
+(2, 'wedding card', 'per card 50 rupees', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 50.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/wedding_card_20250909_162709_3882f9.png', 6, 5, 0, 'in_stock', 1, 'active', '2025-09-09 14:27:09', '2025-10-16 09:19:28', NULL, 0, NULL),
+(3, 'poloroids', '20 photos 150 ruppes', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 150.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid_20250909_162827_bad52f.png', 4, 5, 0, 'in_stock', 1, 'active', '2025-09-09 14:28:27', '2025-10-16 09:19:28', NULL, 0, NULL),
+(4, '4 * 4 frame', 'mini frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 120.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/4_4_frame_20250909_163041_e6da75.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:30:41', '2025-10-16 09:19:28', NULL, 0, NULL),
+(5, '6 * 4', 'best friends frames', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 250.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/6_4_frame_20250909_163511_f22d0e.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:35:11', '2025-10-16 09:19:28', NULL, 0, NULL),
+(6, 'A3 frame', 'cartoon frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 749.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/A3_frame_20250909_163546_05748c.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:35:46', '2025-10-16 09:19:28', NULL, 0, NULL),
+(7, 'album', 'carboard sheet album', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 200.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/album_20250909_163744_d02862.png', 8, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:37:44', '2025-10-16 09:19:28', NULL, 0, NULL),
+(8, 'boaqutes', 'red rose boaqutes', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 400.00, 0.50, 300.00, 99.25, '2025-09-25 12:07:00', '2025-09-26 12:07:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/boaqutes_20250909_163941_3994ac.png', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:39:41', '2025-10-16 09:19:28', NULL, 0, NULL),
+(10, 'Custom Drawing', 'Sketches', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 700.00, 99.30, '2025-10-22 22:51:00', '2025-10-29 22:52:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/drawings_20250909_164237_1da7b5.png', 7, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:42:37', '2025-10-22 17:22:10', NULL, 0, NULL),
+(11, 'gift set', 'it consist of gift box boaqutes frames', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 3000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_set_20250909_164422_32ae0c.png', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:44:22', '2025-10-16 09:19:28', NULL, 0, NULL),
+(12, 'gift box', 'giftbox consist of chocolates and watch', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 2000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/gift_box_20250909_164839_021d32.png', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:48:39', '2025-10-16 09:19:28', NULL, 0, NULL),
+(13, 'Micro frame', 'micro frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 90.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/micro_frame_20250909_164926_56f796.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:49:26', '2025-10-16 09:19:28', NULL, 0, NULL),
+(14, 'mini frame', 'mini frame', '{\"options\":{\"size\":{\"type\":\"select\",\"values\":[{\"value\":\"A5\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"A4\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"A3\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"frame\":{\"type\":\"select\",\"values\":[{\"value\":\"none\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"basic\",\"delta\":{\"type\":\"flat\",\"value\":199}},{\"value\":\"premium\",\"delta\":{\"type\":\"flat\",\"value\":399}}]},\"material\":{\"type\":\"select\",\"values\":[{\"value\":\"paper\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"canvas\",\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 149.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/mini_frame_20250909_165028_7eaa02.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:50:28', '2025-10-16 09:19:28', NULL, 0, NULL),
+(15, 'album', '20  photos 150', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 150.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/poloroid__2__20250909_165107_4ac16f.png', 3, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:51:07', '2025-10-16 09:19:28', NULL, 0, NULL),
+(16, 'Hamper', 'wedding hamper', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 2000.00, 0.50, 1500.00, 25.00, '2025-10-28 14:36:00', '2025-10-25 14:36:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Wedding_hamper_20250909_165223_b117bb.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-09 14:52:23', '2025-10-25 09:06:25', NULL, 0, NULL),
+(18, 'wedding set', 'set in wedding', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 6000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Celebrate_life_s_special_moments_with____20250921_153611_602073.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:36:11', '2025-10-16 09:19:28', NULL, 0, NULL),
+(19, 'boquetes', 'pink flowers', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.00, 0.50, 320.00, 99.40, '2025-10-08 19:09:00', '2025-10-09 19:09:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/_artsybaken_20250921_153825_9108f6.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:38:25', '2025-10-16 09:19:28', NULL, 0, NULL),
+(20, 'trolly hamper', 'birthday hamper', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 599.99, 99.40, '2025-10-01 14:28:00', '2025-10-09 14:28:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Birthday_hamper_20250921_153957_58a57d.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:39:57', '2025-10-16 09:19:28', NULL, 0, NULL),
+(21, 'shirt box', 'shirt hamper', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/_trousseau__weddingpackaging__giftboxforhim__hamperbox__sliderbox__birthdayhamper__hamperforher__hamperforhim__nammasalem_hamper__hampers__giftbox__instagramreels_r_20250921_154121_26dfde.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-21 13:41:21', '2025-10-16 09:19:28', NULL, 0, NULL),
+(22, 'nutt box', 'nuts box', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 910.00, 99.10, '2025-09-25 19:07:00', '2025-09-30 19:08:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__3__20250923_162849_9b1084.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:28:49', '2025-10-16 09:19:28', NULL, 0, NULL),
+(23, 'perfume box', 'perfume+watch', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 1000.00, 0.50, 800.00, 20.00, '2025-10-01 14:05:00', '2025-10-10 14:05:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/Perfume_Gift_ideas_watch_gift_ideas_20250923_163345_8fe78d.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:33:45', '2025-10-16 09:19:28', NULL, 0, NULL),
+(24, 'poloroid boquetes', 'boquestes with poloroid', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 500.04, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/beautiful_photos_bouquet______20250923_163516_fd2fb9.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:35:16', '2025-10-16 09:19:28', NULL, 0, NULL),
+(25, 'kinderjoy boquetes', 'kinderjoy boquetes', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 600.00, 0.50, 400.00, 99.33, '2025-10-01 14:02:00', '2025-10-08 14:02:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__6__20250923_163633_52f745.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:36:33', '2025-10-16 09:19:28', NULL, 0, NULL),
+(27, 'custom chocoltes', 'choocoo', '{\"options\":{\"flavor\":{\"type\":\"select\",\"values\":[{\"value\":\"milk\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"dark\",\"delta\":{\"type\":\"flat\",\"value\":20}},{\"value\":\"white\",\"delta\":{\"type\":\"flat\",\"value\":10}}]},\"boxSize\":{\"type\":\"select\",\"values\":[{\"value\":\"6pc\",\"delta\":{\"type\":\"flat\",\"value\":0}},{\"value\":\"12pc\",\"delta\":{\"type\":\"flat\",\"value\":150}},{\"value\":\"24pc\",\"delta\":{\"type\":\"flat\",\"value\":350}}]},\"messageLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 25.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/mschocoworld_-_9952979286_20250923_164331_87efb6.jpg', 5, 5, 0, 'in_stock', 0, 'active', '2025-09-23 14:43:31', '2025-10-16 09:19:28', NULL, 0, NULL),
+(29, 'birthday gift', 'gift box', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 2000.00, 0.50, NULL, 20.00, '2025-09-24 21:09:00', '2025-09-26 21:10:00', 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__8__20250924_174025_9f9ae8.jpg', 1, 5, 0, 'in_stock', 0, 'active', '2025-09-24 15:40:25', '2025-10-16 09:19:28', NULL, 0, NULL),
+(32, 'heart boquetes', 'valentin\'s day gift', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 600.00, 0.50, 399.96, NULL, '2025-09-25 11:04:00', '2025-09-27 11:04:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__9__20250925_073531_8b855b.jpg', 2, 5, 0, 'in_stock', 0, 'active', '2025-09-25 05:35:31', '2025-10-16 09:19:28', NULL, 0, NULL),
+(33, 'wedding card', 'blue theme', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 54.98, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__11__20250925_154744_c5c9fc.jpg', 6, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:47:44', '2025-10-16 09:19:28', NULL, 0, NULL),
+(34, 'wedding card', 'red theme', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 50.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/31_Wedding_Card_Ideas_20250925_154819_53c009.jpg', 6, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:48:19', '2025-10-16 09:19:28', NULL, 0, NULL),
+(36, 'birthday card', 'consist of chocolate and pen', '{\"options\":{\"textLength\":{\"type\":\"range\",\"unit\":\"chars\",\"tiers\":[{\"max\":30,\"delta\":{\"type\":\"flat\",\"value\":0}},{\"max\":80,\"delta\":{\"type\":\"flat\",\"value\":99}},{\"max\":160,\"delta\":{\"type\":\"flat\",\"value\":199}}]}}}', 19.99, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__10__20250925_155002_5379f7.jpg', NULL, 5, 0, 'in_stock', 0, 'active', '2025-09-25 13:50:02', '2025-10-16 09:19:28', NULL, 0, NULL),
+(47, 'chocolate tower', 'kitkat tower', NULL, 1000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/a_chocolate_tower________20251024_161507_d0b27f.jpeg', 5, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:15:07', '2025-10-24 14:15:07', NULL, 0, NULL),
+(48, 'Diary milk tower', 'blue theme', NULL, 800.00, 0.50, 500.00, 37.50, '2025-10-25 14:34:00', '2025-10-30 14:34:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/download__2__20251024_161548_feb22e.jpeg', 5, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:15:48', '2025-10-25 09:05:54', NULL, 0, NULL),
+(49, 'wedding hamper', 'mr and mrs hamper', NULL, 1000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Elegant_Handmade_Gifts_for_Engagement___Wedding_20251024_161654_03d2cb.jpeg', 1, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:16:54', '2025-10-24 14:16:54', NULL, 0, NULL),
+(50, 'anniversary set', 'red theme', NULL, 2500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Anniversary_Hamper____20251024_161743_8691be.jpeg', NULL, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:17:43', '2025-10-24 14:17:43', NULL, 0, NULL),
+(51, 'birthday set', 'birthday set', NULL, 5000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Pink_aesthetic_birthday_surrise_20251024_161827_9d4eca.jpeg', 1, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:18:27', '2025-10-24 14:18:27', NULL, 0, NULL),
+(52, 'rose boqutes', 'red', NULL, 499.99, 0.50, 400.00, 20.00, '2025-10-25 14:35:00', '2025-10-30 14:35:00', 1, 'http://localhost/my_little_thingz/backend/uploads/artworks/buket_bunga_mawar_artificial_20251024_161904_98f6a4.jpeg', 2, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:19:04', '2025-10-25 09:05:41', NULL, 0, NULL),
+(53, 'birthday gift box', 'set', NULL, 1000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Chocolate_hamper_20251024_161957_4ea001.jpeg', 1, 5, 0, 'in_stock', 0, 'active', '2025-10-24 14:19:57', '2025-10-24 14:19:57', NULL, 0, NULL),
+(54, 'baby hamper', 'baby items', NULL, 3000.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Baby_hamper_20251025_110709_3d9e2c.jpeg', 1, 5, 0, 'in_stock', 0, 'active', '2025-10-25 09:07:09', '2025-10-25 09:07:09', NULL, 0, NULL),
+(55, 'baby set', 'blue theme', NULL, 2500.00, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Unique_handmade_gifts_for_every_heart_at_Craft_and_Card__Enjoy_20__off_your_first_order__20251025_110743_d142f8.jpeg', 1, 5, 0, 'in_stock', 0, 'active', '2025-10-25 09:07:43', '2025-10-25 09:07:43', NULL, 0, NULL),
+(56, 'baby frame', 'baby detailing frame', NULL, 499.97, 0.50, NULL, NULL, NULL, NULL, 0, 'http://localhost/my_little_thingz/backend/uploads/artworks/Baby_girl_details_frame_and_hamper____________rumi_rumiaesthetic__shiroor_shiroorcreation__babygirl_reel_viral_fyp_trendingreels_20251025_110824_75eeb3.jpeg', 3, 5, 0, 'in_stock', 0, 'active', '2025-10-25 09:08:24', '2025-10-25 09:08:24', NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -115,7 +124,9 @@ INSERT INTO `auth_providers` (`id`, `user_id`, `provider`, `provider_user_id`, `
 (9, 11, 'google', '110350776552417646009', '2025-09-17 06:22:37'),
 (10, 12, 'google', '114542462885540925445', '2025-09-22 08:50:48'),
 (11, 13, 'google', '116968811920977241300', '2025-09-22 14:18:56'),
-(12, 14, 'google', '104464372294846036228', '2025-09-22 14:24:05');
+(12, 14, 'google', '104464372294846036228', '2025-09-22 14:24:05'),
+(13, 17, 'google', '100677287622416457024', '2025-10-21 10:45:37'),
+(14, 18, 'google', '112078509104401590064', '2025-10-24 06:19:25');
 
 -- --------------------------------------------------------
 
@@ -137,7 +148,9 @@ CREATE TABLE `cart` (
 
 INSERT INTO `cart` (`id`, `user_id`, `artwork_id`, `quantity`, `added_at`) VALUES
 (52, 1, 27, 1, '2025-10-20 17:41:53'),
-(53, 1, 22, 1, '2025-10-20 17:56:59');
+(53, 1, 22, 1, '2025-10-20 17:56:59'),
+(70, 11, 34, 1, '2025-10-25 03:24:55'),
+(71, 18, 27, 1, '2025-10-25 09:02:18');
 
 -- --------------------------------------------------------
 
@@ -201,6 +214,7 @@ CREATE TABLE `custom_requests` (
   `budget_max` decimal(10,2) DEFAULT NULL,
   `deadline` date DEFAULT NULL,
   `special_instructions` text DEFAULT NULL,
+  `gift_tier` enum('budget','premium') DEFAULT 'budget',
   `source` enum('form','cart') NOT NULL DEFAULT 'form',
   `artwork_id` int(11) DEFAULT NULL,
   `requested_quantity` int(11) NOT NULL DEFAULT 1,
@@ -212,31 +226,33 @@ CREATE TABLE `custom_requests` (
 -- Dumping data for table `custom_requests`
 --
 
-INSERT INTO `custom_requests` (`id`, `user_id`, `title`, `description`, `category_id`, `occasion`, `budget_min`, `budget_max`, `deadline`, `special_instructions`, `source`, `artwork_id`, `requested_quantity`, `status`, `created_at`) VALUES
-(1, 1, 'gift box for birthday', 'gift box consist of chocolates', NULL, 'Birthday', 500.00, NULL, '2025-09-15', '', 'form', NULL, 1, 'completed', '2025-09-11 08:16:30'),
-(2, 1, 'bjksjkds', 'kd ndjk', NULL, 'wedding', 39.98, NULL, '2025-09-26', '', 'form', NULL, 1, 'completed', '2025-09-12 06:09:13'),
-(3, 1, 'Cart customization - wedding - 2025-09-19', 'red flower ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:15:05'),
-(4, 1, 'Cart customization - christmas - 2025-09-30', 'vft', NULL, 'christmas', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:17:26'),
-(5, 1, 'Cart customization - wedding - 2025-09-18', 'purple theme', NULL, 'wedding', NULL, NULL, '2025-09-18', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:23:37'),
-(6, 1, 'Cart customization - baby_shower - 2025-09-30', 'bh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:27:06'),
-(7, 1, 'Cart customization - baby_shower - 2025-09-30', 'jhhh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:30:34'),
-(8, 1, 'Cart customization - valentine - 2025-09-30', 'kbhxbh', NULL, 'valentine', NULL, NULL, '2025-09-30', '', 'cart', NULL, 1, 'completed', '2025-09-12 08:33:21'),
-(9, 1, 'Cart customization - birthday - 2025-09-14', 'poloroids with 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-14', '', 'cart', NULL, 1, 'completed', '2025-09-12 10:12:12'),
-(10, 1, 'Cart customization - birthday - 2025-09-15', 'frame', NULL, 'birthday', NULL, NULL, '2025-09-15', '', 'cart', NULL, 1, 'completed', '2025-09-12 10:16:53'),
-(11, 1, 'anniversary gift', 'gift box consist of chocolates', NULL, 'Anniversary', 2000.00, NULL, '2025-09-15', '', 'form', NULL, 1, 'completed', '2025-09-12 10:35:32'),
-(12, 1, 'Cart customization - wedding - 2025-09-17', 'wedding card', NULL, 'wedding', NULL, NULL, '2025-09-17', '', 'cart', NULL, 1, 'completed', '2025-09-13 04:29:21'),
-(13, 1, 'Cart customization - birthday - 2025-09-20', 'gift set', NULL, 'birthday', NULL, NULL, '2025-09-20', '', 'cart', NULL, 1, 'completed', '2025-09-13 05:50:19'),
-(14, 1, 'Cart customization - birthday - 2025-09-18', 'red rosses', NULL, 'birthday', NULL, NULL, '2025-09-18', '', 'cart', NULL, 1, 'completed', '2025-09-13 17:51:41'),
-(15, 9, 'birthday  gift', 'golden theme gift box', NULL, 'Birthday', 2000.00, NULL, '2025-09-18', '', 'form', NULL, 1, 'completed', '2025-09-15 10:20:45'),
-(16, 9, 'wedding card', 'photo card', NULL, 'Wedding', 200.00, NULL, '2025-09-17', '', 'form', NULL, 1, 'cancelled', '2025-09-15 10:57:00'),
-(17, 10, 'wedding', 'yff', NULL, 'Wedding', 2000.00, NULL, '2025-09-30', '', 'form', NULL, 1, 'completed', '2025-09-17 04:45:11'),
-(18, 11, 'Cart customization - other - 2025-09-18', 'rfrrf4434443', NULL, 'other', NULL, NULL, '2025-09-18', '', 'cart', NULL, 1, 'completed', '2025-09-18 08:12:04'),
-(19, 11, 'Cart customization - wedding - 2025-09-19', '                                         ttttttttttttttttt            \r\n                                     \r\n                         ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'cart', NULL, 1, 'completed', '2025-09-18 08:14:00'),
-(20, 11, 'Cart customization - birthday - 2025-09-23', 'i need 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-23', '', 'cart', NULL, 1, 'cancelled', '2025-09-20 13:43:12'),
-(21, 1, 'Cart customization - birthday - 2025-09-24', 'blue theme', NULL, 'birthday', NULL, NULL, '2025-09-24', '', 'cart', NULL, 1, 'pending', '2025-09-20 14:34:03'),
-(22, 11, 'bd', 'yghjjkh', NULL, 'Birthday', 200.00, NULL, '2025-09-25', '', 'form', NULL, 1, 'pending', '2025-09-23 06:05:35'),
-(23, 11, 'Cart customization - birthday - 2025-10-02', 'need a micro frame', NULL, 'birthday', NULL, NULL, '2025-10-02', '', 'cart', NULL, 1, 'in_progress', '2025-09-23 14:29:50'),
-(24, 11, 'Cart customization - baby_shower - 2025-10-02', 'fhghhj', NULL, 'baby_shower', NULL, NULL, '2025-10-02', '', 'cart', 27, 1, 'completed', '2025-09-23 14:45:45');
+INSERT INTO `custom_requests` (`id`, `user_id`, `title`, `description`, `category_id`, `occasion`, `budget_min`, `budget_max`, `deadline`, `special_instructions`, `gift_tier`, `source`, `artwork_id`, `requested_quantity`, `status`, `created_at`) VALUES
+(1, 1, 'gift box for birthday', 'gift box consist of chocolates', NULL, 'Birthday', 500.00, NULL, '2025-09-15', '', 'budget', 'form', NULL, 1, 'completed', '2025-09-11 08:16:30'),
+(2, 1, 'bjksjkds', 'kd ndjk', NULL, 'wedding', 39.98, NULL, '2025-09-26', '', 'budget', 'form', NULL, 1, 'completed', '2025-09-12 06:09:13'),
+(3, 1, 'Cart customization - wedding - 2025-09-19', 'red flower ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 08:15:05'),
+(4, 1, 'Cart customization - christmas - 2025-09-30', 'vft', NULL, 'christmas', NULL, NULL, '2025-09-30', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 08:17:26'),
+(5, 1, 'Cart customization - wedding - 2025-09-18', 'purple theme', NULL, 'wedding', NULL, NULL, '2025-09-18', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 08:23:37'),
+(6, 1, 'Cart customization - baby_shower - 2025-09-30', 'bh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 08:27:06'),
+(7, 1, 'Cart customization - baby_shower - 2025-09-30', 'jhhh', NULL, 'baby_shower', NULL, NULL, '2025-09-30', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 08:30:34'),
+(8, 1, 'Cart customization - valentine - 2025-09-30', 'kbhxbh', NULL, 'valentine', NULL, NULL, '2025-09-30', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 08:33:21'),
+(9, 1, 'Cart customization - birthday - 2025-09-14', 'poloroids with 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-14', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 10:12:12'),
+(10, 1, 'Cart customization - birthday - 2025-09-15', 'frame', NULL, 'birthday', NULL, NULL, '2025-09-15', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-12 10:16:53'),
+(11, 1, 'anniversary gift', 'gift box consist of chocolates', NULL, 'Anniversary', 2000.00, NULL, '2025-09-15', '', 'budget', 'form', NULL, 1, 'completed', '2025-09-12 10:35:32'),
+(12, 1, 'Cart customization - wedding - 2025-09-17', 'wedding card', NULL, 'wedding', NULL, NULL, '2025-09-17', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-13 04:29:21'),
+(13, 1, 'Cart customization - birthday - 2025-09-20', 'gift set', NULL, 'birthday', NULL, NULL, '2025-09-20', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-13 05:50:19'),
+(14, 1, 'Cart customization - birthday - 2025-09-18', 'red rosses', NULL, 'birthday', NULL, NULL, '2025-09-18', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-13 17:51:41'),
+(15, 9, 'birthday  gift', 'golden theme gift box', NULL, 'Birthday', 2000.00, NULL, '2025-09-18', '', 'budget', 'form', NULL, 1, 'completed', '2025-09-15 10:20:45'),
+(16, 9, 'wedding card', 'photo card', NULL, 'Wedding', 200.00, NULL, '2025-09-17', '', 'budget', 'form', NULL, 1, 'cancelled', '2025-09-15 10:57:00'),
+(17, 10, 'wedding', 'yff', NULL, 'Wedding', 2000.00, NULL, '2025-09-30', '', 'budget', 'form', NULL, 1, 'completed', '2025-09-17 04:45:11'),
+(18, 11, 'Cart customization - other - 2025-09-18', 'rfrrf4434443', NULL, 'other', NULL, NULL, '2025-09-18', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-18 08:12:04'),
+(19, 11, 'Cart customization - wedding - 2025-09-19', '                                         ttttttttttttttttt            \r\n                                     \r\n                         ', NULL, 'wedding', NULL, NULL, '2025-09-19', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-18 08:14:00'),
+(20, 11, 'Cart customization - birthday - 2025-09-23', 'i need 10 photos', NULL, 'birthday', NULL, NULL, '2025-09-23', '', 'budget', 'cart', NULL, 1, 'cancelled', '2025-09-20 13:43:12'),
+(21, 1, 'Cart customization - birthday - 2025-09-24', 'blue theme', NULL, 'birthday', NULL, NULL, '2025-09-24', '', 'budget', 'cart', NULL, 1, 'pending', '2025-09-20 14:34:03'),
+(22, 11, 'bd', 'yghjjkh', NULL, 'Birthday', 200.00, NULL, '2025-09-25', '', 'budget', 'form', NULL, 1, 'pending', '2025-09-23 06:05:35'),
+(23, 11, 'Cart customization - birthday - 2025-10-02', 'need a micro frame', NULL, 'birthday', NULL, NULL, '2025-10-02', '', 'budget', 'cart', NULL, 1, 'completed', '2025-09-23 14:29:50'),
+(24, 11, 'Cart customization - baby_shower - 2025-10-02', 'fhghhj', NULL, 'baby_shower', NULL, NULL, '2025-10-02', '', 'budget', 'cart', 27, 1, 'completed', '2025-09-23 14:45:45'),
+(25, 11, 'birthday gift', 'blue theme', NULL, 'Birthday', 1999.99, NULL, '2025-10-22', '', 'premium', 'form', NULL, 1, 'completed', '2025-10-21 08:23:59'),
+(26, 18, 'Cart customization - birthday - 2025-10-26', 'vfbggnny', NULL, 'birthday', NULL, NULL, '2025-10-26', '', 'budget', 'cart', 27, 1, 'completed', '2025-10-25 09:01:30');
 
 -- --------------------------------------------------------
 
@@ -283,7 +299,46 @@ INSERT INTO `custom_request_images` (`id`, `request_id`, `image_path`, `uploaded
 (25, 21, 'uploads/custom-requests/cart_68cebb5b62a1e1.92658194_adb.jpg', '2025-09-20 14:34:03'),
 (26, 22, 'uploads/custom-requests/68d238af659946.33631684_admin_dashboard.png', '2025-09-23 06:05:35'),
 (27, 23, 'uploads/custom-requests/cart_68d2aede511337.17953082_Butterfly_candle_holder.jpg', '2025-09-23 14:29:50'),
-(28, 24, 'uploads/custom-requests/cart_68d2b2990846c8.97585563_download__6_.jpg', '2025-09-23 14:45:45');
+(28, 24, 'uploads/custom-requests/cart_68d2b2990846c8.97585563_download__6_.jpg', '2025-09-23 14:45:45'),
+(29, 25, 'uploads/custom-requests/68f7431f9b9569.58251936_Screenshot_2025-08-13_195837.png', '2025-10-21 08:23:59'),
+(30, 26, 'uploads/custom-requests/cart_68fc91eae5c126.67475275_a_chocolate_tower_______.jpeg', '2025-10-25 09:01:30');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invoices`
+--
+
+CREATE TABLE `invoices` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `invoice_number` varchar(100) NOT NULL,
+  `invoice_date` datetime NOT NULL,
+  `billing_name` varchar(191) DEFAULT NULL,
+  `billing_email` varchar(191) DEFAULT NULL,
+  `billing_address` text DEFAULT NULL,
+  `subtotal` decimal(10,2) DEFAULT 0.00,
+  `tax_amount` decimal(10,2) DEFAULT 0.00,
+  `shipping_cost` decimal(10,2) DEFAULT 0.00,
+  `addon_total` decimal(10,2) DEFAULT 0.00,
+  `total_amount` decimal(10,2) NOT NULL,
+  `items_json` longtext DEFAULT NULL,
+  `addons_json` longtext DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `invoices`
+--
+
+INSERT INTO `invoices` (`id`, `order_id`, `invoice_number`, `invoice_date`, `billing_name`, `billing_email`, `billing_address`, `subtotal`, `tax_amount`, `shipping_cost`, `addon_total`, `total_amount`, `items_json`, `addons_json`, `created_at`, `updated_at`) VALUES
+(1, 43, 'INV-20251022-060300-b48862', '2025-10-22 06:03:44', 'Fathima', 'fathimashibu15@gmail.com', 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 8545746954', 329.98, 0.00, 120.00, 0.00, 449.98, '[{\"name\":\"wedding card\",\"quantity\":1,\"price\":54.98,\"line_total\":54.98},{\"name\":\"custom chocoltes\",\"quantity\":1,\"price\":25,\"line_total\":25},{\"name\":\"6 * 4\",\"quantity\":1,\"price\":250,\"line_total\":250}]', '[]', '2025-10-22 04:03:44', '2025-10-22 04:03:44'),
+(2, 44, 'INV-20251022-063957-de46ba', '2025-10-22 06:40:21', 'Fathima', 'fathimashibu15@gmail.com', 'appz sandhosh\nMannarakkayam - Koovappally Road\nKoovapally, Kottayam\nKoovapally, Kerala, 686518\nIndia\nPhone: 8564789456', 1000.00, 0.00, 60.00, 0.00, 1060.00, '[{\"name\":\"nutt box\",\"quantity\":1,\"price\":1000,\"line_total\":1000}]', '[]', '2025-10-22 04:40:21', '2025-10-22 04:40:21'),
+(3, 45, 'INV-20251022-070022-172ba1', '2025-10-22 07:00:45', 'Fathima', 'fathimashibu15@gmail.com', 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 9587456217', 500.00, 0.00, 60.00, 0.00, 560.00, '[{\"name\":\"boquetes\",\"quantity\":1,\"price\":500,\"line_total\":500}]', '[]', '2025-10-22 05:00:45', '2025-10-22 05:00:45'),
+(4, 46, 'INV-20251024-082131-498482', '2025-10-24 08:22:03', 'Shifa Fathima', 'shifafathima0815@gmail.com', 'shifa fathima\nPattimattam\nKottayam\nanakkal, Kerala, 686518\nIndia\nPhone: 8954746512', 25.00, 0.00, 60.00, 0.00, 85.00, '[{\"name\":\"custom chocoltes\",\"quantity\":1,\"price\":25,\"line_total\":25}]', '[]', '2025-10-24 06:22:03', '2025-10-24 06:22:03'),
+(5, 47, 'INV-20251024-105749-7f90c0', '2025-10-24 10:58:19', 'Shifa Fathima', 'shifafathima0815@gmail.com', 'shifa fathima\nAmal Jyothi College of Engineering Skywalk\nKoovapally, Kottayam\nKoovapally, Kerala, 686518\nIndia\nPhone: 9874561412', 400.00, 0.00, 60.00, 0.00, 460.00, '[{\"name\":\"boaqutes\",\"quantity\":1,\"price\":400,\"line_total\":400}]', '[]', '2025-10-24 08:58:19', '2025-10-24 08:58:19'),
+(6, 48, 'INV-20251024-111704-c7059a', '2025-10-24 11:18:47', 'Shifa Fathima', 'shifafathima0815@gmail.com', 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495450077', 1000.00, 0.00, 60.00, 0.00, 1060.00, '[{\"name\":\"nutt box\",\"quantity\":1,\"price\":1000,\"line_total\":1000}]', '[]', '2025-10-24 09:18:47', '2025-10-24 09:18:47');
 
 -- --------------------------------------------------------
 
@@ -420,12 +475,22 @@ INSERT INTO `orders` (`id`, `user_id`, `order_number`, `status`, `payment_method
 (31, 11, 'ORD-20251006-161503-57a92f', 'pending', 'razorpay', 'pending', 'order_RQDUi4Szzuc3an', NULL, NULL, 400.00, 400.00, 0.00, 0.00, 'vijetha  jinu\nDD Golden Gate\nKakkanad West, Ernakulam\nErnakulam, Kerala, 682037\nIndia\nPhone: 8864947452', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-06 14:15:03', NULL, NULL),
 (32, 11, 'ORD-20251006-163704-0a0322', 'delivered', 'razorpay', 'paid', 'order_RQDrxNZ9MDI765', 'pay_RQDsNer3E0XVww', 'e125a822b944c5a42956ac0c022e23725ef72d5ac6b7784ad9a0662388aaa017', 460.00, 400.00, 0.00, 60.00, 'vij jinu\nDD Golden Gate\nKakkanad West, Ernakulam\nErnakulam, Kerala, 682037\nIndia\nPhone: 7895641589', NULL, 991095374, 987499414, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, '2025-10-12', '2025-10-06 14:37:04', '2025-10-07 06:39:12', '2025-10-07 06:55:04'),
 (33, 11, 'ORD-20251016-062323-5af814', 'processing', 'razorpay', 'paid', 'order_RU0kwrGJY53una', 'pay_RU0lAUjEZC8Cj8', '0707bbffde06f121b1351c0d0f4d067a684bdfe9e5a72b113f4b501ffb7714ce', 1660.00, 1600.00, 0.00, 60.00, 'appz sandhosh\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 9754684123', NULL, 1003407456, 999805596, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 1.00, 10.00, 10.00, 10.00, NULL, '2025-10-16 04:23:23', NULL, NULL),
-(34, 11, 'ORD-20251016-155129-d4139b', 'pending', 'razorpay', 'pending', 'order_RUAR4DtVnee2P3', NULL, NULL, 85.00, 25.00, 0.00, 60.00, 'fathima shibu\nPetta\nFeroke, Kozhikode\nFeroke, Kerala, 673631\nIndia\nPhone: 9188436587', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-16 13:51:29', NULL, NULL),
-(35, 11, 'ORD-20251016-160348-245fdc', 'processing', 'razorpay', 'paid', 'order_RUAe3ECQHiDdA8', 'pay_RUAeGuHnOsZwWw', '98dc892b9c0d7fdaee384317fdb0ad7d1b06486e32d552671363533bb2775b8d', 85.00, 25.00, 0.00, 60.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nFeroke, Kozhikode\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495400477', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-16 14:03:48', NULL, NULL),
-(36, 1, 'ORD-20251020-184803-fc908b', 'pending', 'razorpay', 'pending', 'order_RVna2AxG1AG8j0', NULL, NULL, 1560.00, 1500.00, 0.00, 60.00, 'Fathima Shibu\npurathel house,anakkal p o,kanjirappally\nlp school\nanakkal, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 16:48:03', NULL, NULL),
-(37, 1, 'ORD-20251020-190124-17ed87', 'pending', 'razorpay', 'pending', 'order_RVno5tfQ8XjSb3', NULL, NULL, 1710.00, 1500.00, 0.00, 60.00, 'Fathima Shibu\npurathel house,anakkal p o,kanjirappally\nlp school\nanakkal, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 17:01:24', NULL, NULL),
+(34, 11, 'ORD-20251016-155129-d4139b', 'pending', 'razorpay', 'pending', 'order_RUAR4DtVnee2P3', NULL, NULL, 85.00, 25.00, 0.00, 60.00, 'fathima shibu\nPetta\nFeroke, Kozhikode\nFeroke, Kerala, 673631\nIndia\nPhone: 9188436587', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-16 13:51:29', NULL, NULL),
+(35, 11, 'ORD-20251016-160348-245fdc', 'processing', 'razorpay', 'paid', 'order_RUAe3ECQHiDdA8', 'pay_RUAeGuHnOsZwWw', '98dc892b9c0d7fdaee384317fdb0ad7d1b06486e32d552671363533bb2775b8d', 85.00, 25.00, 0.00, 60.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nFeroke, Kozhikode\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495400477', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-16 14:03:48', NULL, NULL),
+(36, 1, 'ORD-20251020-184803-fc908b', 'pending', 'razorpay', 'pending', 'order_RVna2AxG1AG8j0', NULL, NULL, 1560.00, 1500.00, 0.00, 60.00, 'Fathima Shibu\npurathel house,anakkal p o,kanjirappally\nlp school\nanakkal, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 16:48:03', NULL, NULL),
+(37, 1, 'ORD-20251020-190124-17ed87', 'pending', 'razorpay', 'pending', 'order_RVno5tfQ8XjSb3', NULL, NULL, 1710.00, 1500.00, 0.00, 60.00, 'Fathima Shibu\npurathel house,anakkal p o,kanjirappally\nlp school\nanakkal, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 17:01:24', NULL, NULL),
 (38, 1, 'ORD-20251020-193022-5034ee', 'pending', NULL, 'pending', NULL, NULL, NULL, 25.00, 25.00, 0.00, 0.00, 'N/A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 17:30:22', NULL, NULL),
-(39, 1, 'ORD-20251020-194216-dc9989', 'pending', 'razorpay', 'pending', 'order_RVoVGdrXE67SSB', NULL, NULL, 85.00, 25.00, 0.00, 60.00, 'Fathima Shibu\npurathel house,anakkal p o,kanjirappally\nlp school\nanakkal, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 17:42:16', NULL, NULL);
+(39, 1, 'ORD-20251020-194216-dc9989', 'pending', 'razorpay', 'pending', 'order_RVoVGdrXE67SSB', NULL, NULL, 85.00, 25.00, 0.00, 60.00, 'Fathima Shibu\npurathel house,anakkal p o,kanjirappally\nlp school\nanakkal, kerala, 686508\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-20 17:42:16', NULL, NULL),
+(40, 11, 'ORD-20251021-100312-178d4d', 'pending', 'razorpay', 'pending', 'order_RW3AiTmXAdiQER', NULL, NULL, 2059.99, 1999.99, 0.00, 60.00, 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-21 08:03:12', NULL, NULL),
+(41, 11, 'ORD-20251021-100335-bcd4b1', 'processing', 'razorpay', 'paid', 'order_RW3B74xn7H4L8W', 'pay_RW3BVK8m50YPvl', 'fab8ab82ec3ad4de3788f56c92d854b32f1609a158f60f66cc471838fa3b3d70', 2059.99, 1999.99, 0.00, 60.00, 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 9495470077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-21 08:03:35', NULL, NULL),
+(42, 11, 'ORD-20251022-060210-5b7de4', 'pending', 'razorpay', 'pending', 'order_RWNbENQu19Mm2W', NULL, NULL, 449.98, 329.98, 0.00, 120.00, 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 8545746954', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 120.00, 1.50, 10.00, 10.00, 10.00, NULL, '2025-10-22 04:02:10', NULL, NULL),
+(43, 11, 'ORD-20251022-060300-b48862', 'processing', 'razorpay', 'paid', 'order_RWNc7ITRd8VmO7', 'pay_RWNcbkpNcSQOhM', '178d7d004669224d136041225ab66dbbf8fc6f02adb3b401de0934cc7577a3bf', 449.98, 329.98, 0.00, 120.00, 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 8545746954', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 120.00, 1.50, 10.00, 10.00, 10.00, NULL, '2025-10-22 04:03:00', NULL, NULL),
+(44, 11, 'ORD-20251022-063957-de46ba', 'processing', 'razorpay', 'paid', 'order_RWOF8qoHp7RFBQ', 'pay_RWOFJx97op8xmq', '026de0fa09fe25889d749b5b38fb82e19ad573ef4215b57fa4fe6bea02b1d081', 1060.00, 1000.00, 0.00, 60.00, 'appz sandhosh\nMannarakkayam - Koovappally Road\nKoovapally, Kottayam\nKoovapally, Kerala, 686518\nIndia\nPhone: 8564789456', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-22 04:39:57', NULL, NULL),
+(45, 11, 'ORD-20251022-070022-172ba1', 'processing', 'razorpay', 'paid', 'order_RWOaj8Sg6bfUfz', 'pay_RWOasjIuGqnoKG', 'e5c6e7924415dd571e89b50f9c6eeefc5471fb40503343a60a29964b731ea49a', 560.00, 500.00, 0.00, 60.00, 'fathima shibu\nPanicheppalli - Vizhikkathodu Road\nVizhikkathodu, Kottayam\nVizhikkathodu, Kerala, 686518\nIndia\nPhone: 9587456217', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-22 05:00:22', NULL, NULL),
+(46, 18, 'ORD-20251024-082131-498482', 'processing', 'razorpay', 'paid', 'order_RXD2eAAqn5tADf', 'pay_RXD2xGUv8otZxQ', 'efdcd8745cad88ef504df2d3d67a306150a5c30ced2050e4b569c0fb1469fd5d', 85.00, 25.00, 0.00, 60.00, 'shifa fathima\nPattimattam\nKottayam\nanakkal, Kerala, 686518\nIndia\nPhone: 8954746512', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-24 06:21:31', NULL, NULL),
+(47, 18, 'ORD-20251024-105749-7f90c0', 'processing', 'razorpay', 'paid', 'order_RXFhlGmT8Z0aKp', 'pay_RXFi1xUlHlmmqI', 'a45ed4c3a91ae2da9c106e0bc69ab35c9423e812d464733fb442aa399801b8e2', 460.00, 400.00, 0.00, 60.00, 'shifa fathima\nAmal Jyothi College of Engineering Skywalk\nKoovapally, Kottayam\nKoovapally, Kerala, 686518\nIndia\nPhone: 9874561412', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-24 08:57:49', NULL, NULL),
+(48, 18, 'ORD-20251024-111704-c7059a', 'processing', 'razorpay', 'paid', 'order_RXG24VKeVTjN5K', 'pay_RXG3eG4cF2OIhO', '1a1a07f61b6f45040d4def0f035aa37df194bb671c87c7d96b2305c8c7166a9b', 1060.00, 1000.00, 0.00, 60.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495450077', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-24 09:17:04', NULL, NULL),
+(49, 18, 'ORD-20251025-110315-5a6afc', 'pending', 'razorpay', 'pending', 'order_RXeKcpb847Dvbk', NULL, NULL, 160.00, 25.00, 0.00, 60.00, 'Fathima Shibu\nPurathel(H) Anakkal PO kanjirapally kottyaam\nKanjirappalli, Kottayam\nAnakkal ,Kanjirapally, kerala, 686508\nIndia\nPhone: 9495400775', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 60.00, 0.50, 10.00, 10.00, 10.00, NULL, '2025-10-25 09:03:15', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -447,7 +512,8 @@ CREATE TABLE `order_addons` (
 --
 
 INSERT INTO `order_addons` (`id`, `order_id`, `addon_id`, `addon_name`, `addon_price`, `created_at`) VALUES
-(1, 37, 'greeting_card', 'Greeting Card', 150.00, '2025-10-20 17:01:24');
+(1, 37, 'greeting_card', 'Greeting Card', 150.00, '2025-10-20 17:01:24'),
+(2, 49, 'ribbon', 'Decorative Ribbon', 75.00, '2025-10-25 09:03:15');
 
 -- --------------------------------------------------------
 
@@ -513,7 +579,21 @@ INSERT INTO `order_items` (`id`, `order_id`, `artwork_id`, `quantity`, `price`) 
 (47, 36, 37, 1, 1500.00),
 (48, 37, 37, 1, 1500.00),
 (49, 38, 27, 1, 25.00),
-(50, 39, 27, 1, 25.00);
+(50, 39, 27, 1, 25.00),
+(51, 40, 26, 1, 1999.99),
+(52, 41, 26, 1, 1999.99),
+(53, 42, 33, 1, 54.98),
+(54, 42, 27, 1, 25.00),
+(55, 42, 5, 1, 250.00),
+(56, 43, 33, 1, 54.98),
+(57, 43, 27, 1, 25.00),
+(58, 43, 5, 1, 250.00),
+(59, 44, 22, 1, 1000.00),
+(60, 45, 19, 1, 500.00),
+(61, 46, 27, 1, 25.00),
+(62, 47, 8, 1, 400.00),
+(63, 48, 22, 1, 1000.00),
+(64, 49, 27, 1, 25.00);
 
 -- --------------------------------------------------------
 
@@ -613,6 +693,26 @@ INSERT INTO `password_resets` (`id`, `email`, `token`, `expires_at`, `created_at
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `product_ratings`
+--
+
+CREATE TABLE `product_ratings` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `artwork_id` int(11) NOT NULL,
+  `rating` tinyint(3) UNSIGNED NOT NULL,
+  `feedback` text DEFAULT NULL,
+  `is_anonymous` tinyint(1) DEFAULT 0,
+  `status` enum('pending','approved','rejected') DEFAULT 'approved',
+  `admin_notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `purchase_orders`
 --
 
@@ -695,6 +795,33 @@ INSERT INTO `purchase_order_items` (`id`, `purchase_order_id`, `supplier_product
 (15, 13, 3, NULL, 'gift box', 9000.00, 1, 8, '2025-09-21 13:01:29', '[{\"color\":\"grren\",\"qty\":1}]'),
 (16, 14, 7, NULL, 'nuts box', 600.00, 1, 8, '2025-09-23 15:09:30', '[{\"color\":\"red\",\"qty\":1}]'),
 (17, 15, 6, NULL, 'wedding hamper', 1000.00, 1, 8, '2025-10-06 14:40:57', '[{\"color\":\"pink\",\"qty\":1}]');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `reviews`
+--
+
+CREATE TABLE `reviews` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `artwork_id` int(10) UNSIGNED NOT NULL,
+  `rating` tinyint(3) UNSIGNED NOT NULL CHECK (`rating` >= 1 and `rating` <= 5),
+  `comment` text DEFAULT NULL,
+  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `admin_reply` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`id`, `user_id`, `artwork_id`, `rating`, `comment`, `status`, `admin_reply`, `created_at`, `updated_at`) VALUES
+(1, 11, 25, 5, 'good', 'approved', 'thankyou', '2025-10-22 17:09:19', '2025-10-22 17:20:32'),
+(2, 11, 27, 4, 'nice', 'approved', 'thankyou', '2025-10-22 17:15:50', '2025-10-22 17:20:53'),
+(4, 11, 16, 5, 'ecxcellent work', 'pending', NULL, '2025-10-24 14:01:06', '2025-10-24 14:01:06');
 
 -- --------------------------------------------------------
 
@@ -792,7 +919,8 @@ CREATE TABLE `supplier_profiles` (
 INSERT INTO `supplier_profiles` (`user_id`, `shop_name`, `status`, `created_at`, `updated_at`) VALUES
 (7, '', 'approved', '2025-09-10 08:48:27', '2025-09-10 08:49:18'),
 (8, '', 'approved', '2025-09-13 06:08:52', '2025-09-13 06:09:33'),
-(16, 'jbjjbbjbb', 'approved', '2025-10-15 09:16:25', '2025-10-15 09:18:34');
+(16, 'jbjjbbjbb', 'approved', '2025-10-15 09:16:25', '2025-10-15 09:18:34'),
+(17, 'kripa shop', 'pending', '2025-10-21 10:45:37', '2025-10-21 10:45:37');
 
 -- --------------------------------------------------------
 
@@ -826,7 +954,24 @@ INSERT INTO `users` (`id`, `first_name`, `last_name`, `email`, `password_hash`, 
 (13, 'Sera', 'Mol', 'seramol1508@gmail.com', '$2y$10$mxHGIaajQzST9Q6GwaODAemGW.ddnJWtPR7qiWGwVpm.UR0jgFUY2', '2025-09-22 14:18:56', '2025-10-15 16:00:51'),
 (14, 'Fathima', 'Shibu', 'fathima686231@gmail.com', NULL, '2025-09-22 14:24:05', '2025-09-22 14:24:05'),
 (15, 'Fathima', 'Shibu', 'nobinrajeev2026@mca.ajce.in', '$2y$10$f5vO0p2gJXAz7VVp7BV7xOH84hw2vubqc3Gv87nm9CvHTnsyUSxeO', '2025-10-15 09:13:51', '2025-10-15 09:13:51'),
-(16, 'Fathima', 'Shibu', 'thomasshijin@gmail.com', '$2y$10$9Y3L8Doxc8LZO5S0ZeyBTuCikojug08jM7kOYPxf9MiK8ggygqI6y', '2025-10-15 09:16:25', '2025-10-15 09:16:25');
+(16, 'Fathima', 'Shibu', 'thomasshijin@gmail.com', '$2y$10$9Y3L8Doxc8LZO5S0ZeyBTuCikojug08jM7kOYPxf9MiK8ggygqI6y', '2025-10-15 09:16:25', '2025-10-15 09:16:25'),
+(17, 'Fiya', 'Fathim', 'fiyafathim19@gmail.com', NULL, '2025-10-21 10:45:37', '2025-10-21 10:45:37'),
+(18, 'Shifa', 'Fathima', 'shifafathima0815@gmail.com', NULL, '2025-10-24 06:19:25', '2025-10-24 06:19:25');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_behavior_log`
+--
+
+CREATE TABLE `user_behavior_log` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `behavior_type` varchar(50) NOT NULL,
+  `additional_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`additional_data`)),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -857,7 +1002,9 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 (13, 2),
 (14, 2),
 (15, 2),
-(16, 3);
+(16, 3),
+(17, 3),
+(18, 2);
 
 -- --------------------------------------------------------
 
@@ -879,10 +1026,10 @@ CREATE TABLE `wishlist` (
 INSERT INTO `wishlist` (`id`, `user_id`, `artwork_id`, `added_at`) VALUES
 (15, 1, 2, '2025-09-21 13:17:35'),
 (20, 1, 12, '2025-09-29 09:52:28'),
-(24, 11, 19, '2025-10-15 15:38:29'),
-(25, 11, 22, '2025-10-15 15:38:41'),
 (26, 1, 23, '2025-10-20 17:22:47'),
-(27, 1, 22, '2025-10-20 17:56:57');
+(27, 1, 22, '2025-10-20 17:56:57'),
+(28, 11, 33, '2025-10-21 05:31:59'),
+(29, 18, 34, '2025-10-24 09:19:55');
 
 --
 -- Indexes for dumped tables
@@ -894,7 +1041,8 @@ INSERT INTO `wishlist` (`id`, `user_id`, `artwork_id`, `added_at`) VALUES
 ALTER TABLE `artworks`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_artworks_category` (`category_id`),
-  ADD KEY `idx_artworks_status` (`status`);
+  ADD KEY `idx_artworks_status` (`status`),
+  ADD KEY `idx_artworks_rating` (`average_rating`,`total_ratings`);
 
 --
 -- Indexes for table `auth_providers`
@@ -939,6 +1087,14 @@ ALTER TABLE `custom_requests`
 --
 ALTER TABLE `custom_request_images`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `invoices`
+--
+ALTER TABLE `invoices`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_invoice_number` (`invoice_number`),
+  ADD UNIQUE KEY `uniq_invoice_order` (`order_id`);
 
 --
 -- Indexes for table `materials`
@@ -1010,6 +1166,19 @@ ALTER TABLE `password_resets`
   ADD KEY `idx_email_token` (`email`,`token`);
 
 --
+-- Indexes for table `product_ratings`
+--
+ALTER TABLE `product_ratings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_order_artwork_rating` (`order_id`,`artwork_id`),
+  ADD KEY `idx_order_id` (`order_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_artwork_id` (`artwork_id`),
+  ADD KEY `idx_rating` (`rating`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
 -- Indexes for table `purchase_orders`
 --
 ALTER TABLE `purchase_orders`
@@ -1022,6 +1191,14 @@ ALTER TABLE `purchase_orders`
 ALTER TABLE `purchase_order_items`
   ADD PRIMARY KEY (`id`),
   ADD KEY `purchase_order_id` (`purchase_order_id`);
+
+--
+-- Indexes for table `reviews`
+--
+ALTER TABLE `reviews`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_user_artwork` (`user_id`,`artwork_id`),
+  ADD KEY `idx_artwork_status` (`artwork_id`,`status`);
 
 --
 -- Indexes for table `roles`
@@ -1062,6 +1239,14 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `user_behavior_log`
+--
+ALTER TABLE `user_behavior_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_behavior` (`user_id`,`behavior_type`,`created_at`),
+  ADD KEY `idx_product_behavior` (`product_id`,`behavior_type`,`created_at`);
+
+--
 -- Indexes for table `user_roles`
 --
 ALTER TABLE `user_roles`
@@ -1085,25 +1270,25 @@ ALTER TABLE `wishlist`
 -- AUTO_INCREMENT for table `artworks`
 --
 ALTER TABLE `artworks`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
 
 --
 -- AUTO_INCREMENT for table `auth_providers`
 --
 ALTER TABLE `auth_providers`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4153;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4697;
 
 --
 -- AUTO_INCREMENT for table `courier_serviceability_cache`
@@ -1115,13 +1300,19 @@ ALTER TABLE `courier_serviceability_cache`
 -- AUTO_INCREMENT for table `custom_requests`
 --
 ALTER TABLE `custom_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT for table `custom_request_images`
 --
 ALTER TABLE `custom_request_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+
+--
+-- AUTO_INCREMENT for table `invoices`
+--
+ALTER TABLE `invoices`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `materials`
@@ -1139,19 +1330,19 @@ ALTER TABLE `offers_promos`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT for table `order_addons`
 --
 ALTER TABLE `order_addons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
 
 --
 -- AUTO_INCREMENT for table `order_payments`
@@ -1178,6 +1369,12 @@ ALTER TABLE `password_resets`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
+-- AUTO_INCREMENT for table `product_ratings`
+--
+ALTER TABLE `product_ratings`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `purchase_orders`
 --
 ALTER TABLE `purchase_orders`
@@ -1188,6 +1385,12 @@ ALTER TABLE `purchase_orders`
 --
 ALTER TABLE `purchase_order_items`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+
+--
+-- AUTO_INCREMENT for table `reviews`
+--
+ALTER TABLE `reviews`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -1211,13 +1414,19 @@ ALTER TABLE `supplier_products`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+--
+-- AUTO_INCREMENT for table `user_behavior_log`
+--
+ALTER TABLE `user_behavior_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `wishlist`
 --
 ALTER TABLE `wishlist`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- Constraints for dumped tables
@@ -1235,6 +1444,12 @@ ALTER TABLE `auth_providers`
 ALTER TABLE `cart`
   ADD CONSTRAINT `fk_cart_artwork` FOREIGN KEY (`artwork_id`) REFERENCES `artworks` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `invoices`
+--
+ALTER TABLE `invoices`
+  ADD CONSTRAINT `invoices_order_fk` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `materials`
@@ -1259,6 +1474,13 @@ ALTER TABLE `order_requirements`
 --
 ALTER TABLE `order_requirement_messages`
   ADD CONSTRAINT `fk_req_msg` FOREIGN KEY (`requirement_id`) REFERENCES `order_requirements` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `reviews`
+--
+ALTER TABLE `reviews`
+  ADD CONSTRAINT `fk_reviews_artwork` FOREIGN KEY (`artwork_id`) REFERENCES `artworks` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_reviews_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `shipment_tracking_history`

@@ -498,3 +498,17 @@ class BPNNTrainer
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

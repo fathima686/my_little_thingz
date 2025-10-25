@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LuImage, LuAlertCircle, LuLoader2 } from 'react-icons/lu';
+import { LuImage, LuAlertCircle, LuLoader2, LuStar } from 'react-icons/lu';
+import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/product-image-display.css';
 
 const ProductImageDisplay = ({
@@ -17,6 +18,15 @@ const ProductImageDisplay = ({
   const [imageError, setImageError] = useState(false);
   const [artwork, setArtwork] = useState(null);
   const [loading, setLoading] = useState(false);
+  const { auth } = useAuth ? useAuth() : { auth: null };
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [avgRating, setAvgRating] = useState(null);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [ratingInput, setRatingInput] = useState(5);
+  const [commentInput, setCommentInput] = useState('');
+  const API_BASE = 'http://localhost/my_little_thingz/backend/api';
 
   useEffect(() => {
     if (artworkId && !imageUrl) {
@@ -30,12 +40,15 @@ const ProductImageDisplay = ({
         description: description
       });
     }
+    if (artworkId) {
+      fetchReviews();
+    }
   }, [artworkId, imageUrl, title, price, category, description]);
 
   const fetchArtworkDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost/my_little_thingz/backend/api/customer/artwork_details.php?id=${artworkId}`);
+      const response = await fetch(`${API_BASE}/customer/artwork_details.php?id=${artworkId}`);
       const data = await response.json();
       
       if (data.status === 'success' && data.artwork) {
@@ -45,6 +58,63 @@ const ProductImageDisplay = ({
       console.error('Error fetching artwork details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    if (!artworkId) return;
+    try {
+      setReviewsLoading(true);
+      const res = await fetch(`${API_BASE}/customer/reviews.php?artwork_id=${artworkId}&limit=50`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        setReviews(Array.isArray(data.items) ? data.items : []);
+        setAvgRating(data.avg_rating ?? null);
+        setReviewsTotal(data.total ?? 0);
+      }
+    } catch (e) {
+      console.error('Failed to load reviews', e);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const submitReview = async (e) => {
+    e.preventDefault();
+    if (!auth?.user?.id) {
+      alert('Please login to submit a review.');
+      return;
+    }
+    if (!artworkId) return;
+    try {
+      setSubmitLoading(true);
+      const res = await fetch(`${API_BASE}/customer/reviews.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': String(auth.user.id)
+        },
+        body: JSON.stringify({
+          user_id: auth.user.id,
+          artwork_id: artworkId,
+          rating: Number(ratingInput),
+          comment: commentInput
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setCommentInput('');
+        setRatingInput(5);
+        // Refresh list (will only show after approval)
+        fetchReviews();
+        alert('Review submitted for moderation.');
+      } else {
+        alert(data.message || 'Failed to submit review');
+      }
+    } catch (e) {
+      alert('Failed to submit review');
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -148,6 +218,71 @@ const ProductImageDisplay = ({
                 )}
               </div>
             )}
+
+            {/* Reviews Summary */}
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <LuStar style={{ color: '#fbbf24' }} />
+                <strong>Ratings & Reviews</strong>
+                {avgRating != null && (
+                  <span style={{ color: '#374151' }}>Avg {avgRating} ({reviewsTotal})</span>
+                )}
+              </div>
+            </div>
+
+            {/* Reviews List */}
+            <div style={{ marginTop: 8 }}>
+              {reviewsLoading ? (
+                <div style={{ color: '#6b7280' }}>Loading reviews…</div>
+              ) : reviews.length === 0 ? (
+                <div style={{ color: '#6b7280' }}>No reviews yet.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {reviews.map((r) => (
+                    <div key={r.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <LuStar style={{ color: '#f59e0b' }} />
+                        <span style={{ fontWeight: 600 }}>{r.rating}/5</span>
+                        <span style={{ color: '#9ca3af', fontSize: 12 }}>{new Date(r.created_at).toLocaleDateString()}</span>
+                      </div>
+                      {r.comment && <div style={{ color: '#374151' }}>{r.comment}</div>}
+                      {r.admin_reply && (
+                        <div style={{ marginTop: 8, fontSize: 14, color: '#1f2937' }}>
+                          <em>Seller reply:</em> {r.admin_reply}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Submit Review */}
+            <form onSubmit={submitReview} style={{ marginTop: 16, display: 'grid', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 80 }}>Rating</span>
+                <select value={ratingInput} onChange={(e) => setRatingInput(e.target.value)} style={{ padding: 6 }}>
+                  {[5,4,3,2,1].map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'flex', gap: 8 }}>
+                <span style={{ width: 80 }}>Comment</span>
+                <textarea
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder="Share your experience after delivery"
+                  rows={3}
+                  style={{ flex: 1, padding: 8 }}
+                />
+              </label>
+              <div>
+                <button type="submit" disabled={submitLoading} className="btn-primary">
+                  {submitLoading ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
@@ -156,6 +291,8 @@ const ProductImageDisplay = ({
 };
 
 export default ProductImageDisplay;
+
+
 
 
 

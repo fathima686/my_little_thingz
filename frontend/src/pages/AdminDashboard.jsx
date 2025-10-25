@@ -36,6 +36,12 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
+  // Reviews management state
+  const [reviews, setReviews] = useState([]);
+  const [reviewsStatus, setReviewsStatus] = useState("pending");
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsReplyDraft, setReviewsReplyDraft] = useState({});
+
   const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | settings
   const [artForm, setArtForm] = useState({
     title: "",
@@ -396,6 +402,40 @@ export default function AdminDashboard() {
     }
   };
 
+  // Reviews management functions
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const res = await fetch(`${API_BASE}/admin/reviews.php?status=${reviewsStatus}`, { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setReviews(data.items || []);
+      }
+    } catch (e) {
+      console.error('Failed to load reviews:', e);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const updateReview = async (id, payload) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/reviews.php`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...adminHeader },
+        body: JSON.stringify({ id, ...payload })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        fetchReviews(); // Refresh the list
+      } else {
+        alert(data.message || 'Failed to update review');
+      }
+    } catch (e) {
+      alert('Network error updating review');
+    }
+  };
+
   const updateOrderStatus = async (orderId, action) => {
     try {
       const res = await fetch(`${API_BASE}/admin/orders.php`, {
@@ -751,6 +791,13 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqFilter]);
 
+  useEffect(() => {
+    if (!isLoading && adminHeader["X-Admin-User-Id"]) {
+      fetchReviews();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewsStatus]);
+
   const act = async (userId, action) => {
     if (!window.confirm(`Confirm ${action} for #${userId}?`)) return;
     try {
@@ -809,6 +856,7 @@ export default function AdminDashboard() {
           <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }} title="Custom Requests">Custom Requests</button>
           <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }} title="Artwork Gallery">Artworks</button>
           <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }} title="Order Requirements">Order Requirements</button>
+          <button className={activeSection === 'reviews' ? 'active' : ''} onClick={() => { setActiveSection('reviews'); fetchReviews(); }} title="Customer Reviews">Customer Reviews</button>
           {/* Promotional Offers removed as requested */}
           <div className="cart-mini" style={{marginTop:12, padding:'10px 8px', background:'#f8f7ff', borderRadius:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -967,6 +1015,11 @@ export default function AdminDashboard() {
                       <div className="action-icon">🖼️</div>
                       <h3>Artwork Gallery</h3>
                       <p>Upload and manage artworks</p>
+                    </button>
+                    <button className="action-card" onClick={() => { setActiveSection('reviews'); fetchReviews(); }}>
+                      <div className="action-icon">⭐</div>
+                      <h3>Customer Reviews</h3>
+                      <p>Moderate and respond to customer reviews</p>
                     </button>
                   </div>
                 </section>
@@ -1789,6 +1842,84 @@ export default function AdminDashboard() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </section>
+            )}
+
+            {activeSection === 'reviews' && (
+            <section id="reviews" className="widget" style={{ marginTop: 12 }}>
+              <div className="widget-head">
+                <h4>Customer Reviews</h4>
+                <div className="controls">
+                  <label className="muted">Status</label>
+                  <select className="select" value={reviewsStatus} onChange={(e) => setReviewsStatus(e.target.value)}>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <button className="btn btn-soft tiny" onClick={fetchReviews}>Refresh</button>
+                </div>
+              </div>
+              <div className="widget-body">
+                {reviewsLoading ? (
+                  <div className="muted">Loading reviews...</div>
+                ) : reviews.length === 0 ? (
+                  <div className="muted">No reviews found</div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {reviews.map((r) => (
+                      <div key={r.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <div>
+                            <strong>#{r.id} • {r.artwork_title || `Artwork ${r.artwork_id}`}</strong>
+                            <div style={{ color: '#6b7280', fontSize: 14 }}>Rating: {r.rating}/5 • {new Date(r.created_at).toLocaleDateString()}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button 
+                              className="btn btn-soft tiny" 
+                              onClick={() => updateReview(r.id, { status: 'approved' })}
+                              disabled={r.status === 'approved'}
+                            >
+                              Approve
+                            </button>
+                            <button 
+                              className="btn btn-danger tiny" 
+                              onClick={() => updateReview(r.id, { status: 'rejected' })}
+                              disabled={r.status === 'rejected'}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                        {r.comment && (
+                          <div style={{ marginBottom: 8, padding: 8, background: '#f9fafb', borderRadius: 4 }}>
+                            <strong>Customer Review:</strong> {r.comment}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            placeholder="Reply to customer..."
+                            value={reviewsReplyDraft[r.id] ?? (r.admin_reply || '')}
+                            onChange={(e) => setReviewsReplyDraft({ ...reviewsReplyDraft, [r.id]: e.target.value })}
+                            style={{ flex: 1, padding: 6, border: '1px solid #d1d5db', borderRadius: 4 }}
+                          />
+                          <button 
+                            className="btn btn-soft tiny" 
+                            onClick={() => updateReview(r.id, { admin_reply: reviewsReplyDraft[r.id] ?? '' })}
+                          >
+                            Reply
+                          </button>
+                        </div>
+                        {r.admin_reply && (
+                          <div style={{ marginTop: 8, padding: 8, background: '#f0f9ff', borderRadius: 4, fontSize: 14 }}>
+                            <strong>Admin Reply:</strong> {r.admin_reply}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
             )}

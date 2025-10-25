@@ -432,3 +432,17 @@ class BPNNNeuralNetwork
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

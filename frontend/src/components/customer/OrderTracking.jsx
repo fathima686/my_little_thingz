@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye, LuRefreshCw, LuExternalLink, LuDownload } from 'react-icons/lu';
+import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye, LuRefreshCw, LuExternalLink, LuDownload, LuStar } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
+import RateOrders from './RateOrders';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
@@ -12,6 +13,7 @@ const OrderTracking = ({ onClose }) => {
   const [filter, setFilter] = useState('all');
   const [trackingData, setTrackingData] = useState(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [showRateOrders, setShowRateOrders] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -224,9 +226,18 @@ const OrderTracking = ({ onClose }) => {
       <div className="modal-content extra-large">
         <div className="modal-header">
           <h2>📦 Order Tracking</h2>
-          <button className="btn-close" onClick={onClose}>
-            <LuX />
-          </button>
+          <div className="header-actions">
+            <button 
+              className="btn btn-primary"
+              onClick={() => setShowRateOrders(true)}
+              title="Rate Your Orders"
+            >
+              <LuStar /> Rate Orders
+            </button>
+            <button className="btn-close" onClick={onClose}>
+              <LuX />
+            </button>
+          </div>
         </div>
 
         {/* Filter Tabs */}
@@ -601,6 +612,13 @@ const OrderTracking = ({ onClose }) => {
             </div>
           </div>
         )}
+
+        {/* Rate Orders Modal */}
+        {showRateOrders && (
+          <RateOrders
+            onClose={() => setShowRateOrders(false)}
+          />
+        )}
       </div>
 
       <style>{`
@@ -653,6 +671,12 @@ const OrderTracking = ({ onClose }) => {
           margin: 0;
           font-size: 24px;
           color: #1f2937;
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
 
         .btn-close {

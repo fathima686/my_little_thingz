@@ -778,3 +778,17 @@ class PurchaseHistoryAnalyzer
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

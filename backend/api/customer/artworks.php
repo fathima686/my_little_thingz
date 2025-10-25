@@ -66,9 +66,21 @@ try {
             $params[':category_id'] = $categoryId;
         }
         if ($search !== '') {
-            // Search in title/description/category
-            $sql .= " AND (a.title LIKE :q OR a.description LIKE :q OR c.name LIKE :q)";
-            $params[':q'] = '%' . $search . '%';
+            // Enhanced search with keyword expansion
+            require_once 'search-keywords.php';
+            $expandedTerms = SearchKeywordMapper::expandSearchTerms($search);
+            
+            // Create search conditions for each expanded term
+            $searchConditions = [];
+            foreach ($expandedTerms as $index => $term) {
+                $paramName = ':search_term_' . $index;
+                $searchConditions[] = "(a.title LIKE $paramName OR a.description LIKE $paramName OR c.name LIKE $paramName)";
+                $params[$paramName] = '%' . $term . '%';
+            }
+            
+            if (!empty($searchConditions)) {
+                $sql .= " AND (" . implode(' OR ', $searchConditions) . ")";
+            }
         }
         if ($minPrice !== null) {
             $sql .= " AND a.price >= :min_price";
