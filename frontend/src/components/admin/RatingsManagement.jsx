@@ -690,9 +690,3 @@ export default RatingsManagement;
 
 
 
-
-
-
-
-
-

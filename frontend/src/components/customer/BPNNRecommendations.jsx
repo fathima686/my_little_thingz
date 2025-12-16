@@ -3,7 +3,7 @@ import { LuHeart, LuShoppingCart, LuWand, LuBrain, LuTrendingUp } from 'react-ic
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/recommendations.css';
 
-const PYTHON_ML_API = "http://localhost:5001/api/ml";
+const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
 const BPNNRecommendations = ({
   userId = null,
@@ -49,66 +49,24 @@ const BPNNRecommendations = ({
         return;
       }
 
-      // Use Python BPNN API
-      const requestData = {
-        user_data: {
-          age: 25,
-          purchase_frequency: 0.5,
-          avg_order_value: 800,
-          preferred_categories: 3,
-          session_duration: 1200,
-          page_views: 15,
-          time_on_site: 1800,
-          device_type: 1,
-          location_score: 0.7
-        },
-        product_data: {
-          price: 500,
-          category_id: 2,
-          rating: 4.5,
-          popularity: 0.6,
-          stock_level: 0.8,
-          discount_percentage: 0.1
-        }
-      };
-
-      const response = await fetch(`${PYTHON_ML_API}/bpnn/predict-preference`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
+      const params = new URLSearchParams({
+        user_id: targetUserId,
+        limit: limit,
+        min_confidence: 0.3,
+        use_cache: true
       });
 
+      const response = await fetch(`${API_BASE}/customer/bpnn_recommendations.php?${params}`);
       const data = await response.json();
 
-      if (data.success) {
-        // Convert Python response to expected format
-        const mockRecommendations = Array.from({ length: limit }, (_, i) => ({
-          id: i + 1,
-          title: `AI Recommended Product ${i + 1}`,
-          description: `Neural network prediction with ${Math.round(data.confidence * 100)}% confidence`,
-          price: Math.floor(Math.random() * 1000) + 100,
-          image_url: '/images/placeholder.jpg',
-          category_id: 1,
-          category_name: 'AI Recommended',
-          availability: 'in_stock',
-          created_at: new Date().toISOString(),
-          preference_score: data.preference_score,
-          confidence: data.confidence,
-          algorithm: 'BPNN'
-        }));
-        
-        setRecommendations(mockRecommendations);
+      if (data.status === 'success') {
+        setRecommendations(data.recommendations || []);
         setModelInfo({
-          model_version: 'Python BPNN v1.0',
-          generated_at: new Date().toISOString(),
-          count: mockRecommendations.length,
-          preference_score: data.preference_score,
-          recommendation: data.recommendation
+          generated_at: data.generated_at,
+          count: data.count
         });
       } else {
-        setError(data.error || 'Failed to load AI recommendations');
+        setError(data.message || 'Failed to load AI recommendations');
       }
     } catch (err) {
       setError('Network error loading AI recommendations');
@@ -421,7 +379,6 @@ const BPNNRecommendations = ({
 };
 
 export default BPNNRecommendations;
-
 
 
 

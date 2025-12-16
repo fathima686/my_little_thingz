@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => '__root__',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '0b1a186947317cfe9aeed459063f0edc3f9b7cb0',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         '__root__' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '0b1a186947317cfe9aeed459063f0edc3f9b7cb0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -190,6 +190,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'razorpay/razorpay' => array(
+            'pretty_version' => '2.9.2',
+            'version' => '2.9.2.0',
+            'reference' => 'c5cf59941eb2d888e80371328d932e6e8266d352',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../razorpay/razorpay',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'respect/stringifier' => array(
             'pretty_version' => '0.2.0',
             'version' => '0.2.0.0',
@@ -205,6 +214,15 @@
             'reference' => '4c21a7ffc9a4915673cb2c2843963919e664e627',
             'type' => 'library',
             'install_path' => __DIR__ . '/../respect/validation',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'rmccue/requests' => array(
+            'pretty_version' => 'v2.0.16',
+            'version' => '2.0.16.0',
+            'reference' => 'babd303d2084cf2690db536aeb6eef58326ee3ff',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../rmccue/requests',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
@@ -321,6 +339,15 @@
             'provided' => array(
                 0 => '2.3',
             ),
+        ),
+        'tecnickcom/tcpdf' => array(
+            'pretty_version' => '6.10.1',
+            'version' => '6.10.1.0',
+            'reference' => '7a2701251e5d52fc3d508fd71704683eb54f5939',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../tecnickcom/tcpdf',
+            'aliases' => array(),
+            'dev_requirement' => false,
         ),
         'vlucas/phpdotenv' => array(
             'pretty_version' => 'v5.6.2',

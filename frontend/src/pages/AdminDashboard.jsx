@@ -41,8 +41,30 @@ export default function AdminDashboard() {
   const [reviewsStatus, setReviewsStatus] = useState("pending");
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsReplyDraft, setReviewsReplyDraft] = useState({});
+  const [reviewsSentiments, setReviewsSentiments] = useState({});
 
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | settings
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | tutorials | settings
+
+  // Tutorials management state
+  const [tutorials, setTutorials] = useState([]);
+  const [tutorialCategories, setTutorialCategories] = useState([]);
+  const [tutorialForm, setTutorialForm] = useState({
+    title: "",
+    description: "",
+    video: null,
+    video_url: "",
+    thumbnail: null,
+    thumbnail_url: "",
+    duration: "",
+    difficulty_level: "beginner",
+    price: "",
+    is_free: false,
+    category: "",
+  });
+  const [tutorialUploading, setTutorialUploading] = useState(false);
+  const [tutorialNotice, setTutorialNotice] = useState({ type: "", text: "" });
+  const [tutorialThumbnailPreview, setTutorialThumbnailPreview] = useState(null);
+  const [editingTutorial, setEditingTutorial] = useState(null);
   const [artForm, setArtForm] = useState({
     title: "",
     description: "",
@@ -135,6 +157,9 @@ export default function AdminDashboard() {
           break;
         case 'requirements':
           await fetchRequirements();
+          break;
+        case 'tutorials':
+          await Promise.all([fetchTutorials(), fetchTutorialCategories()]);
           break;
         default:
           // Refresh all data for unknown sections
@@ -410,11 +435,78 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (res.ok && data.status === 'success') {
         setReviews(data.items || []);
+        // Analyze sentiments for reviews with comments
+        analyzeReviewsSentiments(data.items.filter(r => r.comment));
       }
     } catch (e) {
       console.error('Failed to load reviews:', e);
     } finally {
       setReviewsLoading(false);
+    }
+  };
+
+  const analyzeReviewsSentiments = async (reviewsList) => {
+    try {
+      const sentimentPromises = reviewsList.map(async (r) => {
+        if (!r.comment) return { id: r.id, error: true };
+        
+        try {
+          const res = await fetch('http://localhost:5001/api/ml/sentiment/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review_text: r.comment })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            return { id: r.id, ...data };
+          }
+        } catch (err) {
+          console.error(`Failed to analyze review ${r.id}:`, err);
+        }
+        return { id: r.id, error: true };
+      });
+      
+      const results = await Promise.all(sentimentPromises);
+      const sentimentMap = {};
+      results.forEach(result => {
+        sentimentMap[result.id] = result;
+      });
+      setReviewsSentiments(sentimentMap);
+    } catch (e) {
+      console.error('Failed to analyze sentiments:', e);
+    }
+  };
+
+  const getSentimentBadge = (sentiment) => {
+    if (!sentiment || sentiment.error) return null;
+    
+    const sentimentStyle = {
+      padding: '4px 8px',
+      borderRadius: '4px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      display: 'inline-block',
+      marginLeft: '8px'
+    };
+    
+    if (sentiment.sentiment === 'positive') {
+      return (
+        <span style={{ ...sentimentStyle, background: '#dcfce7', color: '#166534' }}>
+          ✓ POSITIVE ({sentiment.confidence_percent}%)
+        </span>
+      );
+    } else if (sentiment.sentiment === 'negative') {
+      return (
+        <span style={{ ...sentimentStyle, background: '#fee2e2', color: '#991b1b' }}>
+          ✗ NEGATIVE ({sentiment.confidence_percent}%)
+        </span>
+      );
+    } else {
+      return (
+        <span style={{ ...sentimentStyle, background: '#fef3c7', color: '#92400e' }}>
+          ○ NEUTRAL ({sentiment.confidence_percent}%)
+        </span>
+      );
     }
   };
 
@@ -452,6 +544,169 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       alert('Network error updating order');
+    }
+  };
+
+  // Tutorials management functions
+  const fetchTutorials = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/tutorials.php`, { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setTutorials(data.tutorials || []);
+      }
+    } catch (e) {
+      console.error('Failed to load tutorials:', e);
+    }
+  };
+
+  const fetchTutorialCategories = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/tutorials.php?action=categories`, { headers: { ...adminHeader } });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setTutorialCategories(data.categories || []);
+      }
+    } catch (e) {
+      console.error('Failed to load tutorial categories:', e);
+    }
+  };
+
+  const handleTutorialThumbnailChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setTutorialNotice({ type: 'error', text: 'Thumbnail image must be less than 5MB' });
+        return;
+      }
+      setTutorialForm({ ...tutorialForm, thumbnail: file });
+      const reader = new FileReader();
+      reader.onloadend = () => setTutorialThumbnailPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleTutorialVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 500 * 1024 * 1024) {
+        setTutorialNotice({ type: 'error', text: 'Video file must be less than 500MB' });
+        return;
+      }
+      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'];
+      if (!allowedTypes.includes(file.type)) {
+        setTutorialNotice({ type: 'error', text: 'Invalid video type. Allowed: MP4, WebM, OGG, MOV, AVI' });
+        return;
+      }
+      setTutorialForm({ ...tutorialForm, video: file, video_url: '' }); // Clear URL when file is selected
+      setTutorialNotice({ type: '', text: '' });
+    }
+  };
+
+  const handleTutorialSubmit = async (e) => {
+    e.preventDefault();
+    setTutorialUploading(true);
+    setTutorialNotice({ type: '', text: '' });
+
+    try {
+      const formData = new FormData();
+      formData.append('title', tutorialForm.title);
+      formData.append('description', tutorialForm.description);
+      formData.append('duration', tutorialForm.duration);
+      formData.append('difficulty_level', tutorialForm.difficulty_level);
+      formData.append('price', tutorialForm.price || '0');
+      formData.append('is_free', tutorialForm.is_free ? '1' : '0');
+      formData.append('category', tutorialForm.category);
+      
+      // Video: file upload takes priority over URL
+      if (tutorialForm.video) {
+        formData.append('video', tutorialForm.video);
+      } else if (tutorialForm.video_url) {
+        formData.append('video_url', tutorialForm.video_url);
+      }
+      
+      if (tutorialForm.thumbnail) {
+        formData.append('thumbnail', tutorialForm.thumbnail);
+      }
+      if (tutorialForm.thumbnail_url) {
+        formData.append('thumbnail_url', tutorialForm.thumbnail_url);
+      }
+
+      // Use POST for both create and update when using FormData (for file uploads)
+      const url = editingTutorial 
+        ? `${API_BASE}/admin/tutorials.php?id=${editingTutorial.id}&_method=PUT`
+        : `${API_BASE}/admin/tutorials.php`;
+      const method = 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { ...adminHeader },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setTutorialNotice({ type: 'success', text: editingTutorial ? 'Tutorial updated successfully' : 'Tutorial created successfully' });
+        setTutorialForm({
+          title: "",
+          description: "",
+          video: null,
+          video_url: "",
+          thumbnail: null,
+          thumbnail_url: "",
+          duration: "",
+          difficulty_level: "beginner",
+          price: "",
+          is_free: false,
+          category: "",
+        });
+        setTutorialThumbnailPreview(null);
+        setEditingTutorial(null);
+        fetchTutorials();
+      } else {
+        setTutorialNotice({ type: 'error', text: data.message || 'Failed to save tutorial' });
+      }
+    } catch (e) {
+      setTutorialNotice({ type: 'error', text: 'Network error: ' + e.message });
+    } finally {
+      setTutorialUploading(false);
+    }
+  };
+
+  const handleEditTutorial = (tutorial) => {
+    setEditingTutorial(tutorial);
+    setTutorialForm({
+      title: tutorial.title || "",
+      description: tutorial.description || "",
+      video: null,
+      video_url: tutorial.video_url || "",
+      thumbnail: null,
+      thumbnail_url: tutorial.thumbnail_url || "",
+      duration: tutorial.duration || "",
+      difficulty_level: tutorial.difficulty_level || "beginner",
+      price: tutorial.price || "",
+      is_free: tutorial.is_free ? true : false,
+      category: tutorial.category || "",
+    });
+    setTutorialThumbnailPreview(tutorial.thumbnail_url || null);
+  };
+
+  const handleDeleteTutorial = async (id) => {
+    if (!confirm('Are you sure you want to delete this tutorial?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/tutorials.php?id=${id}`, {
+        method: 'DELETE',
+        headers: { ...adminHeader }
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        fetchTutorials();
+        alert('Tutorial deleted successfully');
+      } else {
+        alert(data.message || 'Delete failed');
+      }
+    } catch (e) {
+      alert('Network error deleting tutorial');
     }
   };
 
@@ -857,6 +1112,7 @@ export default function AdminDashboard() {
           <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }} title="Artwork Gallery">Artworks</button>
           <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }} title="Order Requirements">Order Requirements</button>
           <button className={activeSection === 'reviews' ? 'active' : ''} onClick={() => { setActiveSection('reviews'); fetchReviews(); }} title="Customer Reviews">Customer Reviews</button>
+          <button className={activeSection === 'tutorials' ? 'active' : ''} onClick={() => { setActiveSection('tutorials'); fetchTutorials(); fetchTutorialCategories(); }} title="Tutorial Videos Management">Tutorials</button>
           {/* Promotional Offers removed as requested */}
           <div className="cart-mini" style={{marginTop:12, padding:'10px 8px', background:'#f8f7ff', borderRadius:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -1893,7 +2149,10 @@ export default function AdminDashboard() {
                         </div>
                         {r.comment && (
                           <div style={{ marginBottom: 8, padding: 8, background: '#f9fafb', borderRadius: 4 }}>
-                            <strong>Customer Review:</strong> {r.comment}
+                            <div style={{ marginBottom: 4 }}>
+                              <strong>Customer Review:</strong> {r.comment}
+                            </div>
+                            {getSentimentBadge(reviewsSentiments[r.id])}
                           </div>
                         )}
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1922,6 +2181,269 @@ export default function AdminDashboard() {
                 )}
               </div>
             </section>
+            )}
+
+            {activeSection === 'tutorials' && (
+              <section id="tutorials" className="widget" style={{ marginTop: 12 }}>
+                <div className="widget-head">
+                  <h4>Tutorial Videos Management</h4>
+                  <button className="btn btn-soft tiny" onClick={fetchTutorials}>Refresh</button>
+                </div>
+                <div className="widget-body">
+                  {/* Tutorial Form */}
+                  <div style={{ marginBottom: 24, padding: 16, background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                    <h5 style={{ marginBottom: 16 }}>{editingTutorial ? `Edit Tutorial #${editingTutorial.id}` : 'Add New Tutorial'}</h5>
+                    {tutorialNotice.text && (
+                      <div style={{ 
+                        padding: 12, 
+                        marginBottom: 16, 
+                        borderRadius: 6, 
+                        background: tutorialNotice.type === 'success' ? '#d1fae5' : '#fee2e2',
+                        color: tutorialNotice.type === 'success' ? '#065f46' : '#991b1b'
+                      }}>
+                        {tutorialNotice.text}
+                      </div>
+                    )}
+                    <form onSubmit={handleTutorialSubmit}>
+                      <div className="grid" style={{ gap: 12 }}>
+                        <div>
+                          <label className="muted">Title *</label>
+                          <input 
+                            className="input" 
+                            value={tutorialForm.title} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, title: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="muted">Category *</label>
+                          <select 
+                            className="select" 
+                            value={tutorialForm.category} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, category: e.target.value })}
+                            required
+                          >
+                            <option value="">Select Category</option>
+                            {tutorialCategories.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="muted">Video File *</label>
+                          <input 
+                            type="file"
+                            accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                            onChange={handleTutorialVideoChange}
+                            className="input"
+                          />
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                            Supported: MP4, WebM, OGG, MOV, AVI (Max 500MB)
+                          </div>
+                          {tutorialForm.video && (
+                            <div style={{ marginTop: 8, padding: 8, background: '#f0f9ff', borderRadius: 4, fontSize: 14 }}>
+                              Selected: {tutorialForm.video.name} ({(tutorialForm.video.size / 1024 / 1024).toFixed(2)} MB)
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="muted">Or Video URL (Alternative - YouTube/Vimeo embed)</label>
+                          <input 
+                            className="input" 
+                            type="url"
+                            value={tutorialForm.video_url} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, video_url: e.target.value, video: null })}
+                            placeholder="https://www.youtube.com/embed/VIDEO_ID"
+                            disabled={!!tutorialForm.video}
+                          />
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                            Use this only if you prefer to use a video link instead of uploading
+                          </div>
+                        </div>
+                        <div>
+                          <label className="muted">Description</label>
+                          <textarea 
+                            className="input" 
+                            rows="3"
+                            value={tutorialForm.description} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, description: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="muted">Duration (minutes)</label>
+                          <input 
+                            className="input" 
+                            type="number"
+                            value={tutorialForm.duration} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, duration: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="muted">Difficulty Level</label>
+                          <select 
+                            className="select" 
+                            value={tutorialForm.difficulty_level} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, difficulty_level: e.target.value })}
+                          >
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="muted">Price (Rs)</label>
+                          <input 
+                            className="input" 
+                            type="number"
+                            step="0.01"
+                            value={tutorialForm.price} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, price: e.target.value })}
+                            disabled={tutorialForm.is_free}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input 
+                              type="checkbox"
+                              checked={tutorialForm.is_free} 
+                              onChange={e => setTutorialForm({ ...tutorialForm, is_free: e.target.checked })}
+                            />
+                            <span className="muted">Free Tutorial</span>
+                          </label>
+                        </div>
+                        <div>
+                          <label className="muted">Thumbnail Image</label>
+                          <input 
+                            type="file"
+                            accept="image/*"
+                            onChange={handleTutorialThumbnailChange}
+                            className="input"
+                          />
+                          {tutorialThumbnailPreview && (
+                            <img 
+                              src={tutorialThumbnailPreview} 
+                              alt="Thumbnail preview" 
+                              style={{ marginTop: 8, maxWidth: 200, maxHeight: 150, borderRadius: 4 }}
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <label className="muted">Or Thumbnail URL</label>
+                          <input 
+                            className="input" 
+                            type="url"
+                            value={tutorialForm.thumbnail_url} 
+                            onChange={e => setTutorialForm({ ...tutorialForm, thumbnail_url: e.target.value })}
+                            placeholder="https://example.com/thumbnail.jpg"
+                          />
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                        <button 
+                          type="submit" 
+                          className="btn btn-primary" 
+                          disabled={tutorialUploading}
+                        >
+                          {tutorialUploading ? 'Saving...' : (editingTutorial ? 'Update Tutorial' : 'Create Tutorial')}
+                        </button>
+                        {editingTutorial && (
+                          <button 
+                            type="button"
+                            className="btn btn-soft" 
+                            onClick={() => {
+                              setEditingTutorial(null);
+                              setTutorialForm({
+                                title: "",
+                                description: "",
+                                video: null,
+                                video_url: "",
+                                thumbnail: null,
+                                thumbnail_url: "",
+                                duration: "",
+                                difficulty_level: "beginner",
+                                price: "",
+                                is_free: false,
+                                category: "",
+                              });
+                              setTutorialThumbnailPreview(null);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Tutorials List */}
+                  <div>
+                    <h5 style={{ marginBottom: 16 }}>All Tutorials ({tutorials.length})</h5>
+                    {tutorials.length === 0 ? (
+                      <div className="muted">No tutorials found. Create your first tutorial above.</div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 12 }}>
+                        {tutorials.map((tutorial) => (
+                          <div key={tutorial.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+                            <div style={{ display: 'flex', gap: 16 }}>
+                              {tutorial.thumbnail_url && (
+                                <img 
+                                  src={tutorial.thumbnail_url} 
+                                  alt={tutorial.title}
+                                  style={{ width: 150, height: 100, objectFit: 'cover', borderRadius: 6 }}
+                                />
+                              )}
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 8 }}>
+                                  <div>
+                                    <h6 style={{ margin: 0, marginBottom: 4 }}>{tutorial.title}</h6>
+                                    <div style={{ fontSize: 14, color: '#6b7280' }}>
+                                      Category: {tutorial.category} • Difficulty: {tutorial.difficulty_level} • Duration: {tutorial.duration} min
+                                    </div>
+                                    {tutorial.description && (
+                                      <div style={{ marginTop: 8, fontSize: 14, color: '#4b5563' }}>
+                                        {tutorial.description.substring(0, 150)}...
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <button 
+                                      className="btn btn-soft tiny" 
+                                      onClick={() => handleEditTutorial(tutorial)}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button 
+                                      className="btn btn-danger tiny" 
+                                      onClick={() => handleDeleteTutorial(tutorial.id)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
+                                  <span style={{ 
+                                    padding: '4px 8px', 
+                                    borderRadius: 4, 
+                                    background: tutorial.is_free ? '#d1fae5' : '#dbeafe',
+                                    color: tutorial.is_free ? '#065f46' : '#1e40af',
+                                    fontSize: 12,
+                                    fontWeight: 600
+                                  }}>
+                                    {tutorial.is_free ? 'FREE' : `Rs ${parseFloat(tutorial.price).toFixed(2)}`}
+                                  </span>
+                                  <span style={{ fontSize: 12, color: '#6b7280' }}>
+                                    Created: {new Date(tutorial.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
             )}
 
             {/* Promotional Offers section removed as requested */}

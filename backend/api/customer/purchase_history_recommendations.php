@@ -172,9 +172,3 @@ function enrichRecommendations($db, $recommendations)
 
 
 
-
-
-
-
-
-

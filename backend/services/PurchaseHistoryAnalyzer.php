@@ -786,9 +786,3 @@ class PurchaseHistoryAnalyzer
 
 
 
-
-
-
-
-
-

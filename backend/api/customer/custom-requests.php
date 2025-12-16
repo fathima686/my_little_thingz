@@ -101,9 +101,17 @@ function ensure_schema(mysqli $db) {
 
 try { ensure_schema($mysqli); } catch (Throwable $e) {}
 
-$userId = isset($_SERVER['HTTP_X_USER_ID']) ? (int)$_SERVER['HTTP_X_USER_ID'] : 0;
+// Strict User ID validation
+$userId = isset($_SERVER['HTTP_X_USER_ID']) ? trim($_SERVER['HTTP_X_USER_ID']) : '';
+if (empty($userId) || !ctype_digit($userId)) {
+  http_response_code(401);
+  echo json_encode(['status' => 'error', 'message' => 'Valid user ID required']);
+  exit;
+}
+$userId = (int)$userId;
 if ($userId <= 0) {
-  echo json_encode(['status' => 'error', 'message' => 'User ID required']);
+  http_response_code(401);
+  echo json_encode(['status' => 'error', 'message' => 'User ID must be a positive integer']);
   exit;
 }
 

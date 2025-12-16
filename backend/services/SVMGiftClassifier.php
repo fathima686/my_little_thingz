@@ -447,9 +447,3 @@ class SVMGiftClassifier
 
 
 
-
-
-
-
-
-

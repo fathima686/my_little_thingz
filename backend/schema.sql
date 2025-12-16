@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 25, 2025 at 11:20 AM
+-- Generation Time: Oct 28, 2025 at 06:12 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -149,8 +149,8 @@ CREATE TABLE `cart` (
 INSERT INTO `cart` (`id`, `user_id`, `artwork_id`, `quantity`, `added_at`) VALUES
 (52, 1, 27, 1, '2025-10-20 17:41:53'),
 (53, 1, 22, 1, '2025-10-20 17:56:59'),
-(70, 11, 34, 1, '2025-10-25 03:24:55'),
-(71, 18, 27, 1, '2025-10-25 09:02:18');
+(72, 18, 52, 1, '2025-10-27 07:44:22'),
+(73, 11, 19, 1, '2025-10-27 15:49:30');
 
 -- --------------------------------------------------------
 
@@ -808,6 +808,7 @@ CREATE TABLE `reviews` (
   `artwork_id` int(10) UNSIGNED NOT NULL,
   `rating` tinyint(3) UNSIGNED NOT NULL CHECK (`rating` >= 1 and `rating` <= 5),
   `comment` text DEFAULT NULL,
+  `sentiment` enum('Positive','Neutral','Negative') DEFAULT NULL,
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `admin_reply` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -818,10 +819,12 @@ CREATE TABLE `reviews` (
 -- Dumping data for table `reviews`
 --
 
-INSERT INTO `reviews` (`id`, `user_id`, `artwork_id`, `rating`, `comment`, `status`, `admin_reply`, `created_at`, `updated_at`) VALUES
-(1, 11, 25, 5, 'good', 'approved', 'thankyou', '2025-10-22 17:09:19', '2025-10-22 17:20:32'),
-(2, 11, 27, 4, 'nice', 'approved', 'thankyou', '2025-10-22 17:15:50', '2025-10-22 17:20:53'),
-(4, 11, 16, 5, 'ecxcellent work', 'pending', NULL, '2025-10-24 14:01:06', '2025-10-24 14:01:06');
+INSERT INTO `reviews` (`id`, `user_id`, `artwork_id`, `rating`, `comment`, `sentiment`, `status`, `admin_reply`, `created_at`, `updated_at`) VALUES
+(1, 11, 25, 5, 'good', 'Positive', 'approved', 'thankyou', '2025-10-22 17:09:19', '2025-10-27 14:30:22'),
+(2, 11, 27, 4, 'nice', 'Positive', 'approved', 'thankyou', '2025-10-22 17:15:50', '2025-10-27 14:30:22'),
+(4, 11, 16, 4, 'delay of order  lag in date', 'Neutral', 'pending', NULL, '2025-10-24 14:01:06', '2025-10-27 14:32:32'),
+(5, 11, 8, 5, 'super boqutes i like very much', 'Positive', 'pending', NULL, '2025-10-27 14:03:48', '2025-10-27 14:30:22'),
+(6, 11, 34, 5, 'good product', 'Positive', 'pending', NULL, '2025-10-27 14:09:11', '2025-10-27 14:30:22');
 
 -- --------------------------------------------------------
 
@@ -1282,13 +1285,13 @@ ALTER TABLE `auth_providers`
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4697;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4785;
 
 --
 -- AUTO_INCREMENT for table `courier_serviceability_cache`
@@ -1390,7 +1393,7 @@ ALTER TABLE `purchase_order_items`
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `roles`

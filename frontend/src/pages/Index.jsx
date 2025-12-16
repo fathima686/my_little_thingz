@@ -5,7 +5,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import "../styles/index.css";
 import logo from "../assets/logo.png";
-import { LuGift, LuCamera, LuFileHeart, LuFlower, LuPhone, LuMail, LuMapPin } from "react-icons/lu";
+import { LuGift, LuCamera, LuFileHeart, LuFlower, LuPhone, LuMail, LuMapPin, LuPlay } from "react-icons/lu";
 
 // Auto-load images from src/assets (excludes logo/react)
 const assetModules = import.meta.glob("../assets/*.{png,jpg,jpeg,webp}", { eager: true });
@@ -16,7 +16,7 @@ const allAssets = Object.entries(assetModules)
   }))
   .filter(Boolean)
   // ignore non-product images
-  .filter((a) => a.name && !a.name.includes("logo") && !a.name.includes("react"));
+  .filter((a) => a.name && !a.name.includes("logo") && !a.name.includes("react") && !a.name.includes("collage"));
 
 const uploadedImages = allAssets.map((a) => a.src);
 
@@ -76,29 +76,37 @@ const OffersStrip = () => {
   );
 };
 
-const Header = () => (
-  <header className="site-header">
-    <div className="container header-inner">
-      <div className="brand">
-        <img src={logo} alt="My Little Thingz" className="brand-logo" />
-        <span className="brand-name">My Little Thingz</span>
-      </div>
+const Header = () => {
+  const tutorialsPath = '/tutorial-login';
 
-      <nav className="main-nav">
-        <a href="#home" className="nav-link active">Home</a>
-        <a href="#gallery" className="nav-link">Gallery</a>
-        <a href="#services" className="nav-link">Services</a>
-        <a href="#about" className="nav-link">About</a>
-        <a href="#contact" className="nav-link">Contact</a>
-      </nav>
+  return (
+    <header className="site-header">
+      <div className="container header-inner">
+        <div className="brand">
+          <img src={logo} alt="My Little Thingz" className="brand-logo" />
+          <span className="brand-name">My Little Thingz</span>
+        </div>
 
-      <div className="auth-actions">
-        <Link to="/login" className="btn btn-outline small">Login</Link>
-        <Link to="/register" className="btn btn-primary small">Register</Link>
+        <nav className="main-nav">
+          <a href="#home" className="nav-link active">Home</a>
+          <a href="#gallery" className="nav-link">Gallery</a>
+          <a href="#services" className="nav-link">Services</a>
+          <Link to={tutorialsPath} className="nav-link tutorials-nav-link">
+            <LuPlay size={16} style={{ marginRight: '4px', display: 'inline' }} />
+            Tutorials
+          </Link>
+          <a href="#about" className="nav-link">About</a>
+          <a href="#contact" className="nav-link">Contact</a>
+        </nav>
+
+        <div className="auth-actions">
+          <Link to="/login" className="btn btn-outline small">Login</Link>
+          <Link to="/register" className="btn btn-primary small">Register</Link>
+        </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 const Hero = () => {
   const float = {
@@ -224,6 +232,32 @@ const Services = () => (
   </section>
 );
 
+const Tutorials = () => {
+  return (
+    <section id="tutorials" className="section tutorials-section">
+      <div className="container">
+        <div className="tutorials-cta" data-aos="fade-up">
+          <div className="tutorials-icon">
+            <LuPlay size={60} />
+          </div>
+          <h2>Learn the Art of Gift Making</h2>
+          <p>Master DIY techniques and personalization tricks with our comprehensive video tutorials. From custom framing to floral arrangements, our expert guides will help you create stunning gifts.</p>
+          <div className="tutorials-features">
+            <div className="feature-item">✓ Step-by-step video guides</div>
+            <div className="feature-item">✓ Professional techniques</div>
+            <div className="feature-item">✓ Lifetime access</div>
+            <div className="feature-item">✓ Subscription & one-time purchase options</div>
+          </div>
+          <Link to="/tutorial-login" className="btn btn-primary btn-large">
+            <LuPlay size={20} />
+            Study Tutorials
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Contact = () => (
   <section id="contact" className="section">
     <div className="container">
@@ -312,6 +346,7 @@ export default function Index() {
 
       <Gallery />
       <Services />
+      <Tutorials />
       <Contact />
       <Footer />
     </main>

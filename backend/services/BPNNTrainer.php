@@ -506,9 +506,3 @@ class BPNNTrainer
 
 
 
-
-
-
-
-
-

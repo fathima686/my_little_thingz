@@ -50,6 +50,41 @@ export default function CustomRequestStatus({ onClose }) {
 
   const filtered = requests.filter(r => filter === 'all' ? true : (r.status || '').toLowerCase() === filter);
 
+  const handlePayment = (request) => {
+    // Navigate to cart/checkout with customization data
+    // In a real app, this would add the item to cart and redirect to checkout
+    if (request.artwork_id && auth?.user_id) {
+      // Add to cart then redirect
+      fetch(`${API_BASE}/customer/cart.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': auth.user_id
+        },
+        body: JSON.stringify({
+          artwork_id: request.artwork_id,
+          quantity: 1,
+          customization_request_id: request.id
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Redirect to checkout
+          window.location.href = '/checkout';
+        } else {
+          alert('Failed to add to cart: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(err => {
+        console.error('Error proceeding to payment:', err);
+        alert('Error proceeding to payment');
+      });
+    } else {
+      alert('Please log in to proceed to payment');
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-content large">
@@ -101,6 +136,19 @@ export default function CustomRequestStatus({ onClose }) {
                   </div>
                   <div className="req-actions">
                     <button className="btn btn-outline" onClick={() => setSelected(req)}><LuEye /> View</button>
+                    {req.status === 'completed' && (
+                      <button 
+                        className="btn" 
+                        style={{
+                          background: '#10b981',
+                          color: '#fff',
+                          border: 'none'
+                        }}
+                        onClick={() => handlePayment(req)}
+                      >
+                        💳 Proceed to Payment
+                      </button>
+                    )}
                   </div>
 
                   {/* Inline preview of images if any */}
@@ -174,6 +222,8 @@ export default function CustomRequestStatus({ onClose }) {
           .req-desc { color:#555; margin:8px 0 }
           .req-meta { display:flex; gap:12px; flex-wrap:wrap; font-size:13px; color:#444 }
           .req-actions { display:flex; gap:8px; margin-top:8px }
+          .req-actions .btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+          .req-actions .btn:hover { opacity: 0.9; transform: translateY(-1px); }
           .req-progress { display:flex; align-items:center; gap:8px; margin-top:8px }
           .req-progress .bar { position:relative; flex:1; height:8px; background:#f1f5f9; border-radius:999px; overflow:hidden }
           .req-progress .fill { position:absolute; inset:0 0 0 0; width:0; height:100%; border-radius:999px; transition: width .25s ease }

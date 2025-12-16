@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createKeydownHandler } from '../../utils/validation';
+import { createKeydownHandler, trimWhitespace, validateRequired } from '../../utils/validation';
 import { LuX, LuUpload, LuCalendar, LuDollarSign, LuMessageCircle, LuImagePlus } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -31,28 +31,65 @@ const CustomGiftRequest = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [errors, setErrors] = useState({});
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    const trimmedValue = name === 'title' || name === 'description' || name === 'special_instructions' 
+      ? trimWhitespace(value) 
+      : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: trimmedValue
     }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     const maxFiles = 5;
+    const maxFileSize = 5 * 1024 * 1024; // 5MB per file
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     
+    // Validate file count
     if (imageFiles.length + files.length > maxFiles) {
       window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: `You can only upload up to ${maxFiles} images` } }));
+      setErrors(prev => ({ ...prev, images: `Maximum ${maxFiles} images allowed` }));
       return;
     }
 
-    setImageFiles(prev => [...prev, ...files]);
+    // Validate each file
+    const validFiles = [];
+    const invalidFiles = [];
+    
+    files.forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        invalidFiles.push(`${file.name} - Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.`);
+      } else if (file.size > maxFileSize) {
+        invalidFiles.push(`${file.name} - File size exceeds 5MB limit.`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      setErrors(prev => ({ ...prev, images: invalidFiles.join(' ') }));
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: invalidFiles.join(' ') } }));
+      if (validFiles.length === 0) return;
+    } else {
+      setErrors(prev => ({ ...prev, images: '' }));
+    }
+
+    setImageFiles(prev => [...prev, ...validFiles]);
 
     // Create previews
-    files.forEach(file => {
+    validFiles.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreviews(prev => [...prev, {
@@ -70,23 +107,101 @@ const CustomGiftRequest = ({ onClose }) => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate title - required, not empty/whitespace
+    const titleError = validateRequired(formData.title, 'Request title');
+    if (titleError) {
+      newErrors.title = titleError;
+    } else if (trimWhitespace(formData.title).length < 3) {
+      newErrors.title = 'Request title must be at least 3 characters';
+    } else if (trimWhitespace(formData.title).length > 255) {
+      newErrors.title = 'Request title must be no more than 255 characters';
+    }
+    
+    // Validate description - required, not empty/whitespace
+    const descError = validateRequired(formData.description, 'Description');
+    if (descError) {
+      newErrors.description = descError;
+    } else if (trimWhitespace(formData.description).length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
+    } else if (trimWhitespace(formData.description).length > 5000) {
+      newErrors.description = 'Description must be no more than 5000 characters';
+    }
+    
+    // Validate occasion - if provided, must be from allowed list
+    if (formData.occasion && !OCCASIONS.includes(formData.occasion)) {
+      newErrors.occasion = 'Please select a valid occasion';
+    }
+    
+    // Validate budget - if provided, must be positive number
+    if (formData.budget_min || formData.budget_max) {
+      const minBudget = parseFloat(formData.budget_min) || 0;
+      const maxBudget = parseFloat(formData.budget_max) || 0;
+      
+      if (formData.budget_min && (isNaN(minBudget) || minBudget < 0)) {
+        newErrors.budget_min = 'Minimum budget must be a positive number';
+      }
+      if (formData.budget_max && (isNaN(maxBudget) || maxBudget < 0)) {
+        newErrors.budget_max = 'Maximum budget must be a positive number';
+      }
+      if (minBudget > 0 && maxBudget > 0 && minBudget > maxBudget) {
+        newErrors.budget_max = 'Maximum budget must be greater than or equal to minimum budget';
+      }
+    }
+    
+    // Validate deadline - if provided, must be valid future date
+    if (formData.deadline) {
+      const deadlineDate = new Date(formData.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (isNaN(deadlineDate.getTime())) {
+        newErrors.deadline = 'Please enter a valid date';
+      } else if (deadlineDate < today) {
+        newErrors.deadline = 'Deadline cannot be in the past';
+      }
+    }
+    
+    // Validate gift tier
+    if (formData.gift_tier && !['budget', 'premium'].includes(formData.gift_tier)) {
+      newErrors.gift_tier = 'Please select a valid gift tier';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please fix the validation errors before submitting' } }));
+      return;
+    }
+    
     setLoading(true);
 
     try {
       // Create FormData for file upload
       const submitData = new FormData();
       
-      // Add only the required fields
-      submitData.append('title', formData.title);
+      // Add only the required fields with trimmed values
+      submitData.append('title', trimWhitespace(formData.title));
       submitData.append('occasion', formData.occasion || '');
-      submitData.append('description', formData.description);
+      submitData.append('description', trimWhitespace(formData.description));
       // Use single budget field
       const budgetSingle = formData.budget_max || formData.budget_min || '';
       submitData.append('budget', budgetSingle);
       submitData.append('date', formData.deadline || '');
       submitData.append('gift_tier', formData.gift_tier || 'budget');
+      
+      // Add special instructions if provided
+      if (formData.special_instructions && trimWhitespace(formData.special_instructions)) {
+        submitData.append('special_instructions', trimWhitespace(formData.special_instructions));
+      }
 
       // Add user ID (header is primary, but include for completeness)
       submitData.append('user_id', auth?.user_id);
@@ -147,8 +262,10 @@ const CustomGiftRequest = ({ onClose }) => {
                 onChange={handleInputChange}
                 onKeyDown={createKeydownHandler(true)}
                 placeholder="e.g., Custom Wedding Anniversary Gift"
+                className={errors.title ? 'error' : ''}
                 required
               />
+              {errors.title && <span className="error-text">{errors.title}</span>}
             </div>
 
             <div className="form-group">
@@ -158,12 +275,14 @@ const CustomGiftRequest = ({ onClose }) => {
                 name="occasion"
                 value={formData.occasion}
                 onChange={handleInputChange}
+                className={errors.occasion ? 'error' : ''}
               >
                 <option value="">Select an occasion</option>
                 {OCCASIONS.map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
+              {errors.occasion && <span className="error-text">{errors.occasion}</span>}
             </div>
 
             <div className="form-group">
@@ -176,8 +295,10 @@ const CustomGiftRequest = ({ onClose }) => {
                 onKeyDown={createKeydownHandler(true)}
                 placeholder="Describe your custom gift idea in detail..."
                 rows="4"
+                className={errors.description ? 'error' : ''}
                 required
               />
+              {errors.description && <span className="error-text">{errors.description}</span>}
             </div>
           </div>
 
@@ -198,7 +319,9 @@ const CustomGiftRequest = ({ onClose }) => {
                   placeholder="0"
                   min="0"
                   step="0.01"
+                  className={errors.budget_min ? 'error' : ''}
                 />
+                {errors.budget_min && <span className="error-text">{errors.budget_min}</span>}
               </div>
 
               <div className="form-group">
@@ -214,7 +337,9 @@ const CustomGiftRequest = ({ onClose }) => {
                   placeholder="0"
                   min="0"
                   step="0.01"
+                  className={errors.budget_max ? 'error' : ''}
                 />
+                {errors.budget_max && <span className="error-text">{errors.budget_max}</span>}
               </div>
             </div>
 
@@ -229,7 +354,9 @@ const CustomGiftRequest = ({ onClose }) => {
                 value={formData.deadline}
                 onChange={handleInputChange}
                 min={today}
+                className={errors.deadline ? 'error' : ''}
               />
+              {errors.deadline && <span className="error-text">{errors.deadline}</span>}
             </div>
 
             <div className="form-group">
@@ -308,6 +435,7 @@ const CustomGiftRequest = ({ onClose }) => {
                 ))}
               </div>
             )}
+            {errors.images && <span className="error-text">{errors.images}</span>}
           </div>
 
           <div className="form-actions">
@@ -430,6 +558,26 @@ const CustomGiftRequest = ({ onClose }) => {
           outline: none;
           border-color: #3498db;
           box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .form-group input.error,
+        .form-group select.error,
+        .form-group textarea.error {
+          border-color: #e74c3c;
+        }
+        
+        .form-group input.error:focus,
+        .form-group select.error:focus,
+        .form-group textarea.error:focus {
+          border-color: #e74c3c;
+          box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+        
+        .error-text {
+          color: #e74c3c;
+          font-size: 13px;
+          margin-top: 4px;
+          display: block;
         }
 
         .form-help {

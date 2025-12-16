@@ -3,7 +3,7 @@ import { LuGift, LuRibbon, LuFileText, LuPackage, LuStar, LuCheckCircle, LuInfo 
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/addon-recommendations.css';
 
-const PYTHON_ML_API = "http://localhost:5001/api/ml";
+const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
 const AddonRecommendations = ({
   artworkId = null,
@@ -32,40 +32,36 @@ const AddonRecommendations = ({
       setLoading(true);
       setError(null);
 
-      // Use Python Decision Tree API
-      const requestData = {
-        cart_total: price || 1000,
-        cart_items: artworkId ? [{ id: artworkId, price: price || 1000 }] : []
-      };
+      const params = new URLSearchParams();
+      
+      if (artworkId) {
+        params.append('artwork_id', artworkId);
+      }
+      if (price) {
+        params.append('price', price);
+      }
+      if (category) {
+        params.append('category', category);
+      }
+      if (occasion) {
+        params.append('occasion', occasion);
+      }
+      if (auth?.user_id) {
+        params.append('user_id', auth.user_id);
+      }
 
-      const response = await fetch(`${PYTHON_ML_API}/decision-tree/addon-suggestion`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      });
-
+      const response = await fetch(`${API_BASE}/customer/addon_recommendations.php?${params}`);
       const data = await response.json();
 
-      if (data.success) {
-        // Convert Python response to expected format
-        const convertedRecommendations = data.suggested_addons.map(addon => ({
-          id: addon.id,
-          name: addon.name,
-          description: addon.description,
-          price: addon.price,
-          icon: addon.icon,
-          confidence: data.confidence,
-          reasoning: data.reasoning,
-          algorithm: 'Decision Tree'
-        }));
-        
-        setRecommendations(convertedRecommendations);
-        setDecisionPath([data.applied_rule || 'Decision Tree Rule']);
-        setOverallConfidence(data.confidence || 0.8);
+      if (data.status === 'success') {
+        setRecommendations(data.addon_recommendations || []);
+        setDecisionPath(data.decision_path || []);
+        setOverallConfidence(data.overall_confidence || 0);
+        if (data.artwork) {
+          setArtwork(data.artwork);
+        }
       } else {
-        setError(data.error || 'Failed to load add-on recommendations');
+        setError(data.message || 'Failed to load add-on recommendations');
       }
     } catch (err) {
       setError('Network error loading recommendations');
@@ -301,7 +297,6 @@ const AddonRecommendations = ({
 };
 
 export default AddonRecommendations;
-
 
 
 

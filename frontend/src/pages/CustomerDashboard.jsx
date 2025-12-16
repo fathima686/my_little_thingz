@@ -13,6 +13,7 @@ import WishlistManager from "../components/customer/WishlistManager";
 import CartDrawer from "../components/customer/CartDrawer";
 import CustomizationModal from "../components/customer/CustomizationModal";
 import PurchaseHistoryRecommendations from "../components/customer/PurchaseHistoryRecommendations";
+import TrendingProducts from "../components/customer/TrendingProducts";
 // import Recommendations from "../components/customer/Recommendations";
 
 import logo from "../assets/logo.png";
@@ -547,6 +548,9 @@ export default function CustomerDashboard() {
           </article>
         </div>
       </section>
+
+      {/* Trending & Popular Gifts Section */}
+      <TrendingProducts auth={auth} />
 
       {/* Purchase History Recommendations */}
       <section className="recommendations-section">

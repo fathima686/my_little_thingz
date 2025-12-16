@@ -440,9 +440,3 @@ class BPNNNeuralNetwork
 
 
 
-
-
-
-
-
-

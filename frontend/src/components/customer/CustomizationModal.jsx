@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import PriceCalculator from './PriceCalculator';
 import { LuX, LuUpload, LuImage, LuCalendar, LuDollarSign, LuMessageSquare } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
+import { trimWhitespace, validateRequired } from '../../utils/validation';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
+
+const ALLOWED_OCCASIONS = ['wedding', 'birthday', 'anniversary', 'graduation', 'baby_shower', 'valentine', 'christmas', 'other'];
 
 const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChange }) => {
   const { auth } = useAuth();
@@ -18,11 +21,19 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
 
   if (!isOpen || !artwork) return null;
 
+  // Product types that require picture customization
+  const requiresPictures = ['frame', 'polaroid', 'album', 'wedding_cards', 'wedding card', 'photo frame', 'photo album'];
+  const categoryName = (artwork.category_name || '').toLowerCase();
+  const requiresPicturesUpload = requiresPictures.some(type => 
+    categoryName.includes(type) || artwork.title?.toLowerCase().includes(type)
+  );
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    const trimmedValue = name === 'description' ? trimWhitespace(value) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: trimmedValue
     }));
     // Clear error when user starts typing
     if (errors[name]) {
@@ -35,31 +46,90 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    if (images.length + files.length > 5) {
-      alert('Maximum 5 images allowed');
+    const maxFiles = 5;
+    const maxFileSize = 5 * 1024 * 1024; // 5MB per file
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    
+    // Validate file count
+    if (images.length + files.length > maxFiles) {
+      setErrors(prev => ({ ...prev, images: `Maximum ${maxFiles} images allowed` }));
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: `You can only upload up to ${maxFiles} images` } }));
       return;
     }
-    setImages(prev => [...prev, ...files]);
+
+    // Validate each file
+    const validFiles = [];
+    const invalidFiles = [];
+    
+    files.forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        invalidFiles.push(`${file.name} - Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.`);
+      } else if (file.size > maxFileSize) {
+        invalidFiles.push(`${file.name} - File size exceeds 5MB limit.`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      setErrors(prev => ({ ...prev, images: invalidFiles.join(' ') }));
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: invalidFiles.join(' ') } }));
+      if (validFiles.length === 0) return;
+    } else {
+      setErrors(prev => ({ ...prev, images: '' }));
+    }
+
+    setImages(prev => [...prev, ...validFiles]);
   };
 
   const removeImage = (index) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    // Clear image error when images are removed if required
+    if (errors.images && images.length > 1) {
+      setErrors(prev => ({ ...prev, images: '' }));
+    }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
+    
+    // Validate description - required, not empty/whitespace
+    const descError = validateRequired(formData.description, 'Description');
+    if (descError) {
+      newErrors.description = descError;
+    } else if (trimWhitespace(formData.description).length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
+    } else if (trimWhitespace(formData.description).length > 5000) {
+      newErrors.description = 'Description must be no more than 5000 characters';
     }
-    if (!formData.occasion.trim()) {
+    
+    // Validate occasion - required, must be from allowed list
+    if (!formData.occasion || !formData.occasion.trim()) {
       newErrors.occasion = 'Occasion is required';
+    } else if (!ALLOWED_OCCASIONS.includes(formData.occasion)) {
+      newErrors.occasion = 'Please select a valid occasion';
     }
+    
+    // Validate deadline - required, must be valid future date
     if (!formData.deadline) {
       newErrors.deadline = 'Date is required';
+    } else {
+      const deadlineDate = new Date(formData.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (isNaN(deadlineDate.getTime())) {
+        newErrors.deadline = 'Please enter a valid date';
+      } else if (deadlineDate < today) {
+        newErrors.deadline = 'Date cannot be in the past';
+      }
     }
-    if (images.length === 0) {
-      newErrors.images = 'At least one reference image is required';
+    
+    // Require images for frames, polaroids, albums, and wedding cards
+    if (images.length === 0 && requiresPicturesUpload) {
+      newErrors.images = 'At least one picture is required for customization';
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -68,6 +138,7 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
     e.preventDefault();
     
     if (!validateForm()) {
+      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please fix the validation errors before submitting' } }));
       return;
     }
 
@@ -79,7 +150,7 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
       // Include the artwork id so backend can add to cart
       submitData.append('artwork_id', String(artwork.id));
       submitData.append('quantity', '1');
-      submitData.append('description', formData.description);
+      submitData.append('description', trimWhitespace(formData.description));
       submitData.append('occasion', formData.occasion);
       submitData.append('date', formData.deadline);
       submitData.append('source', 'cart');
@@ -104,7 +175,7 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
         window.dispatchEvent(new CustomEvent('toast', { 
           detail: { 
             type: 'success', 
-            message: 'Customization request submitted successfully! Admin will review and approve before payment.' 
+            message: '✅ Customization request submitted! Admin will review your pictures and approve before you can proceed to payment.' 
           } 
         }));
         onSuccess && onSuccess(data);
@@ -154,6 +225,26 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
           <button className="modal-close" onClick={handleClose}>
             <LuX />
           </button>
+        </div>
+        
+        {/* Admin Approval Notice */}
+        <div style={{
+          background: '#fef3c7',
+          border: '2px solid #f59e0b',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          margin: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <span style={{ fontSize: '24px' }}>⏳</span>
+          <div>
+            <strong style={{ color: '#92400e', display: 'block' }}>Admin Approval Required</strong>
+            <span style={{ color: '#92400e', fontSize: '13px' }}>
+              Your customization request will be reviewed by admin. Payment can only proceed after approval.
+            </span>
+          </div>
         </div>
 
         <div className="modal-body">
@@ -228,7 +319,14 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
             </div>
 
             <div className="form-group">
-              <label>Reference Images *</label>
+              <label>
+                Reference Images {requiresPicturesUpload && '*'}
+                {requiresPicturesUpload && (
+                  <span style={{ color: '#ef4444', fontSize: '13px', fontWeight: 'normal' }}>
+                    {' '}(Required for this product)
+                  </span>
+                )}
+              </label>
               <div className="image-upload-area">
                 <input
                   type="file"
@@ -240,9 +338,14 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
                 />
                 <label htmlFor="images" className="upload-button">
                   <LuUpload />
-                  Upload Images (Max 5)
+                  Upload Pictures (Max 5)
                 </label>
-                <p className="upload-hint">Upload reference images to help us understand your requirements</p>
+                <p className="upload-hint">
+                  {requiresPicturesUpload 
+                    ? '⚠️ This product requires pictures for customization. Admin will review before approval.'
+                    : 'Upload reference images to help us understand your requirements'
+                  }
+                </p>
               </div>
               {errors.images && <span className="error-text">{errors.images}</span>}
               

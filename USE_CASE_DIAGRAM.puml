@@ -1,0 +1,183 @@
+@startuml My Little Thingz - Use Case Diagram
+
+!define RECTANGLE class
+
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor<<Customer>> LightBlue
+    BackgroundColor<<Admin>> LightGreen
+    BackgroundColor<<Supplier>> LightYellow
+    BackgroundColor<<System>> LightGray
+    BorderColor Black
+}
+
+left to right direction
+
+' Actors
+actor Customer as customer
+actor Admin as admin
+actor Supplier as supplier
+
+' Customer Use Cases
+rectangle "Customer System" {
+    usecase UC1 <<Customer>> "Register Account" as UC_Register
+    usecase UC2 <<Customer>> "Login/Logout" as UC_Login
+    usecase UC3 <<Customer>> "Browse Products" as UC_Browse
+    usecase UC4 <<Customer>> "View Product Details" as UC_ProductDetails
+    usecase UC5 <<Customer>> "Search Products" as UC_Search
+    usecase UC6 <<Customer>> "Customize Gift/Chocolate" as UC_Customize
+    usecase UC7 <<Customer>> "Upload Custom Image" as UC_UploadImage
+    usecase UC8 <<Customer>> "View Artwork Gallery" as UC_ArtworkGallery
+    usecase UC9 <<Customer>> "Request Custom Gift" as UC_CustomRequest
+    usecase UC10 <<Customer>> "Add to Cart" as UC_AddToCart
+    usecase UC11 <<Customer>> "Manage Cart" as UC_ManageCart
+    usecase UC12 <<Customer>> "Place Order" as UC_PlaceOrder
+    usecase UC13 <<Customer>> "Make Payment" as UC_MakePayment
+    usecase UC14 <<Customer>> "Track Order" as UC_TrackOrder
+    usecase UC15 <<Customer>> "View Order History" as UC_OrderHistory
+    usecase UC16 <<Customer>> "Rate Product" as UC_RateProduct
+    usecase UC17 <<Customer>> "Write Review" as UC_WriteReview
+    usecase UC18 <<Customer>> "View Recommendations" as UC_ViewRecommendations
+    usecase UC19 <<Customer>> "Manage Wishlist" as UC_Wishlist
+    usecase UC20 <<Customer>> "View Purchase History" as UC_PurchaseHistory
+    usecase UC21 <<Customer>> "Manage Profile" as UC_ManageProfile
+    usecase UC22 <<Customer>> "View Trending Products" as UC_TrendingProducts
+    usecase UC23 <<Customer>> "View Addon Suggestions" as UC_AddonSuggestions
+}
+
+' Admin Use Cases
+rectangle "Admin System" {
+    usecase UC24 <<Admin>> "Login to Admin Panel" as UC_AdminLogin
+    usecase UC25 <<Admin>> "Manage Orders" as UC_ManageOrders
+    usecase UC26 <<Admin>> "Update Order Status" as UC_UpdateOrderStatus
+    usecase UC27 <<Admin>> "Create Shipment" as UC_CreateShipment
+    usecase UC28 <<Admin>> "Assign Courier" as UC_AssignCourier
+    usecase UC29 <<Admin>> "Manage Products" as UC_ManageProducts
+    usecase UC30 <<Admin>> "Add/Edit Products" as UC_AddEditProducts
+    usecase UC31 <<Admin>> "Manage Categories" as UC_ManageCategories
+    usecase UC32 <<Admin>> "Manage Suppliers" as UC_ManageSuppliers
+    usecase UC33 <<Admin>> "View Analytics" as UC_ViewAnalytics
+    usecase UC34 <<Admin>> "Manage Reviews" as UC_ManageReviews
+    usecase UC35 <<Admin>> "View Sentiment Analysis" as UC_ViewSentimentAnalysis
+    usecase UC36 <<Admin>> "Manage Custom Requests" as UC_ManageCustomRequests
+    usecase UC37 <<Admin>> "Configure ML Models" as UC_ConfigureML
+    usecase UC38 <<Admin>> "Train BPNN Model" as UC_TrainBPNN
+    usecase UC39 <<Admin>> "Manage Offers/Promotions" as UC_ManageOffers
+    usecase UC40 <<Admin>> "View Customer Dashboard" as UC_ViewCustomerDashboard
+    usecase UC41 <<Admin>> "Manage Shipping Charges" as UC_ManageShipping
+    usecase UC42 <<Admin>> "Generate Invoice" as UC_GenerateInvoice
+}
+
+' Supplier Use Cases
+rectangle "Supplier System" {
+    usecase UC43 <<Supplier>> "Login to Supplier Panel" as UC_SupplierLogin
+    usecase UC44 <<Supplier>> "Upload Products" as UC_UploadProducts
+    usecase UC45 <<Supplier>> "Manage Inventory" as UC_ManageInventory
+    usecase UC46 <<Supplier>> "View Requirements" as UC_ViewRequirements
+    usecase UC47 <<Supplier>> "Update Product Status" as UC_UpdateProductStatus
+}
+
+' System Use Cases
+rectangle "Automated System" {
+    usecase UC48 <<System>> "Automated Order Status Update" as UC_AutoOrderStatus
+    usecase UC49 <<System>> "Automated Shipment Creation" as UC_AutoShipment
+    usecase UC50 <<System>> "Auto Courier Assignment" as UC_AutoCourier
+    usecase UC51 <<System>> "Payment Verification" as UC_PaymentVerification
+    usecase UC52 <<System>> "Generate Recommendations (KNN)" as UC_KNNRecommendations
+    usecase UC53 <<System>> "Classify Gift Category (Bayesian)" as UC_BayesianClassification
+    usecase UC54 <<System>> "Suggest Addons (Decision Tree)" as UC_DecisionTreeAddons
+    usecase UC55 <<System>> "Classify Budget/Premium (SVM)" as UC_SVMClassification
+    usecase UC56 <<System>> "AI Recommendations (BPNN)" as UC_BPNNRecommendations
+    usecase UC57 <<System>> "Sentiment Analysis" as UC_SentimentAnalysis
+    usecase UC58 <<System>> "Identify Trending Products" as UC_TrendingClassification
+    usecase UC59 <<System>> "Update Shipment Tracking" as UC_UpdateTracking
+}
+
+' Customer Relationships
+customer --> UC_Register
+customer --> UC_Login
+customer --> UC_Browse
+customer --> UC_ProductDetails
+customer --> UC_Search
+customer --> UC_Customize
+customer --> UC_UploadImage
+customer --> UC_ArtworkGallery
+customer --> UC_CustomRequest
+customer --> UC_AddToCart
+customer --> UC_ManageCart
+customer --> UC_PlaceOrder
+customer --> UC_MakePayment
+customer --> UC_TrackOrder
+customer --> UC_OrderHistory
+customer --> UC_RateProduct
+customer --> UC_WriteReview
+customer --> UC_ViewRecommendations
+customer --> UC_Wishlist
+customer --> UC_PurchaseHistory
+customer --> UC_ManageProfile
+customer --> UC_TrendingProducts
+customer --> UC_AddonSuggestions
+
+' Admin Relationships
+admin --> UC_AdminLogin
+admin --> UC_ManageOrders
+admin --> UC_UpdateOrderStatus
+admin --> UC_CreateShipment
+admin --> UC_AssignCourier
+admin --> UC_ManageProducts
+admin --> UC_AddEditProducts
+admin --> UC_ManageCategories
+admin --> UC_ManageSuppliers
+admin --> UC_ViewAnalytics
+admin --> UC_ManageReviews
+admin --> UC_ViewSentimentAnalysis
+admin --> UC_ManageCustomRequests
+admin --> UC_ConfigureML
+admin --> UC_TrainBPNN
+admin --> UC_ManageOffers
+admin --> UC_ViewCustomerDashboard
+admin --> UC_ManageShipping
+admin --> UC_GenerateInvoice
+
+' Supplier Relationships
+supplier --> UC_SupplierLogin
+supplier --> UC_UploadProducts
+supplier --> UC_ManageInventory
+supplier --> UC_ViewRequirements
+supplier --> UC_UpdateProductStatus
+
+' System Automation Relationships
+UC_MakePayment ..> UC_PaymentVerification : triggers
+UC_PaymentVerification ..> UC_AutoShipment : triggers
+UC_AutoShipment ..> UC_AutoCourier : triggers
+UC_AutoCourier ..> UC_UpdateTracking : triggers
+
+' ML System Relationships
+UC_Browse ..> UC_KNNRecommendations : uses
+UC_Browse ..> UC_BPNNRecommendations : uses
+UC_Browse ..> UC_TrendingClassification : uses
+UC_PlaceOrder ..> UC_BayesianClassification : uses
+UC_PlaceOrder ..> UC_SVMClassification : uses
+UC_PlaceOrder ..> UC_DecisionTreeAddons : uses
+UC_WriteReview ..> UC_SentimentAnalysis : uses
+
+' Use Case Dependencies
+UC_PlaceOrder ..> UC_AddToCart : requires
+UC_MakePayment ..> UC_PlaceOrder : requires
+UC_TrackOrder ..> UC_PlaceOrder : requires
+UC_GenerateInvoice ..> UC_PlaceOrder : requires
+UC_ViewRecommendations ..> UC_Browse : extends
+UC_AddonSuggestions ..> UC_PlaceOrder : extends
+UC_RateProduct ..> UC_OrderHistory : requires
+
+' Include Relationships
+UC_ProductDetails <.. UC_Browse : <<include>>
+UC_Search <.. UC_Browse : <<include>>
+UC_ManageCart <.. UC_AddToCart : <<extend>>
+UC_ViewRecommendations <.. UC_Browse : <<extend>>
+UC_AddonSuggestions <.. UC_PlaceOrder : <<extend>>
+UC_SentimentAnalysis <.. UC_WriteReview : <<include>>
+UC_UpdateTracking <.. UC_TrackOrder : <<include>>
+
+@enduml
+

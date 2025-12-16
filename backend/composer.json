@@ -4,6 +4,7 @@
         "illuminate/database": "^8.83",
         "respect/validation": "^2.2",
         "neomerx/cors-psr7": "^2.0",
-        "tecnickcom/tcpdf": "^6.6"
+        "tecnickcom/tcpdf": "^6.6",
+        "razorpay/razorpay": "^2.9"
     }
 }

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/recommendations.css';
 import { useRef, useCallback } from 'react';
 
-const PYTHON_ML_API = "http://localhost:5001/api/ml";
+const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
 const Recommendations = ({
   artworkId = null,
@@ -41,76 +41,25 @@ const Recommendations = ({
       setLoading(true);
       setError(null);
 
-      // Try Python KNN API first
-      try {
-        const requestData = {
-          product_id: artworkId || 1,
-          user_id: auth?.user_id || null,
-          k: limit
-        };
-
-        const response = await fetch(`${PYTHON_ML_API}/knn/recommendations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            // Convert Python response to expected format
-            const convertedRecommendations = data.recommendations.map(rec => ({
-              id: rec.product_id,
-              title: `AI Similar Product ${rec.product_id}`,
-              description: `Python KNN - ${Math.round(rec.similarity_score * 100)}% similarity`,
-              price: Math.floor(Math.random() * 1000) + 100,
-              image_url: '/images/placeholder.jpg',
-              category_id: 1,
-              category_name: 'AI Recommended',
-              availability: 'in_stock',
-              created_at: new Date().toISOString(),
-              similarity_score: rec.similarity_score,
-              algorithm: 'Python KNN'
-            }));
-            
-            setRecommendations(convertedRecommendations);
-            return; // Success, exit early
-          }
-        }
-      } catch (pythonError) {
-        console.log('Python ML service unavailable, falling back to PHP:', pythonError.message);
+      const params = new URLSearchParams();
+      if (artworkId) {
+        params.set('artwork_id', artworkId);
+      } else if (auth?.user_id) {
+        params.set('user_id', auth.user_id);
+      } else {
+        // No artwork or user, show popular items
+        params.set('limit', limit);
       }
+      params.set('limit', limit);
 
-      // Fallback to PHP recommendations
-      const phpResponse = await fetch(`http://localhost/my_little_thingz/backend/api/customer/recommendations.php?artwork_id=${artworkId || 1}&limit=${limit}&user_id=${auth?.user_id || ''}`);
-      
-      if (phpResponse.ok) {
-        const phpData = await phpResponse.json();
-        if (phpData.status === 'success' && phpData.recommendations) {
-          setRecommendations(phpData.recommendations);
-          return; // Success with PHP
-        }
+      const response = await fetch(`${API_BASE}/customer/recommendations.php?${params}`);
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        setRecommendations(data.recommendations || []);
+      } else {
+        setError(data.message || 'Failed to load recommendations');
       }
-
-      // Final fallback - generate mock recommendations
-      const mockRecommendations = Array.from({ length: limit }, (_, i) => ({
-        id: i + 1,
-        title: `Similar Gift ${i + 1}`,
-        description: `Similar product with ${Math.floor(Math.random() * 30) + 70}% similarity`,
-        price: Math.floor(Math.random() * 1000) + 100,
-        image_url: '/images/placeholder.jpg',
-        category_id: 1,
-        category_name: 'Similar',
-        availability: 'in_stock',
-        created_at: new Date().toISOString(),
-        similarity_score: Math.random() * 0.3 + 0.7,
-        algorithm: 'Fallback Algorithm'
-      }));
-      
-      setRecommendations(mockRecommendations);
-      
     } catch (err) {
       setError('Network error loading recommendations');
       console.error('Recommendations error:', err);
@@ -126,7 +75,7 @@ const Recommendations = ({
     }
 
     try {
-      const response = await fetch(`http://localhost/my_little_thingz/backend/api/customer/cart.php`, {
+      const response = await fetch(`${API_BASE}/customer/cart.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

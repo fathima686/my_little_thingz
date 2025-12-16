@@ -1,0 +1,93 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f9f7ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fef6f0;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="500" fill="url(#bgGradient)"/>
+  
+  <!-- Top left frame - Embroidery -->
+  <rect x="20" y="20" width="160" height="160" rx="12" fill="#fff5f7" stroke="#d4a5b0" stroke-width="2" filter="url(#shadow)"/>
+  <circle cx="95" cy="85" r="45" fill="none" stroke="#c9a6d9" stroke-width="3"/>
+  <path d="M 75 65 Q 85 55 95 65 Q 105 55 115 65 Q 105 75 95 85 Q 85 75 75 65 Z" fill="#e74c3c" opacity="0.8"/>
+  <circle cx="95" cy="85" r="8" fill="#fff" stroke="#c9a6d9" stroke-width="2"/>
+  <text x="95" y="140" font-size="12" font-weight="bold" text-anchor="middle" fill="#764ba2">Embroidery</text>
+  
+  <!-- Top right frame - Hand-made items -->
+  <rect x="210" y="20" width="170" height="160" rx="12" fill="#fff9f5" stroke="#d4a574" stroke-width="2" filter="url(#shadow)"/>
+  <circle cx="295" cy="50" r="12" fill="#f1c40f"/>
+  <circle cx="300" cy="70" r="8" fill="#e74c3c"/>
+  <circle cx="285" cy="75" r="10" fill="#3498db"/>
+  <circle cx="310" cy="60" r="9" fill="#2ecc71"/>
+  <line x1="280" y1="95" x2="310" y2="95" stroke="#b8860b" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="270" cy="115" r="6" fill="#e8a87c"/>
+  <circle cx="290" cy="120" r="5" fill="#d4926d"/>
+  <circle cx="310" cy="115" r="5" fill="#c9a04a"/>
+  <text x="295" y="150" font-size="12" font-weight="bold" text-anchor="middle" fill="#764ba2">Craft Supplies</text>
+  
+  <!-- Middle left frame - Knitting -->
+  <rect x="20" y="200" width="160" height="150" rx="12" fill="#f5f5ff" stroke="#a5b8d9" stroke-width="2" filter="url(#shadow)"/>
+  <!-- Yarn ball -->
+  <circle cx="85" cy="245" r="18" fill="#e8a87c" stroke="#d4926d" stroke-width="2"/>
+  <circle cx="85" cy="245" r="14" fill="#f0b896"/>
+  <path d="M 70 240 Q 78 245 72 255" fill="#e8a87c" opacity="0.6"/>
+  <!-- Needles -->
+  <line x1="110" y1="220" x2="125" y2="205" stroke="#8b7355" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="127" cy="203" r="2.5" fill="#2c1810"/>
+  <line x1="115" y1="265" x2="130" y2="280" stroke="#8b7355" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="132" cy="282" r="2.5" fill="#2c1810"/>
+  <text x="95" y="320" font-size="12" font-weight="bold" text-anchor="middle" fill="#764ba2">Knitting</text>
+  
+  <!-- Middle right frame - DIY Crafting -->
+  <rect x="210" y="200" width="170" height="150" rx="12" fill="#fff0f5" stroke="#d4a5b0" stroke-width="2" filter="url(#shadow)"/>
+  <!-- Scissors -->
+  <path d="M 265 240 Q 255 230 250 220" stroke="#888" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="248" cy="218" r="4" fill="#b0b0b0"/>
+  <path d="M 280 240 Q 290 230 295 220" stroke="#888" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="297" cy="218" r="4" fill="#b0b0b0"/>
+  <line x1="270" y1="235" x2="280" y2="240" stroke="#888" stroke-width="2"/>
+  <!-- Thread spools -->
+  <rect x="260" y="265" width="8" height="15" fill="#e74c3c" rx="2"/>
+  <rect x="258" y="261" width="12" height="4" fill="#c0392b"/>
+  <rect x="275" y="265" width="8" height="15" fill="#3498db" rx="2"/>
+  <rect x="273" y="261" width="12" height="4" fill="#2980b9"/>
+  <rect x="290" y="265" width="8" height="15" fill="#f1c40f" rx="2"/>
+  <rect x="288" y="261" width="12" height="4" fill="#f39c12"/>
+  <text x="295" y="320" font-size="12" font-weight="bold" text-anchor="middle" fill="#764ba2">DIY Projects</text>
+  
+  <!-- Bottom frame - Jewelry/Beads -->
+  <rect x="20" y="370" width="360" height="110" rx="12" fill="#fef9f0" stroke="#d4c5a9" stroke-width="2" filter="url(#shadow)"/>
+  <!-- Beads -->
+  <circle cx="60" cy="410" r="6" fill="#e74c3c"/>
+  <circle cx="85" cy="405" r="5" fill="#3498db"/>
+  <circle cx="110" cy="410" r="6" fill="#2ecc71"/>
+  <circle cx="135" cy="408" r="5" fill="#f39c12"/>
+  <circle cx="160" cy="412" r="5" fill="#9b59b6"/>
+  <!-- String -->
+  <path d="M 55 410 Q 85 395 160 410" stroke="#c9a04a" stroke-width="2" fill="none"/>
+  <!-- More beads and supplies -->
+  <circle cx="200" cy="415" r="4" fill="#e74c3c" opacity="0.7"/>
+  <circle cx="220" cy="410" r="5" fill="#f1c40f"/>
+  <circle cx="240" cy="412" r="4" fill="#3498db" opacity="0.7"/>
+  <circle cx="260" cy="408" r="5" fill="#9b59b6"/>
+  <circle cx="280" cy="415" r="4" fill="#2ecc71"/>
+  <!-- Label -->
+  <text x="200" y="460" font-size="14" font-weight="bold" text-anchor="middle" fill="#764ba2">Handmade with Love & Creativity</text>
+  
+  <!-- Decorative elements -->
+  <circle cx="30" cy="50" r="2" fill="#667eea" opacity="0.4"/>
+  <circle cx="370" cy="80" r="2" fill="#764ba2" opacity="0.4"/>
+  <circle cx="380" cy="380" r="2" fill="#e74c3c" opacity="0.3"/>
+  <circle cx="40" cy="450" r="2" fill="#f39c12" opacity="0.3"/>
+  
+  <!-- Small hearts -->
+  <text x="150" y="35" font-size="16" fill="#e74c3c" opacity="0.5">♥</text>
+  <text x="360" y="120" font-size="14" fill="#e74c3c" opacity="0.5">♥</text>
+  <text x="25" y="160" font-size="14" fill="#e74c3c" opacity="0.5">♥</text>
+</svg>

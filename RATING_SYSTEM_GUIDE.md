@@ -172,9 +172,3 @@ The rating and feedback system is **complete and ready for production use**. Cus
 
 
 
-
-
-
-
-
-

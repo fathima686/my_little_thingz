@@ -1,9 +1,12 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./contexts/AuthContext";
+import { TutorialAuthProvider } from "./contexts/TutorialAuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import SessionGuard from "./components/SessionGuard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TutorialProtectedRoute from "./components/TutorialProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -19,21 +22,29 @@ import SupplierRequirements from "./pages/SupplierRequirements";
 import SupplierProfile from "./pages/SupplierProfile";
 import CartPage from "./pages/CartPage";
 import AdminRequirements from "./pages/AdminRequirements";
+import TutorialsDashboard from "./pages/TutorialsDashboard";
+import TutorialViewer from "./pages/TutorialViewer";
+import TutorialLogin from "./pages/TutorialLogin";
+import TutorialRegister from "./pages/TutorialRegister";
 
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <ToastProvider>
-          <SessionGuard>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/forgot" element={<ForgotPassword />} />
-              <Route path="/reset" element={<ResetPassword />} />
+    <GoogleOAuthProvider clientId="12668430306-fg4m3l8mh7hqb84m5s2j7qrtgk7naojm.apps.googleusercontent.com">
+      <Router>
+        <AuthProvider>
+          <TutorialAuthProvider>
+            <ToastProvider>
+              <SessionGuard>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/tutorial-login" element={<TutorialLogin />} />
+                <Route path="/tutorial-register" element={<TutorialRegister />} />
+                <Route path="/forgot" element={<ForgotPassword />} />
+                <Route path="/reset" element={<ResetPassword />} />
               
               {/* Protected Routes */}
               <Route 
@@ -58,6 +69,22 @@ function App() {
                   <ProtectedRoute requiredRoles={['customer']}>
                     <CartPage />
                   </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/tutorials" 
+                element={
+                  <TutorialProtectedRoute>
+                    <TutorialsDashboard />
+                  </TutorialProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/tutorial/:id" 
+                element={
+                  <TutorialProtectedRoute>
+                    <TutorialViewer />
+                  </TutorialProtectedRoute>
                 } 
               />
               <Route 
@@ -109,11 +136,14 @@ function App() {
                 } 
               />
             </Routes>
-          </SessionGuard>
-        </ToastProvider>
-      </AuthProvider>
-    </Router>
-  );
-}
+              </SessionGuard>
+            </ToastProvider>
+          </TutorialAuthProvider>
+        </AuthProvider>
+      </Router>
+    </GoogleOAuthProvider>
+    );
+  }
+
 
 export default App;

@@ -226,9 +226,3 @@ class InvoicePDFGenerator {
 
 
 
-
-
-
-
-
-

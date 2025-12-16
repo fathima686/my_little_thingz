@@ -324,9 +324,3 @@ This component will beautifully display your custom chocolates product with prop
 
 
 
-
-
-
-
-
-

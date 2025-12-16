@@ -289,9 +289,3 @@ This BPNN implementation is part of the "My Little Thingz" project and follows t
 
 
 
-
-
-
-
-
-

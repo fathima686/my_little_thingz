@@ -303,9 +303,3 @@ class MLDataProvider:
         return scores.get(availability, 0.3)
 
 
-
-
-
-
-
-

@@ -1,0 +1,162 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0f4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5f0ff;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="500" fill="url(#bgGradient)"/>
+  
+  <!-- Decorative dots -->
+  <circle cx="60" cy="60" r="2.5" fill="#667eea" opacity="0.3"/>
+  <circle cx="340" cy="100" r="2" fill="#764ba2" opacity="0.3"/>
+  <circle cx="360" cy="450" r="2.5" fill="#667eea" opacity="0.3"/>
+  <circle cx="50" cy="420" r="2" fill="#764ba2" opacity="0.3"/>
+  
+  <!-- Opened Book/Sketchbook -->
+  <g id="book" filter="url(#shadow)">
+    <!-- Book spine -->
+    <rect x="100" y="80" width="8" height="200" fill="#8b6f47" rx="2"/>
+    
+    <!-- Left page -->
+    <path d="M 108 80 L 180 75 L 180 280 L 108 280 Z" fill="#f5e6d3" stroke="#d4a574" stroke-width="1.5"/>
+    
+    <!-- Right page -->
+    <path d="M 108 80 L 36 75 L 36 280 L 108 280 Z" fill="#fffbf0" stroke="#d4a574" stroke-width="1.5"/>
+    
+    <!-- Left page sketches/lines -->
+    <line x1="120" y1="100" x2="170" y2="100" stroke="#e0e0e0" stroke-width="2"/>
+    <line x1="120" y1="115" x2="170" y2="115" stroke="#e0e0e0" stroke-width="2"/>
+    <line x1="120" y1="130" x2="165" y2="130" stroke="#e0e0e0" stroke-width="2"/>
+    <circle cx="145" cy="160" r="15" fill="none" stroke="#667eea" stroke-width="2" opacity="0.6"/>
+    <path d="M 140 175 Q 145 185 150 175" stroke="#764ba2" stroke-width="2" fill="none" opacity="0.6"/>
+    
+    <!-- Right page design -->
+    <rect x="50" y="100" width="50" height="50" fill="#ffe8cc" stroke="#764ba2" stroke-width="2" rx="4"/>
+    <circle cx="75" cy="125" r="8" fill="#764ba2" opacity="0.7"/>
+  </g>
+  
+  <!-- Paintbrushes -->
+  <g id="brushes">
+    <!-- Brush 1 (Red) -->
+    <line x1="200" y1="120" x2="200" y2="200" stroke="#8b4513" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="200" cy="115" rx="8" ry="12" fill="#e74c3c"/>
+    <ellipse cx="200" cy="113" rx="6" ry="8" fill="#c0392b" opacity="0.8"/>
+    
+    <!-- Brush 2 (Blue) -->
+    <line x1="225" y1="140" x2="225" y2="210" stroke="#8b4513" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="225" cy="135" rx="8" ry="12" fill="#3498db"/>
+    <ellipse cx="225" cy="133" rx="6" ry="8" fill="#2980b9" opacity="0.8"/>
+    
+    <!-- Brush 3 (Yellow) -->
+    <line x1="250" y1="125" x2="250" y2="195" stroke="#8b4513" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="250" cy="120" rx="8" ry="12" fill="#f1c40f"/>
+    <ellipse cx="250" cy="118" rx="6" ry="8" fill="#f39c12" opacity="0.8"/>
+  </g>
+  
+  <!-- Palette -->
+  <g id="palette" filter="url(#shadow)">
+    <!-- Palette base -->
+    <ellipse cx="280" cy="270" rx="55" ry="45" fill="#d2b48c" stroke="#8b7355" stroke-width="2"/>
+    
+    <!-- Thumb hole -->
+    <circle cx="235" cy="290" r="12" fill="#f0f4ff" stroke="#8b7355" stroke-width="2"/>
+    
+    <!-- Paint colors -->
+    <circle cx="260" cy="245" r="8" fill="#e74c3c"/>
+    <circle cx="280" cy="240" r="8" fill="#3498db"/>
+    <circle cx="300" cy="245" r="8" fill="#f1c40f"/>
+    <circle cx="310" cy="265" r="8" fill="#2ecc71"/>
+    <circle cx="300" cy="290" r="8" fill="#9b59b6"/>
+    <circle cx="260" cy="295" r="8" fill="#e67e22"/>
+  </g>
+  
+  <!-- Pencil/Pencils holder -->
+  <g id="pencils-holder">
+    <!-- Holder -->
+    <rect x="310" y="150" width="50" height="60" fill="#c9a04a" stroke="#8b6f47" stroke-width="2" rx="3"/>
+    
+    <!-- Pencils in holder -->
+    <line x1="320" y1="150" x2="318" y2="100" stroke="#d4af37" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="318" cy="98" r="3" fill="#2c1810"/>
+    
+    <line x1="335" y1="150" x2="335" y2="95" stroke="#c0392b" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="335" cy="93" r="3" fill="#2c1810"/>
+    
+    <line x1="350" y1="150" x2="352" y2="102" stroke="#3498db" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="352" cy="100" r="3" fill="#2c1810"/>
+  </g>
+  
+  <!-- Color swatches scattered -->
+  <g id="swatches">
+    <rect x="80" y="340" width="30" height="30" fill="#667eea" rx="2" filter="url(#shadow)"/>
+    <rect x="120" y="360" width="25" height="25" fill="#764ba2" rx="2" filter="url(#shadow)"/>
+    <rect x="160" y="345" width="28" height="28" fill="#e74c3c" rx="2" filter="url(#shadow)"/>
+  </g>
+  
+  <!-- Scissors -->
+  <g id="scissors">
+    <!-- Left blade -->
+    <path d="M 220 340 Q 210 320 215 300 L 230 310" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="205" cy="318" r="6" fill="#b0b0b0" stroke="#666" stroke-width="1.5"/>
+    
+    <!-- Right blade -->
+    <path d="M 250 340 Q 260 320 255 300 L 240 310" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="265" cy="318" r="6" fill="#b0b0b0" stroke="#666" stroke-width="1.5"/>
+    
+    <!-- Connector -->
+    <line x1="225" y1="330" x2="245" y2="330" stroke="#888" stroke-width="2.5"/>
+  </g>
+  
+  <!-- Yarn/Thread ball -->
+  <g id="yarn">
+    <circle cx="330" cy="350" r="20" fill="#e8a87c" stroke="#d4926d" stroke-width="1.5"/>
+    <circle cx="330" cy="350" r="16" fill="#f0b896"/>
+    <path d="M 310 345 Q 320 340 325 350 Q 320 360 310 355" fill="#e8a87c" opacity="0.6"/>
+  </g>
+  
+  <!-- Lightbulb (idea) -->
+  <g id="lightbulb">
+    <!-- Bulb -->
+    <circle cx="120" cy="420" r="14" fill="#f1c40f" stroke="#f39c12" stroke-width="2"/>
+    <ellipse cx="120" cy="430" rx="12" ry="6" fill="#e8b504" stroke="#d4a700" stroke-width="1.5"/>
+    
+    <!-- Socket -->
+    <rect x="115" y="435" width="10" height="8" fill="#c9a04a" stroke="#8b7355" stroke-width="1"/>
+    
+    <!-- Base -->
+    <rect x="113" y="443" width="14" height="6" fill="#8b7355" rx="2"/>
+    
+    <!-- Rays -->
+    <line x1="90" y1="410" x2="100" y2="400" stroke="#f1c40f" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+    <line x1="85" y1="420" x2="95" y2="420" stroke="#f1c40f" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+    <line x1="150" y1="410" x2="140" y2="400" stroke="#f1c40f" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+    <line x1="155" y1="420" x2="145" y2="420" stroke="#f1c40f" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  </g>
+  
+  <!-- Ruler/Measuring tape -->
+  <g id="ruler">
+    <rect x="270" y="410" width="100" height="12" fill="#e8d4a2" stroke="#c9a04a" stroke-width="2" rx="2"/>
+    <line x1="275" y1="410" x2="275" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="285" y1="415" x2="285" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="295" y1="410" x2="295" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="305" y1="415" x2="305" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="315" y1="410" x2="315" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="325" y1="415" x2="325" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="335" y1="410" x2="335" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="345" y1="415" x2="345" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="355" y1="410" x2="355" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+    <line x1="365" y1="416" x2="365" y2="422" stroke="#888" stroke-width="1" opacity="0.6"/>
+  </g>
+  
+  <!-- Decorative lines/flourishes -->
+  <g id="flourish" stroke="#667eea" stroke-width="1" fill="none" opacity="0.3">
+    <path d="M 40 250 Q 50 260 40 270" stroke-linecap="round"/>
+    <path d="M 360 160 Q 370 170 360 180" stroke-linecap="round"/>
+  </g>
+</svg>

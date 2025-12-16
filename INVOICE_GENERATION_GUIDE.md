@@ -151,9 +151,3 @@ The invoice generation feature is **fully functional** and ready for production 
 
 
 
-
-
-
-
-
-

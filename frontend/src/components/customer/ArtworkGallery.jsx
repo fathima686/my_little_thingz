@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { LuHeart, LuShoppingCart, LuEye, LuSettings, LuSearch, LuX, LuWand } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import EnhancedSearch from './EnhancedSearch';
 import CustomizationModal from './CustomizationModal';
 import Recommendations from './Recommendations';
+import TrendingBadge from './TrendingBadge';
 import '../../styles/customization-modal.css';
 
 // Asset image imports for fallback data
@@ -55,10 +55,10 @@ const sanitizeCategories = (list) => (
 const FALLBACK_ARTWORKS = [
   // Polaroids
   { id: 'p1', title: 'Polaroids (Single Page)', description: 'Polaroid print – per page', price: 5, image_url: polaroidImg, category_id: 'polaroids', category_name: 'Polaroids', artist_name: 'Store' },
-  { id: 'p2', title: 'Polaroids Pack', description: 'Pack of polaroid prints', price: 100, image_url: polaroidPackImg, category_id: 'polaroids', category_name: 'Polaroids', artist_name: 'Store' },
+  { id: 'p2', title: 'Polaroids Pack', description: 'Pack of polaroid prints', price: 100, image_url: polaroidPackImg, category_id: 'polaroids', category_name: 'Polaroids', artist_name: 'Store', is_trending: true, recent_sales_count: 120, total_views: 2500, average_rating: 4.8, number_of_reviews: 85 },
 
   // Chocolates
-  { id: 'c1', title: 'Custom Chocolate', description: 'Personalized chocolate with name', price: 30, image_url: customChocolateImg, category_id: 'chocolates', category_name: 'Chocolates', artist_name: 'Store' },
+  { id: 'c1', title: 'Custom Chocolate', description: 'Personalized chocolate with name', price: 30, image_url: customChocolateImg, category_id: 'chocolates', category_name: 'Chocolates', artist_name: 'Store', is_trending: true, recent_sales_count: 95, total_views: 1800, average_rating: 4.7, number_of_reviews: 65 },
 
   // Frames (variety and sizes)
   { id: 'fA4', title: 'Photo Frame A4', description: 'A4 size frame', price: 250, image_url: albumImg, category_id: 'frames', category_name: 'Frames', artist_name: 'Store' },
@@ -76,10 +76,10 @@ const FALLBACK_ARTWORKS = [
   { id: 'bt1', title: 'Birthday Theme Box', description: 'Curated birthday theme gift box', price: 350, image_url: giftBoxSetImg, category_id: 'birthday_theme_boxes', category_name: 'Birthday Theme Boxes', artist_name: 'Store' },
 
   // Hampers, Gift Boxes, Bouquets
-  { id: 'w1', title: 'Wedding Hamper', description: 'Curated wedding gift hamper', price: 500, image_url: weddingHamperImg, category_id: 'wedding_hampers', category_name: 'Wedding Hampers', artist_name: 'Store' },
+  { id: 'w1', title: 'Wedding Hamper', description: 'Curated wedding gift hamper', price: 500, image_url: weddingHamperImg, category_id: 'wedding_hampers', category_name: 'Wedding Hampers', artist_name: 'Store', is_trending: true, recent_sales_count: 180, total_views: 3200, average_rating: 4.9, number_of_reviews: 92 },
   { id: 'g1', title: 'Gift Box', description: 'Single gift box', price: 150, image_url: giftBoxImg, category_id: 'gift_boxes', category_name: 'Gift Boxes', artist_name: 'Store' },
-  { id: 'g2', title: 'Gift Box Set', description: 'Premium gift box set', price: 300, image_url: giftBoxSetImg, category_id: 'gift_boxes', category_name: 'Gift Boxes', artist_name: 'Store' },
-  { id: 'b1', title: 'Bouquets', description: 'Gift bouquet arrangement', price: 200, image_url: bouquetsImg, category_id: 'bouquets', category_name: 'Bouquets', artist_name: 'Store' }
+  { id: 'g2', title: 'Gift Box Set', description: 'Premium gift box set', price: 300, image_url: giftBoxSetImg, category_id: 'gift_boxes', category_name: 'Gift Boxes', artist_name: 'Store', is_trending: true, recent_sales_count: 145, total_views: 2100, average_rating: 4.6, number_of_reviews: 72 },
+  { id: 'b1', title: 'Bouquets', description: 'Gift bouquet arrangement', price: 200, image_url: bouquetsImg, category_id: 'bouquets', category_name: 'Bouquets', artist_name: 'Store', is_trending: true, recent_sales_count: 165, total_views: 2800, average_rating: 4.85, number_of_reviews: 88 }
 ];
 
 const normalizeOfferEntries = (items) => {
@@ -169,13 +169,8 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
     priceChip: '', // e.g., 'lte-100', 'lte-200', 'lte-300', 'lte-400', 'gte-500'
     tier: '' // New: Budget/Premium filter
   });
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [categories, setCategories] = useState([]);
   const [wishlist, setWishlist] = useState([]);
-  const [showEnhancedSearch, setShowEnhancedSearch] = useState(false);
-  const [mlSearchResults, setMlSearchResults] = useState([]);
-  const [mlInsights, setMlInsights] = useState(null);
 
   useEffect(() => {
     fetchArtworks();
@@ -251,37 +246,6 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
       }
     } catch (error) {
       console.error('Error fetching wishlist:', error);
-    }
-  };
-
-  const fetchSearchSuggestions = async (searchTerm) => {
-    if (searchTerm.length < 2) {
-      setSearchSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    try {
-      // Use enhanced search API for better suggestions
-      const response = await fetch(`${API_BASE}/customer/enhanced-search.php?action=suggestions&term=${encodeURIComponent(searchTerm)}`);
-      const data = await response.json();
-      if (data.status === 'success') {
-        setSearchSuggestions(data.data.suggestions || []);
-        setShowSuggestions(true);
-      }
-    } catch (error) {
-      console.error('Error fetching search suggestions:', error);
-      // Fallback to original API
-      try {
-        const response = await fetch(`${API_BASE}/customer/search-keywords.php?action=suggestions&term=${encodeURIComponent(searchTerm)}`);
-        const data = await response.json();
-        if (data.status === 'success') {
-          setSearchSuggestions(data.suggestions || []);
-          setShowSuggestions(true);
-        }
-      } catch (fallbackError) {
-        console.error('Fallback search suggestions error:', fallbackError);
-      }
     }
   };
 
@@ -495,23 +459,6 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
     }
   };
 
-  const handleMLSearchResults = (results, insights) => {
-    setMlSearchResults(results);
-    setMlInsights(insights);
-    setShowEnhancedSearch(false);
-    
-    // Update the main search with ML results
-    if (results.length > 0) {
-      setFilteredArtworks(results);
-      window.dispatchEvent(new CustomEvent('toast', { 
-        detail: { 
-          type: 'success', 
-          message: `Found ${results.length} AI-enhanced results!` 
-        } 
-      }));
-    }
-  };
-
   if (loading) {
     return (
       <div className="modal-overlay">
@@ -539,46 +486,10 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
               <LuSearch />
               <input
                 type="text"
-                placeholder="Search products... (try 'sweet', 'wedding', 'birthday')"
+                placeholder="Search products..."
                 value={filters.search}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFilters(prev => ({ ...prev, search: value }));
-                  fetchSearchSuggestions(value);
-                }}
-                onFocus={() => {
-                  if (searchSuggestions.length > 0) {
-                    setShowSuggestions(true);
-                  }
-                }}
-                onBlur={() => {
-                  // Delay hiding suggestions to allow clicking on them
-                  setTimeout(() => setShowSuggestions(false), 200);
-                }}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               />
-              <button 
-                className="enhanced-search-btn"
-                onClick={() => setShowEnhancedSearch(true)}
-                title="AI Enhanced Search"
-              >
-                <LuWand />
-              </button>
-              {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="search-suggestions">
-                  {searchSuggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="suggestion-item"
-                      onClick={() => {
-                        setFilters(prev => ({ ...prev, search: suggestion }));
-                        setShowSuggestions(false);
-                      }}
-                    >
-                      {suggestion}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
@@ -713,12 +624,16 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                   </div>
                 )}
                 
-                <div className="artwork-image">
+                <div className="artwork-image" style={{ position: 'relative' }}>
                   <img 
                     src={artwork.image_url || '/api/placeholder/300/300'} 
                     alt={artwork.title}
                     onClick={() => setSelectedArtwork(artwork)}
                   />
+                  
+                  {/* Trending Badge */}
+                  <TrendingBadge product={artwork} />
+                  
                   {artwork.is_on_offer && (
                     <>
                       <div className="offer-ribbon">OFFER</div>
@@ -1052,36 +967,6 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           width: 250px;
         }
 
-        .search-suggestions {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          background: white;
-          border: 1px solid #ddd;
-          border-top: none;
-          border-radius: 0 0 6px 6px;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-          z-index: 1000;
-          max-height: 200px;
-          overflow-y: auto;
-        }
-
-        .suggestion-item {
-          padding: 10px 12px;
-          cursor: pointer;
-          border-bottom: 1px solid #f0f0f0;
-          transition: background-color 0.2s;
-        }
-
-        .suggestion-item:hover {
-          background-color: #f8f9fa;
-        }
-
-        .suggestion-item:last-child {
-          border-bottom: none;
-        }
-
         .filter-group select {
           padding: 8px 12px;
           border: 1px solid #ddd;
@@ -1389,45 +1274,11 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
             flex-direction: column;
           }
           
-        .search-box input {
-          width: 100%;
-        }
-
-        .enhanced-search-btn {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          padding: 8px 12px;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin-left: 8px;
-        }
-
-        .enhanced-search-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .enhanced-search-modal .modal-content {
-          max-width: 90vw;
-          max-height: 90vh;
-          overflow-y: auto;
-        }
+          .search-box input {
+            width: 100%;
+          }
         }
       `}</style>
-
-      {/* Enhanced Search Modal */}
-      {showEnhancedSearch && (
-        <div className="modal-overlay enhanced-search-modal">
-          <div className="modal-content extra-large">
-            <EnhancedSearch 
-              onSearchResults={handleMLSearchResults}
-              onClose={() => setShowEnhancedSearch(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
