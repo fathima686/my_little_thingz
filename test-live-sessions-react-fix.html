@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Sessions React Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .response { background: #f5f5f5; padding: 10px; margin: 10px 0; white-space: pre-wrap; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #d00; }
+        .success { background: #e6ffe6; color: #060; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007cba; color: white; padding: 8px 15px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #005a87; }
+        .session-card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; background: #f9f9f9; }
+        .status-scheduled { border-left: 4px solid #2196F3; }
+        .status-live { border-left: 4px solid #4CAF50; }
+        .code-block { background: #f4f4f4; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Sessions React Fix Test</h1>
+        <p>This page will help you fix the live sessions issue step by step.</p>
+        
+        <div class="step">
+            <h3>Step 1: Fix PHP Syntax Error</h3>
+            <p>First, let's test if the FeatureAccessControl.php syntax error is fixed:</p>
+            <button onclick="testSyntaxFix()">Test Syntax Fix</button>
+            <div id="syntax-result" class="response"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Setup Database Tables</h3>
+            <p>Run the database setup to create required tables:</p>
+            <button onclick="setupDatabase()">Setup Database</button>
+            <div id="setup-result" class="response"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Test Simple API (No Feature Guard)</h3>
+            <p>Test the simplified API that bypasses feature restrictions:</p>
+            <button onclick="testSimpleAPI()">Test Simple API</button>
+            <div id="simple-result" class="response"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Test Full API (With Feature Guard)</h3>
+            <p>Test the full API with feature restrictions:</p>
+            <button onclick="testFullAPI()">Test Full API</button>
+            <div id="full-result" class="response"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 5: React Component Fix</h3>
+            <p>Update your React component to use the working API:</p>
+            <div class="code-block">
+// In your LiveSessionsList.jsx, temporarily change the API URL:
+const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+
+// Change this line in fetchSessions():
+const url = isTeacher
+  ? `${API_BASE}/teacher/live-sessions.php${selectedSubject ? `?subject_id=${selectedSubject}` : ''}`
+  : `${API_BASE}/customer/live-sessions-simple.php${selectedSubject ? `?subject_id=${selectedSubject}` : ''}`;
+            </div>
+            <button onclick="showReactFix()">Show Complete React Fix</button>
+            <div id="react-fix" class="response" style="display: none;"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 6: Display Live Sessions</h3>
+            <p>Test the final result:</p>
+            <button onclick="displaySessions()">Load & Display Sessions</button>
+            <div id="sessions-display"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        
+        async function testSyntaxFix() {
+            const resultDiv = document.getElementById('syntax-result');
+            resultDiv.textContent = 'Testing syntax fix...';
+            resultDiv.className = 'response';
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/test-syntax-fix.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.className = 'response success';
+                    resultDiv.innerHTML = text;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `Syntax test failed: ${response.status} ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'response error';
+                resultDiv.textContent = `Syntax test error: ${error.message}`;
+            }
+        }
+        
+        async function setupDatabase() {
+            const resultDiv = document.getElementById('setup-result');
+            resultDiv.textContent = 'Setting up database...';
+            resultDiv.className = 'response';
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/fix-live-sessions-complete.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.className = 'response success';
+                    resultDiv.innerHTML = text;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `Database setup failed: ${response.status} ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'response error';
+                resultDiv.textContent = `Database setup error: ${error.message}`;
+            }
+        }
+        
+        async function testSimpleAPI() {
+            const resultDiv = document.getElementById('simple-result');
+            resultDiv.textContent = 'Testing simple API...';
+            resultDiv.className = 'response';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/live-sessions-simple.php`, {
+                    headers: {
+                        'X-User-ID': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const text = await response.text();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = JSON.parse(text);
+                
+                if (data.status === 'success') {
+                    resultDiv.className = 'response success';
+                    resultDiv.textContent = `✓ Simple API Success! Found ${data.sessions.length} sessions\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `✗ Simple API Error: ${data.message}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'response error';
+                resultDiv.textContent = `✗ Simple API Error: ${error.message}`;
+            }
+        }
+        
+        async function testFullAPI() {
+            const resultDiv = document.getElementById('full-result');
+            resultDiv.textContent = 'Testing full API...';
+            resultDiv.className = 'response';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/live-sessions.php`, {
+                    headers: {
+                        'X-User-ID': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const text = await response.text();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = JSON.parse(text);
+                
+                if (data.status === 'success') {
+                    resultDiv.className = 'response success';
+                    resultDiv.textContent = `✓ Full API Success! Found ${data.sessions.length} sessions\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `✗ Full API Error: ${data.message}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'response error';
+                resultDiv.textContent = `✗ Full API Error: ${error.message}`;
+            }
+        }
+        
+        function showReactFix() {
+            const fixDiv = document.getElementById('react-fix');
+            fixDiv.style.display = 'block';
+            fixDiv.className = 'response';
+            fixDiv.innerHTML = `
+<h4>Complete React Component Fix:</h4>
+<p>Replace the fetchSessions function in your LiveSessionsList.jsx with this:</p>
+<pre style="background: #f4f4f4; padding: 10px; border-radius: 3px; overflow-x: auto;">
+const fetchSessions = async () => {
+  setLoading(true);
+  try {
+    // Use the simple API temporarily
+    const url = isTeacher
+      ? \`\${API_BASE}/teacher/live-sessions.php\${selectedSubject ? \`?subject_id=\${selectedSubject}\` : ''}\`
+      : \`\${API_BASE}/customer/live-sessions-simple.php\${selectedSubject ? \`?subject_id=\${selectedSubject}\` : ''}\`;
+
+    const headers = isTeacher
+      ? {
+          'X-User-ID': auth?.user_id || '',
+          'Authorization': \`Bearer \${auth?.token || ''}\`
+        }
+      : {
+          'X-User-ID': auth?.user_id || ''
+        };
+
+    const res = await fetch(url, { headers });
+    
+    // Check if response is ok
+    if (!res.ok) {
+      throw new Error(\`HTTP \${res.status}: \${res.statusText}\`);
+    }
+    
+    // Get response text first
+    const text = await res.text();
+    
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('Response is not valid JSON:', text);
+      throw new Error('Server returned invalid JSON response. Please check if the database tables are set up correctly.');
+    }
+
+    if (data.status === 'success') {
+      setSessions(data.sessions);
+    } else {
+      console.error('API error:', data.message);
+      throw new Error(data.message || 'Unknown API error');
+    }
+  } catch (error) {
+    console.error('Failed to fetch sessions:', error);
+    // You could set an error state here to show to the user
+  } finally {
+    setLoading(false);
+  }
+};
+</pre>
+<p><strong>Note:</strong> Once everything is working, change back to 'live-sessions.php' instead of 'live-sessions-simple.php'</p>
+            `;
+        }
+        
+        async function displaySessions() {
+            const displayDiv = document.getElementById('sessions-display');
+            displayDiv.innerHTML = '<p>Loading sessions...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/live-sessions-simple.php`, {
+                    headers: {
+                        'X-User-ID': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const text = await response.text();
+                const data = JSON.parse(text);
+                
+                if (data.status === 'success' && data.sessions.length > 0) {
+                    let html = '<h4>Live Sessions Found:</h4>';
+                    
+                    data.sessions.forEach(session => {
+                        const datetime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+                        const formattedDate = datetime.toLocaleString();
+                        
+                        html += `
+                            <div class="session-card status-${session.status}">
+                                <h5>${session.title}</h5>
+                                <p><strong>Subject:</strong> ${session.subject_name}</p>
+                                <p><strong>Description:</strong> ${session.description}</p>
+                                <p><strong>Date & Time:</strong> ${formattedDate}</p>
+                                <p><strong>Duration:</strong> ${session.duration_minutes} minutes</p>
+                                <p><strong>Status:</strong> ${session.status}</p>
+                                <p><strong>Participants:</strong> ${session.registered_count}/${session.max_participants}</p>
+                            </div>
+                        `;
+                    });
+                    
+                    displayDiv.innerHTML = html;
+                } else if (data.status === 'success') {
+                    displayDiv.innerHTML = '<p class="warning">No live sessions found. Make sure you ran the database setup.</p>';
+                } else {
+                    displayDiv.innerHTML = `<p class="error">Error: ${data.message}</p>`;
+                }
+            } catch (error) {
+                displayDiv.innerHTML = `<p class="error">Error loading sessions: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

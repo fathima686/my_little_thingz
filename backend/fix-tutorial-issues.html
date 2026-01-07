@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Tutorial Video Issues</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>Fix Tutorial Video Issues</h1>
+    <p class="info">This page will fix the issues preventing tutorial videos from playing:</p>
+    <ul>
+        <li>Create missing database tables (user_profiles, practice_uploads)</li>
+        <li>Add missing tutorial entries (IDs 9-12)</li>
+        <li>Test database connections</li>
+    </ul>
+
+    <div class="step">
+        <h3>Step 1: Fix Database Tables</h3>
+        <button onclick="fixDatabaseTables()">Fix Database Tables</button>
+        <div id="db-results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Add Missing Tutorials</h3>
+        <button onclick="addMissingTutorials()">Add Missing Tutorials</button>
+        <div id="tutorial-results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Create Video Placeholders</h3>
+        <button onclick="createVideoPlaceholders()">Create Video Placeholders</button>
+        <div id="video-results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Test Tutorial API</h3>
+        <button onclick="testTutorialAPI()">Test Tutorial API</button>
+        <div id="api-results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Test Profile API</h3>
+        <button onclick="testProfileAPI()">Test Profile API</button>
+        <div id="profile-results"></div>
+    </div>
+
+    <script>
+        async function fixDatabaseTables() {
+            const resultsDiv = document.getElementById('db-results');
+            resultsDiv.innerHTML = '<p class="info">Creating database tables...</p>';
+
+            try {
+                const response = await fetch('setup-user-profiles.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Database tables created successfully!</p>
+                        <pre>${text}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Error creating database tables:</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function addMissingTutorials() {
+            const resultsDiv = document.getElementById('tutorial-results');
+            resultsDiv.innerHTML = '<p class="info">Adding missing tutorials...</p>';
+
+            try {
+                const response = await fetch('add-missing-tutorials.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Missing tutorials added successfully!</p>
+                        <pre>${text}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Error adding tutorials:</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function createVideoPlaceholders() {
+            const resultsDiv = document.getElementById('video-results');
+            resultsDiv.innerHTML = '<p class="info">Creating video placeholders...</p>';
+
+            try {
+                const response = await fetch('create-video-placeholders.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Video placeholders created successfully!</p>
+                        <pre>${text}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Error creating video placeholders:</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testTutorialAPI() {
+            const resultsDiv = document.getElementById('api-results');
+            resultsDiv.innerHTML = '<p class="info">Testing tutorial API...</p>';
+
+            try {
+                // Test tutorial detail API for tutorial ID 10 (Earing - Free)
+                const response = await fetch('api/customer/tutorial-detail.php?id=10');
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Tutorial API working correctly!</p>
+                        <pre>Tutorial: ${data.tutorial.title}
+Price: $${data.tutorial.price}
+Free: ${data.tutorial.is_free ? 'Yes' : 'No'}
+Video URL: ${data.tutorial.video_url}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Tutorial API error:</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testProfileAPI() {
+            const resultsDiv = document.getElementById('profile-results');
+            resultsDiv.innerHTML = '<p class="info">Testing profile API...</p>';
+
+            try {
+                const response = await fetch('api/customer/profile.php', {
+                    headers: {
+                        'X-Tutorial-Email': 'test@example.com'
+                    }
+                });
+                const text = await response.text();
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(text);
+                        resultsDiv.innerHTML = `
+                            <p class="success">✓ Profile API working correctly!</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    } catch (e) {
+                        resultsDiv.innerHTML = `
+                            <p class="warning">⚠ Profile API returned non-JSON response:</p>
+                            <pre>${text}</pre>
+                        `;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Profile API error (${response.status}):</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

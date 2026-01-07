@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Authentication</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #0056b3; }
+        .highlight { background: yellow; font-weight: bold; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Authentication Test</h1>
+    <p>This tool helps debug authentication issues and email header problems.</p>
+    
+    <div class="test-section info">
+        <h3>Manual Email Test</h3>
+        <p>If your frontend auth isn't working, test with your email manually:</p>
+        <input type="email" id="testEmail" value="soudhame52@gmail.com" placeholder="Enter your email">
+        <button onclick="testWithManualEmail()">Test with This Email</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <button onclick="checkAuthStatus()">1. Check Auth Status</button>
+    <button onclick="debugEmailHeaders()">2. Debug Email Headers</button>
+    <button onclick="testProfileAPI()">3. Test Profile API</button>
+    <button onclick="runCompleteAuthTest()">🚀 Run Complete Test</button>
+
+    <script>
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-section ${type}`;
+            testDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(testDiv);
+        }
+        
+        function getStoredAuth() {
+            try {
+                const stored = localStorage.getItem('tutorial_auth');
+                return stored ? JSON.parse(stored) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        async function checkAuthStatus() {
+            addResult('🔍 Checking Frontend Authentication', 'Checking localStorage and auth context...', 'info');
+            
+            const auth = getStoredAuth();
+            
+            if (auth) {
+                const isValid = auth.email && auth.email.includes('@');
+                const resultType = isValid ? 'success' : 'warning';
+                const resultIcon = isValid ? '✅' : '⚠️';
+                
+                addResult(`${resultIcon} Authentication Status`, `
+                    <p><strong>Status:</strong> Logged In</p>
+                    <p><strong>Email:</strong> <span class="highlight">${auth.email || 'MISSING'}</span></p>
+                    <p><strong>Login Method:</strong> ${auth.loginMethod || 'Unknown'}</p>
+                    <p><strong>Login Time:</strong> ${auth.login_time || 'Unknown'}</p>
+                    <p><strong>User ID:</strong> ${auth.user_id || 'Not set'}</p>
+                    <p><strong>Valid Email:</strong> ${isValid ? 'YES' : 'NO'}</p>
+                    <details>
+                        <summary>Full Auth Data</summary>
+                        <pre>${JSON.stringify(auth, null, 2)}</pre>
+                    </details>
+                `, resultType);
+                
+                return auth;
+            } else {
+                addResult('❌ Authentication Status', `
+                    <p><strong>Status:</strong> Not Logged In</p>
+                    <p>No authentication data found in localStorage.</p>
+                    <p><strong>Action Required:</strong> Please log in to the tutorial system first.</p>
+                `, 'error');
+                
+                return null;
+            }
+        }
+        
+        async function debugEmailHeaders() {
+            addResult('🔍 Debugging Email Headers', 'Checking what headers are being sent to the backend...', 'info');
+            
+            const auth = getStoredAuth();
+            const testEmail = auth?.email || document.getElementById('testEmail').value;
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/debug-email-header.php', {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': testEmail,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                const emailReceived = data.headers['X-Tutorial-Email'];
+                const isCorrect = emailReceived === testEmail;
+                
+                addResult(`${isCorrect ? '✅' : '❌'} Email Header Debug`, `
+                    <p><strong>Email Sent:</strong> <span class="highlight">${testEmail}</span></p>
+                    <p><strong>Email Received:</strong> <span class="highlight">${emailReceived || 'NONE'}</span></p>
+                    <p><strong>Headers Match:</strong> ${isCorrect ? 'YES' : 'NO'}</p>
+                    
+                    <h4>All Headers Received:</h4>
+                    <pre>${JSON.stringify(data.headers, null, 2)}</pre>
+                    
+                    <details>
+                        <summary>Full Debug Data</summary>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </details>
+                `, isCorrect ? 'success' : 'error');
+                
+            } catch (error) {
+                addResult('❌ Header Debug Failed', `<p>Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testProfileAPI() {
+            addResult('🧪 Testing Profile API', 'Testing profile API with current authentication...', 'info');
+            
+            const auth = getStoredAuth();
+            const testEmail = auth?.email || document.getElementById('testEmail').value;
+            
+            if (!testEmail) {
+                addResult('❌ Profile API Test Failed', '<p>No email available for testing. Please log in or enter an email manually.</p>', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${apiBase}/customer/profile.php`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': testEmail,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const sub = data.subscription;
+                    const stats = data.stats;
+                    const emailMatch = data.user_email === testEmail;
+                    const isPro = sub.plan_code === 'pro' && sub.subscription_status === 'active';
+                    
+                    const resultType = emailMatch && isPro ? 'success' : 'warning';
+                    const resultIcon = emailMatch && isPro ? '✅' : '⚠️';
+                    
+                    addResult(`${resultIcon} Profile API Results`, `
+                        <p><strong>API Status:</strong> Success</p>
+                        <p><strong>Email Sent:</strong> ${testEmail}</p>
+                        <p><strong>Email in Response:</strong> <span class="highlight">${data.user_email}</span></p>
+                        <p><strong>Email Match:</strong> ${emailMatch ? 'YES' : 'NO'}</p>
+                        
+                        <h4>Subscription Details:</h4>
+                        <p><strong>Plan:</strong> <span class="highlight">${sub.plan_code}</span> (${sub.plan_name})</p>
+                        <p><strong>Status:</strong> <span class="highlight">${sub.subscription_status}</span></p>
+                        <p><strong>Is Active:</strong> <span class="highlight">${sub.is_active ? 'YES' : 'NO'}</span></p>
+                        <p><strong>Is Pro User:</strong> <span class="highlight">${stats.is_pro_user ? 'YES' : 'NO'}</span></p>
+                        <p><strong>Price:</strong> ₹${sub.price}</p>
+                        
+                        ${!emailMatch ? '<p style="color: red;">⚠️ Email mismatch detected! This is why you\'re seeing wrong data.</p>' : ''}
+                        ${!isPro ? '<p style="color: orange;">⚠️ Pro subscription not active. This is why Pro features aren\'t working.</p>' : ''}
+                        
+                        <details>
+                            <summary>Full Profile Data</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `, resultType);
+                } else {
+                    addResult('❌ Profile API Error', `
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+                
+            } catch (error) {
+                addResult('❌ Profile API Test Failed', `<p>Network Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testWithManualEmail() {
+            const email = document.getElementById('testEmail').value.trim();
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+            
+            addResult('🔧 Manual Email Test', `Testing with email: <strong>${email}</strong>`, 'info');
+            
+            // Temporarily set this email in localStorage for testing
+            const tempAuth = {
+                email: email,
+                loginMethod: 'manual_test',
+                login_time: new Date().toISOString()
+            };
+            localStorage.setItem('tutorial_auth', JSON.stringify(tempAuth));
+            
+            // Run tests with this email
+            await debugEmailHeaders();
+            await testProfileAPI();
+        }
+        
+        async function runCompleteAuthTest() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Starting Complete Authentication Test', 'Testing all aspects of frontend authentication...', 'info');
+            
+            const auth = await checkAuthStatus();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await debugEmailHeaders();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testProfileAPI();
+            
+            addResult('🏁 Test Complete', `
+                <h4>Summary & Next Steps:</h4>
+                ${!auth ? '<p>❌ <strong>Not logged in:</strong> Please log in to the tutorial system first.</p>' : ''}
+                <p>✅ <strong>If email headers are working:</strong> The issue is in the backend subscription data.</p>
+                <p>✅ <strong>If email headers are missing:</strong> The issue is in the frontend authentication.</p>
+                <p>✅ <strong>If Pro subscription is inactive:</strong> Run the subscription fix tool.</p>
+                
+                <h4>Quick Fixes:</h4>
+                <ol>
+                    <li><strong>Login Issue:</strong> Log out and log back in to refresh authentication</li>
+                    <li><strong>Subscription Issue:</strong> Run <code>fix-pro-subscription-completely.php</code></li>
+                    <li><strong>Cache Issue:</strong> Clear browser cache and refresh</li>
+                </ol>
+            `, 'info');
+        }
+    </script>
+</body>
+</html>

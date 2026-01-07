@@ -3,7 +3,7 @@ import {
   LuBrain, 
   LuPlay, 
   LuRefreshCw, 
-  LuBarChart3, 
+  LuTrendingUp, 
   LuTrash2, 
   LuSettings,
   LuCheckCircle,
@@ -362,7 +362,7 @@ const BPNNTrainingDashboard = () => {
                 onClick={fetchTestResults}
                 disabled={loading || !modelStatus?.has_model}
               >
-                <LuBarChart3 className="button-icon" />
+                <LuTrendingUp className="button-icon" />
                 {loading ? 'Testing...' : 'Test Model'}
               </button>
               
@@ -383,7 +383,7 @@ const BPNNTrainingDashboard = () => {
           <div className="dashboard-card">
             <div className="card-header">
               <h3 className="card-title">
-                <LuBarChart3 className="card-icon" />
+                <LuTrendingUp className="card-icon" />
                 Test Results
               </h3>
             </div>

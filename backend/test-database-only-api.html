@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Database-Only Custom Requests API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 8px 16px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Database-Only Custom Requests API</h1>
+    <p class="info">This test verifies that the database-only API shows ONLY real database entries (no sample data).</p>
+    
+    <div class="test-section">
+        <h3>Test 1: Fetch All Requests</h3>
+        <button onclick="testFetchAll()">Test Fetch All</button>
+        <div id="fetch-all-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Fetch Pending Requests</h3>
+        <button onclick="testFetchPending()">Test Fetch Pending</button>
+        <div id="fetch-pending-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: Create New Request</h3>
+        <button onclick="testCreateRequest()">Test Create Request</button>
+        <div id="create-request-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 4: Update Request Status</h3>
+        <button onclick="testUpdateStatus()">Test Update Status</button>
+        <div id="update-status-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const adminHeaders = {
+            'Content-Type': 'application/json',
+            'X-Admin-User-Id': '1',
+            'X-Admin-Email': 'admin@test.com'
+        };
+
+        async function testFetchAll() {
+            const resultDiv = document.getElementById('fetch-all-result');
+            try {
+                const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php`, {
+                    headers: adminHeaders
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="success">✓ SUCCESS: API responded correctly</div>
+                        <div class="info">Data source: ${data.data_source || 'unknown'}</div>
+                        <div class="info">Total requests: ${data.total_count}</div>
+                        <div class="info">Message: ${data.message}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">✗ ERROR: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ NETWORK ERROR: ${error.message}</div>`;
+            }
+        }
+
+        async function testFetchPending() {
+            const resultDiv = document.getElementById('fetch-pending-result');
+            try {
+                const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php?status=pending`, {
+                    headers: adminHeaders
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="success">✓ SUCCESS: Pending requests fetched</div>
+                        <div class="info">Pending requests: ${data.showing_count}</div>
+                        <div class="info">Filter applied: ${data.filter_applied}</div>
+                        <pre>${JSON.stringify(data.requests, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">✗ ERROR: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ NETWORK ERROR: ${error.message}</div>`;
+            }
+        }
+
+        async function testCreateRequest() {
+            const resultDiv = document.getElementById('create-request-result');
+            try {
+                const newRequest = {
+                    customer_name: 'Test User',
+                    customer_email: 'test@example.com',
+                    title: 'Test Custom Request',
+                    occasion: 'Testing',
+                    description: 'This is a test request created by the API test',
+                    requirements: 'Test requirements',
+                    priority: 'medium'
+                };
+
+                const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php`, {
+                    method: 'POST',
+                    headers: adminHeaders,
+                    body: JSON.stringify(newRequest)
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="success">✓ SUCCESS: Request created</div>
+                        <div class="info">Order ID: ${data.order_id}</div>
+                        <div class="info">Request ID: ${data.request_id}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">✗ ERROR: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ NETWORK ERROR: ${error.message}</div>`;
+            }
+        }
+
+        async function testUpdateStatus() {
+            const resultDiv = document.getElementById('update-status-result');
+            try {
+                // First, let's get the first request to update
+                const fetchResponse = await fetch(`${API_BASE}/admin/custom-requests-database-only.php`, {
+                    headers: adminHeaders
+                });
+                const fetchData = await fetchResponse.json();
+                
+                if (fetchData.requests && fetchData.requests.length > 0) {
+                    const firstRequest = fetchData.requests[0];
+                    const updatePayload = {
+                        request_id: firstRequest.id,
+                        status: 'in_progress'
+                    };
+
+                    const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php`, {
+                        method: 'POST',
+                        headers: adminHeaders,
+                        body: JSON.stringify(updatePayload)
+                    });
+                    const data = await response.json();
+                    
+                    if (response.ok && data.status === 'success') {
+                        resultDiv.innerHTML = `
+                            <div class="success">✓ SUCCESS: Status updated</div>
+                            <div class="info">Request ID: ${data.request_id}</div>
+                            <div class="info">New Status: ${data.new_status}</div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `<div class="error">✗ ERROR: ${data.message}</div>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<div class="info">No requests found to update. Create a request first.</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ NETWORK ERROR: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-run first test on page load
+        window.onload = function() {
+            testFetchAll();
+        };
+    </script>
+</body>
+</html>

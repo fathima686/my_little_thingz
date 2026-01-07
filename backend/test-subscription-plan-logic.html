@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Subscription Plan Logic</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #0056b3; }
+        .highlight { background: yellow; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f2f2f2; }
+        .plan-button { padding: 8px 16px; margin: 2px; border: none; border-radius: 4px; cursor: pointer; }
+        .current { background: #28a745; color: white; }
+        .upgrade { background: #007bff; color: white; }
+        .reactivate { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <h1>Test Subscription Plan Logic</h1>
+    <p>This tool tests the subscription plan detection and button logic to fix the "already exists" issue.</p>
+    
+    <div id="results"></div>
+    
+    <button onclick="testCurrentPlanDetection()">Test Current Plan Detection</button>
+    <button onclick="testButtonLogic()">Test Button Logic</button>
+    <button onclick="simulateUpgradeFlow()">Simulate Upgrade Flow</button>
+    <button onclick="runCompleteTest()">🚀 Run Complete Test</button>
+
+    <script>
+        const userEmail = 'soudhame52@gmail.com';
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-section ${type}`;
+            testDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(testDiv);
+        }
+        
+        // Simulate the frontend button logic
+        function getButtonConfig(planCode, subscriptionStatus, subscriptionPlan) {
+            const currentPlan = subscriptionStatus?.plan_code || subscriptionPlan;
+            const isActive = subscriptionStatus?.subscription_status === 'active' && subscriptionStatus?.is_active;
+            
+            if (currentPlan === planCode && isActive) {
+                return {
+                    text: 'Current Plan',
+                    disabled: true,
+                    className: 'plan-button current'
+                };
+            } else if (currentPlan === planCode && !isActive) {
+                return {
+                    text: 'Reactivate Plan',
+                    disabled: false,
+                    className: 'plan-button reactivate'
+                };
+            } else {
+                const actionText = {
+                    'basic': 'Select Basic',
+                    'premium': 'Upgrade Now',
+                    'pro': 'Upgrade to Pro'
+                };
+                return {
+                    text: actionText[planCode] || 'Select Plan',
+                    disabled: false,
+                    className: 'plan-button upgrade'
+                };
+            }
+        }
+        
+        async function testCurrentPlanDetection() {
+            addResult('🔍 Testing Current Plan Detection', 'Checking how APIs report current subscription...', 'info');
+            
+            try {
+                // Get profile data
+                const profileResponse = await fetch(`${apiBase}/customer/profile.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const profileData = await profileResponse.json();
+                
+                // Get subscription status data
+                const statusResponse = await fetch(`${apiBase}/customer/subscription-status.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const statusData = await statusResponse.json();
+                
+                let comparisonTable = `
+                    <table>
+                        <tr>
+                            <th>Source</th>
+                            <th>Plan Code</th>
+                            <th>Status</th>
+                            <th>Is Active</th>
+                            <th>Should Use</th>
+                        </tr>
+                `;
+                
+                if (profileData.status === 'success') {
+                    const sub = profileData.subscription;
+                    comparisonTable += `
+                        <tr>
+                            <td>Profile API</td>
+                            <td class="highlight">${sub.plan_code}</td>
+                            <td>${sub.subscription_status}</td>
+                            <td>${sub.is_active ? 'YES' : 'NO'}</td>
+                            <td>Display Only</td>
+                        </tr>
+                    `;
+                }
+                
+                if (statusData.status === 'success') {
+                    comparisonTable += `
+                        <tr>
+                            <td>Subscription Status API</td>
+                            <td class="highlight">${statusData.plan_code}</td>
+                            <td>${statusData.subscription_status}</td>
+                            <td>${statusData.is_active ? 'YES' : 'NO'}</td>
+                            <td>Frontend Logic</td>
+                        </tr>
+                    `;
+                }
+                
+                comparisonTable += '</table>';
+                
+                // Check for consistency
+                const profilePlan = profileData.subscription?.plan_code;
+                const statusPlan = statusData.plan_code;
+                const isConsistent = profilePlan === statusPlan;
+                
+                const resultType = isConsistent ? 'success' : 'warning';
+                const resultIcon = isConsistent ? '✅' : '⚠️';
+                
+                addResult(`${resultIcon} Plan Detection Results`, `
+                    ${comparisonTable}
+                    <h4>Analysis:</h4>
+                    <p><strong>APIs Consistent:</strong> ${isConsistent ? 'YES' : 'NO'}</p>
+                    <p><strong>Recommended Plan for Frontend:</strong> <span class="highlight">${statusPlan}</span></p>
+                    ${!isConsistent ? '<p style="color: orange;">⚠️ APIs returning different plans - this could cause the "already exists" issue!</p>' : ''}
+                `, resultType);
+                
+                return { profileData, statusData };
+                
+            } catch (error) {
+                addResult('❌ Plan Detection Failed', `<p>Error: ${error.message}</p>`, 'error');
+                return null;
+            }
+        }
+        
+        async function testButtonLogic() {
+            addResult('🔘 Testing Button Logic', 'Simulating frontend button states...', 'info');
+            
+            try {
+                const data = await testCurrentPlanDetection();
+                if (!data) return;
+                
+                const { statusData } = data;
+                const subscriptionPlan = statusData.plan_code || 'basic';
+                
+                let buttonTable = `
+                    <table>
+                        <tr>
+                            <th>Plan</th>
+                            <th>Button Text</th>
+                            <th>Button State</th>
+                            <th>Action</th>
+                        </tr>
+                `;
+                
+                ['basic', 'premium', 'pro'].forEach(plan => {
+                    const config = getButtonConfig(plan, statusData, subscriptionPlan);
+                    const actionText = config.disabled ? 'None (Disabled)' : 'Allow Upgrade';
+                    
+                    buttonTable += `
+                        <tr>
+                            <td>${plan.charAt(0).toUpperCase() + plan.slice(1)}</td>
+                            <td><span class="${config.className}">${config.text}</span></td>
+                            <td>${config.disabled ? 'Disabled' : 'Enabled'}</td>
+                            <td>${actionText}</td>
+                        </tr>
+                    `;
+                });
+                
+                buttonTable += '</table>';
+                
+                addResult('✅ Button Logic Results', `
+                    <p><strong>Current Plan:</strong> ${subscriptionPlan}</p>
+                    <p><strong>Status:</strong> ${statusData.subscription_status}</p>
+                    <p><strong>Is Active:</strong> ${statusData.is_active ? 'YES' : 'NO'}</p>
+                    ${buttonTable}
+                    <p><strong>Expected Behavior:</strong> Current plan button should be disabled and show "Current Plan"</p>
+                `, 'success');
+                
+            } catch (error) {
+                addResult('❌ Button Logic Test Failed', `<p>Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function simulateUpgradeFlow() {
+            addResult('🔄 Simulating Upgrade Flow', 'Testing what happens when user tries to upgrade to current plan...', 'info');
+            
+            try {
+                const data = await testCurrentPlanDetection();
+                if (!data) return;
+                
+                const { statusData } = data;
+                const currentPlan = statusData.plan_code;
+                const isActive = statusData.subscription_status === 'active' && statusData.is_active;
+                
+                let simulationResults = `
+                    <h4>Simulation: User clicks "${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}" plan button</h4>
+                    <p><strong>Current Plan:</strong> ${currentPlan}</p>
+                    <p><strong>Is Active:</strong> ${isActive ? 'YES' : 'NO'}</p>
+                `;
+                
+                if (isActive) {
+                    simulationResults += `
+                        <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                            <p><strong>✅ CORRECT BEHAVIOR:</strong></p>
+                            <p>Button should be disabled and show "Current Plan"</p>
+                            <p>If clicked, should show: "You already have an active ${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} subscription!"</p>
+                        </div>
+                    `;
+                } else {
+                    simulationResults += `
+                        <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                            <p><strong>⚠️ INACTIVE SUBSCRIPTION:</strong></p>
+                            <p>Button should show "Reactivate Plan"</p>
+                            <p>User can click to reactivate their subscription</p>
+                        </div>
+                    `;
+                }
+                
+                // Test other plans
+                simulationResults += '<h4>Other Plans:</h4>';
+                ['basic', 'premium', 'pro'].forEach(plan => {
+                    if (plan !== currentPlan) {
+                        simulationResults += `<p><strong>${plan.charAt(0).toUpperCase() + plan.slice(1)}:</strong> Should show upgrade button and allow upgrade</p>`;
+                    }
+                });
+                
+                addResult('🎯 Upgrade Flow Simulation', simulationResults, 'success');
+                
+            } catch (error) {
+                addResult('❌ Upgrade Flow Test Failed', `<p>Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function runCompleteTest() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Starting Complete Subscription Logic Test', 'Testing all aspects of subscription plan detection and button logic...', 'info');
+            
+            await testCurrentPlanDetection();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testButtonLogic();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await simulateUpgradeFlow();
+            
+            addResult('🏁 Test Complete', `
+                <p>All tests finished. The fixes should resolve the "already exists" issue by:</p>
+                <ol>
+                    <li><strong>Proper Plan Detection:</strong> Using subscription status API as source of truth</li>
+                    <li><strong>Smart Button Logic:</strong> Disabling current plan button and showing appropriate text</li>
+                    <li><strong>Clear User Feedback:</strong> Showing current subscription info and preventing duplicate upgrades</li>
+                    <li><strong>Inactive Handling:</strong> Allowing reactivation of inactive subscriptions</li>
+                </ol>
+                <p><strong>Next Steps:</strong> Refresh your frontend and test the subscription section!</p>
+            `, 'info');
+        }
+    </script>
+</body>
+</html>

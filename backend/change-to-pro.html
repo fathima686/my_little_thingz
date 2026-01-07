@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Change Profile to Pro Plan</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        button { padding: 15px 30px; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #005a87; }
+        .container { max-width: 600px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Change Profile to Pro Plan</h1>
+        <p class="info">This will update your subscription to Pro Plan and make it active.</p>
+        
+        <button onclick="changeToProPlan()">Change to Pro Plan</button>
+        
+        <div id="results"></div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
+            <h3>After clicking the button:</h3>
+            <ol>
+                <li>Wait for the success message</li>
+                <li>Go back to your tutorial dashboard</li>
+                <li>Refresh the page (F5 or Ctrl+R)</li>
+                <li>Check your profile dropdown - it should show "Pro Plan"</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function changeToProPlan() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p class="info">Updating subscription to Pro Plan...</p>';
+
+            try {
+                const response = await fetch('set-pro-subscription.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <h3>✓ Success!</h3>
+                            <pre>${text}</pre>
+                            <p><strong>Next steps:</strong></p>
+                            <ol>
+                                <li>Go back to your tutorial dashboard</li>
+                                <li>Refresh the page (F5)</li>
+                                <li>Click on your profile - it should now show "Pro Plan"</li>
+                            </ol>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <h3>✗ Error</h3>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <h3>✗ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

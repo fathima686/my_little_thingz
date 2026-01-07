@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify Admin Dashboard Custom Requests</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            overflow-x: auto;
+            border-left: 4px solid #007bff;
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 20px; 
+            border: 1px solid #dee2e6; 
+            border-radius: 8px; 
+            background: #f8f9fa;
+        }
+        .test-section h3 { 
+            margin-top: 0; 
+            color: #495057;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .status-warning { background: #fff3cd; color: #856404; }
+        .api-test {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Admin Dashboard Custom Requests Verification</h1>
+        <p>This tool verifies that the custom requests fix is working properly in the admin dashboard.</p>
+        
+        <div id="results"></div>
+        
+        <div class="test-section">
+            <h3>Manual Testing</h3>
+            <p>After running the automated tests, manually verify:</p>
+            <ol>
+                <li>Open the admin dashboard</li>
+                <li>Navigate to the custom requests section</li>
+                <li>Check that requests are loading without 500 errors</li>
+                <li>Verify that filtering and search work</li>
+                <li>Test creating/updating requests if needed</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend';
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+        
+        function createSection(title, content = '') {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            section.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(section);
+            return section;
+        }
+        
+        function createAPITest(title) {
+            const div = document.createElement('div');
+            div.className = 'api-test';
+            div.innerHTML = `<h4>${title}</h4>`;
+            return div;
+        }
+        
+        function addStatus(element, status, message) {
+            const badge = document.createElement('span');
+            badge.className = `status-badge status-${status}`;
+            badge.textContent = status.toUpperCase();
+            
+            const msg = document.createElement('span');
+            msg.innerHTML = ` ${message}`;
+            
+            element.appendChild(badge);
+            element.appendChild(msg);
+        }
+        
+        async function testAPI(apiPath, title, section) {
+            const testDiv = createAPITest(title);
+            section.appendChild(testDiv);
+            
+            try {
+                const url = `${API_BASE}/${apiPath}`;
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@test.com',
+                        'X-Admin-User-ID': '1'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        addStatus(testDiv, 'success', `✅ Working - Found ${data.requests ? data.requests.length : 0} requests`);
+                        
+                        if (data.requests && data.requests.length > 0) {
+                            const sample = document.createElement('details');
+                            sample.innerHTML = `
+                                <summary>Sample Request Data</summary>
+                                <pre>${JSON.stringify(data.requests[0], null, 2)}</pre>
+                            `;
+                            testDiv.appendChild(sample);
+                        }
+                        
+                        return true;
+                    } else {
+                        addStatus(testDiv, 'error', `❌ API Error: ${data.message}`);
+                        return false;
+                    }
+                } else {
+                    const text = await response.text();
+                    addStatus(testDiv, 'error', `❌ HTTP ${response.status}: ${response.statusText}`);
+                    
+                    if (text.includes('500') || text.includes('Internal Server Error')) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.innerHTML = `<p><strong>500 Error Details:</strong></p><pre>${text.substring(0, 500)}...</pre>`;
+                        testDiv.appendChild(errorDiv);
+                    }
+                    return false;
+                }
+                
+            } catch (error) {
+                addStatus(testDiv, 'error', `❌ Network Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testCORS(section) {
+            const testDiv = createAPITest('CORS Headers Test');
+            section.appendChild(testDiv);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/custom-requests-fixed.php`, {
+                    method: 'OPTIONS'
+                });
+                
+                if (response.status === 204) {
+                    addStatus(testDiv, 'success', '✅ CORS preflight working');
+                    
+                    const headers = {
+                        'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                        'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                    };
+                    
+                    const headerDiv = document.createElement('details');
+                    headerDiv.innerHTML = `
+                        <summary>CORS Headers</summary>
+                        <pre>${JSON.stringify(headers, null, 2)}</pre>
+                    `;
+                    testDiv.appendChild(headerDiv);
+                    
+                    return true;
+                } else {
+                    addStatus(testDiv, 'warning', `⚠️ CORS preflight returned ${response.status}`);
+                    return false;
+                }
+                
+            } catch (error) {
+                addStatus(testDiv, 'error', `❌ CORS test failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function simulateAdminDashboard(section) {
+            const testDiv = createAPITest('Admin Dashboard Simulation');
+            section.appendChild(testDiv);
+            
+            try {
+                // Simulate the exact call that AdminDashboard.jsx makes
+                const url = `${API_BASE}/api/admin/custom-requests-fixed.php?status=all`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@example.com',
+                        'X-Admin-User-ID': '1'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        addStatus(testDiv, 'success', '✅ Admin Dashboard call successful');
+                        
+                        const summary = document.createElement('div');
+                        summary.innerHTML = `
+                            <p><strong>Dashboard Data:</strong></p>
+                            <ul>
+                                <li>Total Requests: ${data.total_count || 0}</li>
+                                <li>Showing: ${data.showing_count || 0}</li>
+                                <li>Pending: ${data.stats?.pending_requests || 0}</li>
+                                <li>Completed: ${data.stats?.completed_requests || 0}</li>
+                            </ul>
+                        `;
+                        testDiv.appendChild(summary);
+                        
+                        return true;
+                    } else {
+                        addStatus(testDiv, 'error', `❌ Dashboard API error: ${data.message}`);
+                        return false;
+                    }
+                } else {
+                    addStatus(testDiv, 'error', `❌ Dashboard call failed: HTTP ${response.status}`);
+                    return false;
+                }
+                
+            } catch (error) {
+                addStatus(testDiv, 'error', `❌ Dashboard simulation failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function runVerification() {
+            log('<h2>🚀 Starting Verification Process</h2>');
+            
+            // Test 1: CORS
+            const corsSection = createSection('1. CORS Configuration Test');
+            const corsOk = await testCORS(corsSection);
+            
+            // Test 2: API Endpoints
+            const apiSection = createSection('2. API Endpoints Test');
+            const results = {};
+            results.fixed = await testAPI('api/admin/custom-requests-fixed.php', 'Fixed API (Recommended)', apiSection);
+            results.simple = await testAPI('api/admin/custom-requests-simple.php', 'Simple API', apiSection);
+            results.minimal = await testAPI('api/admin/custom-requests-minimal.php', 'Minimal API (Fallback)', apiSection);
+            
+            // Test 3: Admin Dashboard Simulation
+            const dashboardSection = createSection('3. Admin Dashboard Simulation');
+            const dashboardOk = await simulateAdminDashboard(dashboardSection);
+            
+            // Test 4: Summary
+            const summarySection = createSection('4. Verification Summary');
+            
+            const workingAPIs = Object.values(results).filter(Boolean).length;
+            const totalTests = Object.keys(results).length + 2; // +2 for CORS and dashboard
+            const passedTests = workingAPIs + (corsOk ? 1 : 0) + (dashboardOk ? 1 : 0);
+            
+            if (passedTests === totalTests) {
+                summarySection.innerHTML += `
+                    <div class="success" style="font-size: 18px; font-weight: bold;">
+                        🎉 All tests passed! (${passedTests}/${totalTests})
+                    </div>
+                    <p>The admin dashboard custom requests should be working perfectly.</p>
+                `;
+            } else if (dashboardOk || results.fixed) {
+                summarySection.innerHTML += `
+                    <div class="warning" style="font-size: 18px; font-weight: bold;">
+                        ⚠️ Partial success (${passedTests}/${totalTests} tests passed)
+                    </div>
+                    <p>The main functionality should work, but some APIs may have issues.</p>
+                `;
+            } else {
+                summarySection.innerHTML += `
+                    <div class="error" style="font-size: 18px; font-weight: bold;">
+                        ❌ Tests failed (${passedTests}/${totalTests} tests passed)
+                    </div>
+                    <p>There are still issues that need to be resolved.</p>
+                `;
+            }
+            
+            // Recommendations
+            summarySection.innerHTML += '<h4>Recommendations:</h4>';
+            
+            if (results.fixed) {
+                summarySection.innerHTML += '<p class="success">✅ Use the <strong>Fixed API</strong> - it has the best error handling and features.</p>';
+            } else if (results.minimal) {
+                summarySection.innerHTML += '<p class="warning">⚠️ Use the <strong>Minimal API</strong> temporarily - it works but has static data.</p>';
+            } else {
+                summarySection.innerHTML += '<p class="error">❌ All APIs have issues. Check the diagnosis tool for detailed troubleshooting.</p>';
+            }
+            
+            // Action buttons
+            summarySection.innerHTML += `
+                <div style="margin-top: 20px;">
+                    <button class="btn" onclick="window.open('diagnose-500-error.php', '_blank')">
+                        🔍 Run Detailed Diagnosis
+                    </button>
+                    <button class="btn btn-success" onclick="window.open('../frontend/src/pages/AdminDashboard.jsx', '_blank')">
+                        📝 View Admin Dashboard Code
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Start verification
+        runVerification();
+    </script>
+</body>
+</html>

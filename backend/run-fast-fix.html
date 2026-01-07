@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FAST FIX - Run Now</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        button { background: #ef4444; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
+        button:hover { background: #dc2626; }
+        #output { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; min-height: 200px; font-family: monospace; white-space: pre-line; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 FAST FIX - Custom Requests</h1>
+        <p><strong>This will immediately fix the customer request routing issue.</strong></p>
+        
+        <button onclick="runFastFix()">🔧 RUN FAST FIX NOW</button>
+        
+        <div id="output">Click the button above to run the fast fix...</div>
+    </div>
+
+    <script>
+        async function runFastFix() {
+            document.getElementById('output').innerHTML = 'RUNNING FAST FIX...\n\n';
+            
+            try {
+                const response = await fetch('fix-column-mismatch-corrected.php');
+                const text = await response.text();
+                document.getElementById('output').innerHTML = text;
+                
+                // Auto-test after 2 seconds
+                setTimeout(testResult, 2000);
+                
+            } catch (error) {
+                document.getElementById('output').innerHTML = `ERROR: ${error.message}`;
+            }
+        }
+        
+        async function testResult() {
+            document.getElementById('output').innerHTML += '\n\n=== TESTING RESULT ===\n';
+            
+            try {
+                const response = await fetch('api/admin/custom-requests-database-only.php?status=all');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('output').innerHTML += `✅ SUCCESS! Found ${data.total_count} requests\n`;
+                    document.getElementById('output').innerHTML += `API Version: ${data.api_version}\n`;
+                    
+                    if (data.requests && data.requests.length > 0) {
+                        document.getElementById('output').innerHTML += '\nCustomer Requests:\n';
+                        data.requests.forEach(req => {
+                            document.getElementById('output').innerHTML += `- ${req.customer_name} (${req.customer_email}): ${req.title}\n`;
+                        });
+                    }
+                    
+                    document.getElementById('output').innerHTML += '\n🎉 YOUR ADMIN DASHBOARD SHOULD NOW SHOW CUSTOMER REQUESTS!\n';
+                } else {
+                    document.getElementById('output').innerHTML += `❌ API Error: ${data.message}\n`;
+                }
+            } catch (error) {
+                document.getElementById('output').innerHTML += `❌ Test Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

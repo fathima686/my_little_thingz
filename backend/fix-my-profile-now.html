@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Profile to Pro - Instant</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        .big-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .big-button:hover {
+            transform: translateY(-2px);
+        }
+        .success { 
+            background: #d4edda; 
+            border: 1px solid #c3e6cb; 
+            color: #155724; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0; 
+        }
+        .error { 
+            background: #f8d7da; 
+            border: 1px solid #f5c6cb; 
+            color: #721c24; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0; 
+        }
+        .loading {
+            color: #007cba;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Fix Profile to Pro Plan</h1>
+        <p>Click the button below to instantly change your profile from "Basic Plan" to "Pro Plan"</p>
+        
+        <button class="big-button" onclick="fixProfileNow()" id="fixBtn">
+            Fix My Profile Now!
+        </button>
+        
+        <div id="result"></div>
+        
+        <div style="margin-top: 30px; font-size: 14px; color: #666;">
+            <p><strong>After success:</strong> Refresh your tutorial page to see "Pro Plan" in your profile</p>
+        </div>
+    </div>
+
+    <script>
+        async function fixProfileNow() {
+            const btn = document.getElementById('fixBtn');
+            const result = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+            result.innerHTML = '<div class="loading">⏳ Updating your subscription to Pro Plan...</div>';
+            
+            try {
+                const response = await fetch('instant-pro-update.php');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    result.innerHTML = `
+                        <div class="success">
+                            <h3>✅ SUCCESS!</h3>
+                            <p><strong>Your profile has been updated to Pro Plan!</strong></p>
+                            <p>Plan: ${data.subscription.plan_name}</p>
+                            <p>Status: ${data.subscription.subscription_status}</p>
+                            <hr>
+                            <p><strong>Next Steps:</strong></p>
+                            <ol style="text-align: left;">
+                                <li>Go back to your tutorial dashboard</li>
+                                <li>Refresh the page (F5 or Ctrl+R)</li>
+                                <li>Click your profile - it should now show "Pro Plan"</li>
+                            </ol>
+                        </div>
+                    `;
+                    btn.textContent = '✅ Done!';
+                    btn.style.background = '#28a745';
+                } else {
+                    result.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Error</h3>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.textContent = 'Try Again';
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Error</h3>
+                        <p>Connection error: ${error.message}</p>
+                    </div>
+                `;
+                btn.disabled = false;
+                btn.textContent = 'Try Again';
+            }
+        }
+    </script>
+</body>
+</html>

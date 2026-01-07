@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Custom Requests System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Custom Requests System Test</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Customer API</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" onclick="testSubmitRequest()">Submit Test Request</button>
+                        <button class="btn btn-secondary" onclick="testGetCustomerRequests()">Get Customer Requests</button>
+                        <div id="customerResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Admin API</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-success" onclick="testGetAllRequests()">Get All Requests</button>
+                        <button class="btn btn-warning" onclick="testUpdateStatus()">Update Status</button>
+                        <div id="adminResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Database Setup</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-info" onclick="setupDatabase()">Setup Database Tables</button>
+                        <div id="setupResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function testSubmitRequest() {
+        const resultDiv = document.getElementById('customerResult');
+        resultDiv.innerHTML = 'Testing...';
+        
+        try {
+            const testData = {
+                title: 'Test Custom Birthday Cake',
+                occasion: 'Birthday',
+                description: 'A beautiful custom birthday cake with rainbow colors and unicorn theme',
+                requirements: 'Size: 8 inch round, Vanilla flavor, Fondant decorations',
+                deadline: getDateInFuture(14) // 14 days from now
+            };
+            
+            const response = await fetch('/my_little_thingz/backend/api/customer/custom-request.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Customer-Email': 'test.customer@example.com'
+                },
+                body: JSON.stringify(testData)
+            });
+            
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${data.status === 'success' ? 'success' : 'danger'}">
+                    <h6>Response:</h6>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    async function testGetCustomerRequests() {
+        const resultDiv = document.getElementById('customerResult');
+        resultDiv.innerHTML = 'Testing...';
+        
+        try {
+            const response = await fetch('/my_little_thingz/backend/api/customer/custom-request.php', {
+                method: 'GET',
+                headers: {
+                    'X-Customer-Email': 'test.customer@example.com'
+                }
+            });
+            
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${data.status === 'success' ? 'success' : 'danger'}">
+                    <h6>Customer Requests:</h6>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    async function testGetAllRequests() {
+        const resultDiv = document.getElementById('adminResult');
+        resultDiv.innerHTML = 'Testing...';
+        
+        try {
+            const response = await fetch('/my_little_thingz/backend/api/admin/custom-requests.php', {
+                method: 'GET',
+                headers: {
+                    'X-Admin-Email': 'admin@mylittlethingz.com'
+                }
+            });
+            
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${data.status === 'success' ? 'success' : 'danger'}">
+                    <h6>All Requests (Admin View):</h6>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    async function testUpdateStatus() {
+        const resultDiv = document.getElementById('adminResult');
+        resultDiv.innerHTML = 'Testing...';
+        
+        try {
+            // First get a request to update
+            const getResponse = await fetch('/my_little_thingz/backend/api/admin/custom-requests.php', {
+                headers: { 'X-Admin-Email': 'admin@mylittlethingz.com' }
+            });
+            const getData = await getResponse.json();
+            
+            if (getData.requests && getData.requests.length > 0) {
+                const requestId = getData.requests[0].id;
+                
+                const updateResponse = await fetch('/my_little_thingz/backend/api/admin/custom-requests.php', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@mylittlethingz.com'
+                    },
+                    body: JSON.stringify({
+                        id: requestId,
+                        status: 'drafted_by_admin',
+                        admin_notes: 'Started working on this design'
+                    })
+                });
+                
+                const updateData = await updateResponse.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="alert alert-${updateData.status === 'success' ? 'success' : 'danger'}">
+                        <h6>Update Status Result:</h6>
+                        <pre>${JSON.stringify(updateData, null, 2)}</pre>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        No requests found to update. Submit a test request first.
+                    </div>
+                `;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    async function setupDatabase() {
+        const resultDiv = document.getElementById('setupResult');
+        resultDiv.innerHTML = 'Setting up database...';
+        
+        try {
+            // Test database connection first
+            const response = await fetch('/my_little_thingz/backend/api/test-db-connection.php');
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${data.status === 'success' ? 'success' : 'danger'}">
+                    <h6>Database Connection Test:</h6>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <hr>
+                    <p><strong>Note:</strong> The custom_requests table will be created automatically when you first use the API.</p>
+                    <p>You can also manually create it using the schema in the design_system_schema.sql file.</p>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    function getDateInFuture(days) {
+        const date = new Date();
+        date.setDate(date.getDate() + days);
+        return date.toISOString().split('T')[0];
+    }
+    </script>
+</body>
+</html>

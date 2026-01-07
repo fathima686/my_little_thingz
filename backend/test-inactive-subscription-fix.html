@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Inactive Subscription Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .test-section { 
+            background: white; 
+            margin: 20px 0; 
+            border-radius: 8px; 
+            padding: 20px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        .info { color: #3b82f6; font-weight: bold; }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 14px;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status-success { background: #d1fae5; color: #065f46; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .status-info { background: #dbeafe; color: #1e40af; }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .comparison-item {
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+        .before { border-color: #ef4444; background: #fef2f2; }
+        .after { border-color: #10b981; background: #f0fdf4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Inactive Subscription Fix</h1>
+        
+        <div class="test-section">
+            <h2>Problem Description</h2>
+            <div class="status-warning">
+                <strong>Issue:</strong> User has "basic" plan but it's inactive (is_active = 0), causing upgrade failures with "already have plan" error.
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 1: Run the Fix</h2>
+            <p>This will clean up inactive subscriptions and create proper APIs:</p>
+            <button class="btn-primary" onclick="runInactiveFix()">Run Inactive Subscription Fix</button>
+            <div id="fixResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 2: Compare Before/After</h2>
+            <div class="comparison">
+                <div class="comparison-item before">
+                    <h3>❌ Before Fix</h3>
+                    <ul>
+                        <li>User has "basic" plan</li>
+                        <li>Subscription is inactive (is_active = 0)</li>
+                        <li>Upgrade fails with "already have plan"</li>
+                        <li>Live sessions blocked</li>
+                    </ul>
+                </div>
+                <div class="comparison-item after">
+                    <h3>✅ After Fix</h3>
+                    <ul>
+                        <li>Clean active subscription</li>
+                        <li>Proper upgrade logic</li>
+                        <li>Successful plan changes</li>
+                        <li>Live sessions work for Pro users</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 3: Test Profile API</h2>
+            <p>Test the fixed profile API that only shows active subscriptions:</p>
+            <button class="btn-success" onclick="testProfileAPI()">Test Fixed Profile API</button>
+            <div id="profileResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 4: Test Subscription Upgrades</h2>
+            <p>Test upgrading to different plans:</p>
+            <div>
+                <button class="btn-warning" onclick="testUpgrade('free')">Upgrade to Free</button>
+                <button class="btn-warning" onclick="testUpgrade('premium')">Upgrade to Premium</button>
+                <button class="btn-warning" onclick="testUpgrade('pro')">Upgrade to Pro</button>
+            </div>
+            <div id="upgradeResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 5: Test Live Sessions Access</h2>
+            <p>After upgrading to Pro, test live sessions access:</p>
+            <button class="btn-success" onclick="testLiveAccess()">Test Live Sessions Access</button>
+            <div id="liveResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Final Verification</h2>
+            <p>Verify everything is working correctly:</p>
+            <button class="btn-success" onclick="verifyComplete()">Complete Verification</button>
+            <div id="verifyResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const USER_EMAIL = 'soudhame52@gmail.com';
+        
+        function runInactiveFix() {
+            const resultsDiv = document.getElementById('fixResults');
+            resultsDiv.innerHTML = '<div class="status-info">Running inactive subscription fix...</div>';
+            
+            fetch('fix-inactive-subscription-issue.php')
+                .then(response => response.text())
+                .then(data => {
+                    resultsDiv.innerHTML = '<div class="status-success">Fix completed!</div><pre>' + data + '</pre>';
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = '<div class="status-error">Error running fix: ' + error.message + '</div>';
+                });
+        }
+        
+        function testProfileAPI() {
+            const resultsDiv = document.getElementById('profileResults');
+            resultsDiv.innerHTML = '<div class="status-info">Testing profile API...</div>';
+            
+            fetch('api/customer/profile-fixed.php?email=' + encodeURIComponent(USER_EMAIL))
+                .then(response => response.json())
+                .then(data => {
+                    const isActive = data.subscription && data.subscription.is_active;
+                    const statusClass = isActive ? 'status-success' : 'status-error';
+                    const statusText = isActive ? '✅ Subscription is now ACTIVE!' : '❌ Subscription still inactive';
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="${statusClass}">${statusText}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = '<div class="status-error">Error testing profile: ' + error.message + '</div>';
+                });
+        }
+        
+        function testUpgrade(planCode) {
+            const resultsDiv = document.getElementById('upgradeResults');
+            resultsDiv.innerHTML = '<div class="status-info">Testing upgrade to ' + planCode + '...</div>';
+            
+            fetch('api/customer/upgrade-subscription-improved.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Tutorial-Email': USER_EMAIL
+                },
+                body: JSON.stringify({
+                    email: USER_EMAIL,
+                    plan_code: planCode
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <div class="status-success">✅ Upgrade to ${planCode} successful!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status-warning">Upgrade response:</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            })
+            .catch(error => {
+                resultsDiv.innerHTML = '<div class="status-error">Error testing upgrade: ' + error.message + '</div>';
+            });
+        }
+        
+        function testLiveAccess() {
+            const resultsDiv = document.getElementById('liveResults');
+            resultsDiv.innerHTML = '<div class="status-info">Testing live sessions access...</div>';
+            
+            fetch('api/customer/unified-subscription-check.php?email=' + encodeURIComponent(USER_EMAIL))
+                .then(response => response.json())
+                .then(data => {
+                    const canAccessLive = data.can_access_live_sessions;
+                    const statusClass = canAccessLive ? 'status-success' : 'status-error';
+                    const statusText = canAccessLive ? '✅ Can access live sessions!' : '❌ Cannot access live sessions';
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="${statusClass}">${statusText}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = '<div class="status-error">Error testing live access: ' + error.message + '</div>';
+                });
+        }
+        
+        function verifyComplete() {
+            const resultsDiv = document.getElementById('verifyResults');
+            resultsDiv.innerHTML = '<div class="status-info">Running complete verification...</div>';
+            
+            // Test multiple APIs to ensure consistency
+            Promise.all([
+                fetch('api/customer/profile-fixed.php?email=' + encodeURIComponent(USER_EMAIL)).then(r => r.json()),
+                fetch('api/customer/subscription-status-fixed.php?email=' + encodeURIComponent(USER_EMAIL)).then(r => r.json()),
+                fetch('api/customer/unified-subscription-check.php?email=' + encodeURIComponent(USER_EMAIL)).then(r => r.json())
+            ])
+            .then(([profileData, statusData, unifiedData]) => {
+                let html = '<div class="status-success">✅ Complete verification finished!</div>';
+                
+                // Check consistency
+                const profilePlan = profileData.subscription?.plan_code;
+                const statusPlan = statusData.subscription?.plan_code;
+                const unifiedPlan = unifiedData.subscription?.plan_code;
+                
+                const profileActive = profileData.subscription?.is_active;
+                const statusActive = statusData.subscription?.is_active;
+                const unifiedActive = unifiedData.subscription?.is_active;
+                
+                html += '<h4>API Consistency Check:</h4>';
+                html += '<table style="border-collapse: collapse; width: 100%; margin: 10px 0;">';
+                html += '<tr style="background: #f9fafb;"><th style="border: 1px solid #e5e7eb; padding: 8px;">API</th><th style="border: 1px solid #e5e7eb; padding: 8px;">Plan</th><th style="border: 1px solid #e5e7eb; padding: 8px;">Active</th></tr>';
+                html += `<tr><td style="border: 1px solid #e5e7eb; padding: 8px;">Profile</td><td style="border: 1px solid #e5e7eb; padding: 8px;">${profilePlan || 'N/A'}</td><td style="border: 1px solid #e5e7eb; padding: 8px;">${profileActive ? 'YES' : 'NO'}</td></tr>`;
+                html += `<tr><td style="border: 1px solid #e5e7eb; padding: 8px;">Status</td><td style="border: 1px solid #e5e7eb; padding: 8px;">${statusPlan || 'N/A'}</td><td style="border: 1px solid #e5e7eb; padding: 8px;">${statusActive ? 'YES' : 'NO'}</td></tr>`;
+                html += `<tr><td style="border: 1px solid #e5e7eb; padding: 8px;">Unified</td><td style="border: 1px solid #e5e7eb; padding: 8px;">${unifiedPlan || 'N/A'}</td><td style="border: 1px solid #e5e7eb; padding: 8px;">${unifiedActive ? 'YES' : 'NO'}</td></tr>`;
+                html += '</table>';
+                
+                // Check if all APIs are consistent
+                const plansMatch = profilePlan === statusPlan && statusPlan === unifiedPlan;
+                const activeMatch = profileActive === statusActive && statusActive === unifiedActive;
+                
+                if (plansMatch && activeMatch) {
+                    html += '<div class="status-success">🎉 All APIs are consistent! Fix is working perfectly.</div>';
+                } else {
+                    html += '<div class="status-warning">⚠️ Some inconsistencies found. May need additional fixes.</div>';
+                }
+                
+                html += '<h4>Detailed Responses:</h4>';
+                html += '<details><summary>Profile API Response</summary><pre>' + JSON.stringify(profileData, null, 2) + '</pre></details>';
+                html += '<details><summary>Status API Response</summary><pre>' + JSON.stringify(statusData, null, 2) + '</pre></details>';
+                html += '<details><summary>Unified API Response</summary><pre>' + JSON.stringify(unifiedData, null, 2) + '</pre></details>';
+                
+                resultsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                resultsDiv.innerHTML = '<div class="status-error">Error in verification: ' + error.message + '</div>';
+            });
+        }
+    </script>
+</body>
+</html>

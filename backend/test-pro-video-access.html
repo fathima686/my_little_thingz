@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Pro Video Access</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .btn { background: #6b46c1; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        .result { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Test Pro Video Access</h1>
+        <p>Testing Pro subscription features for video access and downloads.</p>
+        
+        <div class="test-section">
+            <h3>1. Test Profile API (Pro Features)</h3>
+            <button class="btn" onclick="testProfileAPI()">Test Profile API</button>
+            <div id="profile-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Test Subscription Status API</h3>
+            <button class="btn" onclick="testSubscriptionStatus()">Test Subscription Status</button>
+            <div id="subscription-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Test Tutorial Access Check</h3>
+            <button class="btn" onclick="testTutorialAccess()">Test Tutorial Access</button>
+            <div id="tutorial-access-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Test All Tutorials List</h3>
+            <button class="btn" onclick="testTutorialsList()">Test Tutorials List</button>
+            <div id="tutorials-list-result" class="result"></div>
+        </div>
+        
+        <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const userEmail = 'soudhame52@gmail.com';
+        
+        async function testProfileAPI() {
+            const resultDiv = document.getElementById('profile-result');
+            resultDiv.innerHTML = 'Testing profile API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/profile.php`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': userEmail
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Profile API working\n\nPlan: ${data.subscription?.plan_code}\nStatus: ${data.subscription?.subscription_status}\nIs Active: ${data.subscription?.is_active}\nIs Pro User: ${data.stats?.is_pro_user}\n\nFeature Access:\n${JSON.stringify(data.feature_access, null, 2)}\n\nFull Response:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testSubscriptionStatus() {
+            const resultDiv = document.getElementById('subscription-result');
+            resultDiv.innerHTML = 'Testing subscription status API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/subscription-status.php`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': userEmail
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Subscription Status API working\n\nPlan: ${data.plan_code}\nStatus: ${data.subscription_status}\nIs Active: ${data.is_active}\n\nFeature Access:\n${JSON.stringify(data.feature_access, null, 2)}\n\nFull Response:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testTutorialAccess() {
+            const resultDiv = document.getElementById('tutorial-access-result');
+            resultDiv.innerHTML = 'Testing tutorial access check...';
+            
+            try {
+                // Test with a sample tutorial ID
+                const response = await fetch(`${API_BASE}/customer/check-tutorial-access.php?tutorial_id=1&email=${userEmail}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorials-Email': userEmail
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Tutorial Access Check working\n\nHas Access: ${data.has_access}\nAccess Type: ${data.access_type}\n\nFull Response:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testTutorialsList() {
+            const resultDiv = document.getElementById('tutorials-list-result');
+            resultDiv.innerHTML = 'Testing tutorials list...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/tutorials.php`, {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const tutorialCount = data.tutorials ? data.tutorials.length : 0;
+                    const freeCount = data.tutorials ? data.tutorials.filter(t => t.is_free || t.price == 0).length : 0;
+                    const paidCount = tutorialCount - freeCount;
+                    
+                    resultDiv.innerHTML = `✅ SUCCESS: Tutorials List working\n\nTotal Tutorials: ${tutorialCount}\nFree Tutorials: ${freeCount}\nPaid Tutorials: ${paidCount}\n\nFirst 3 Tutorials:\n${JSON.stringify(data.tutorials?.slice(0, 3), null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        </script>
+    </div>
+</body>
+</html>

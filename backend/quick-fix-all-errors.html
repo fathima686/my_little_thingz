@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Fix All Errors</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .fix-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .fix-btn:hover { transform: translateY(-1px); }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; color: #333; }
+        .step { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Quick Fix All Dashboard Errors</h1>
+        <p>This will fix all the errors you're seeing in the console and get your Pro dashboard working perfectly.</p>
+
+        <div class="step">
+            <h3>Step 1: Fix Database Tables</h3>
+            <button class="fix-btn" onclick="fixDatabaseTables()">Fix Database Tables</button>
+            <div id="db-result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Setup Learning Progress</h3>
+            <button class="fix-btn" onclick="setupLearningProgress()">Setup Learning Progress</button>
+            <div id="learning-result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Test Profile API</h3>
+            <button class="fix-btn" onclick="testProfileAPI()">Test Profile API</button>
+            <div id="profile-result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Verify Pro Status</h3>
+            <button class="fix-btn" onclick="verifyProStatus()">Verify Pro Status</button>
+            <div id="pro-result"></div>
+        </div>
+
+        <div class="info">
+            <h4>After running all fixes:</h4>
+            <ol>
+                <li>Go back to your tutorial dashboard</li>
+                <li>Refresh the page (F5)</li>
+                <li>All errors should be gone</li>
+                <li>Profile should show "Pro Plan"</li>
+                <li>Stats should show "Watched Tutorials" instead of "Purchased"</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function fixDatabaseTables() {
+            const resultDiv = document.getElementById('db-result');
+            resultDiv.innerHTML = '<div class="info">Creating database tables...</div>';
+
+            try {
+                const response = await fetch('setup-user-profiles.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Database Tables Fixed!</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Database Error</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Error</h4><p>${error.message}</p></div>`;
+            }
+        }
+
+        async function setupLearningProgress() {
+            const resultDiv = document.getElementById('learning-result');
+            resultDiv.innerHTML = '<div class="info">Setting up learning progress...</div>';
+
+            try {
+                const response = await fetch('setup-learning-progress.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Learning Progress Setup Complete!</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Setup Error</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Error</h4><p>${error.message}</p></div>`;
+            }
+        }
+
+        async function testProfileAPI() {
+            const resultDiv = document.getElementById('profile-result');
+            resultDiv.innerHTML = '<div class="info">Testing profile API...</div>';
+
+            try {
+                const response = await fetch('api/customer/profile.php', {
+                    headers: {
+                        'X-Tutorial-Email': 'soudhame52@gmail.com'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        const stats = data.stats;
+                        const subscription = data.subscription;
+                        
+                        resultDiv.innerHTML = `
+                            <div class="success">
+                                <h4>✅ Profile API Working!</h4>
+                                <p><strong>Plan:</strong> ${subscription.plan_name} (${subscription.subscription_status})</p>
+                                <p><strong>User Type:</strong> ${stats.is_pro_user ? 'Pro User' : 'Basic User'}</p>
+                                <h5>Stats:</h5>
+                                <ul>
+                                    ${stats.is_pro_user ? `
+                                        <li><strong>Learning Hours:</strong> ${stats.learning_hours}h</li>
+                                        <li><strong>Completed:</strong> ${stats.completed_tutorials}</li>
+                                        <li><strong>Practice Uploads:</strong> ${stats.practice_uploads}</li>
+                                    ` : `
+                                        <li><strong>Purchased:</strong> ${stats.purchased_tutorials}</li>
+                                        <li><strong>Completed:</strong> ${stats.completed_tutorials}</li>
+                                    `}
+                                </ul>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="error">
+                                <h4>❌ API Error</h4>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    const text = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ HTTP Error (${response.status})</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Error</h4><p>${error.message}</p></div>`;
+            }
+        }
+
+        async function verifyProStatus() {
+            const resultDiv = document.getElementById('pro-result');
+            resultDiv.innerHTML = '<div class="info">Verifying Pro status...</div>';
+
+            try {
+                const response = await fetch('instant-pro-update.php');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Pro Status Verified!</h4>
+                            <p><strong>Plan:</strong> ${data.subscription.plan_name}</p>
+                            <p><strong>Status:</strong> ${data.subscription.subscription_status}</p>
+                            <p><strong>Active:</strong> ${data.subscription.is_active ? 'Yes' : 'No'}</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Pro Status Error</h4>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error"><h4>❌ Error</h4><p>${error.message}</p></div>`;
+            }
+        }
+
+        // Auto-run all fixes in sequence
+        async function runAllFixes() {
+            await fixDatabaseTables();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await setupLearningProgress();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testProfileAPI();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await verifyProStatus();
+        }
+    </script>
+</body>
+</html>

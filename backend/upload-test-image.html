@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Test Image</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.95); 
+            padding: 30px; 
+            border-radius: 15px; 
+            color: #333;
+        }
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background: #f8f9fa;
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .preview {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .preview img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 Upload Test Images for Custom Requests</h1>
+        <p>Upload images to test the real image display in admin dashboard</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <h3>📷 Drop Images Here or Click to Select</h3>
+            <p>Supports: JPG, PNG, GIF, WebP</p>
+            <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                Select Images
+            </button>
+        </div>
+        
+        <div id="preview" class="preview" style="display: none;">
+            <h4>Selected Images:</h4>
+            <div id="imageList"></div>
+            <button class="btn btn-success" onclick="uploadImages()">
+                Upload All Images
+            </button>
+        </div>
+        
+        <div id="results"></div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+            <h4>🎯 Quick Actions:</h4>
+            <button class="btn" onclick="window.open('check-uploaded-images.php', '_blank')">
+                Check Current Images
+            </button>
+            <button class="btn" onclick="window.open('test-all-custom-request-apis.html', '_blank')">
+                Test API
+            </button>
+            <button class="btn" onclick="createTestImages()">
+                Create Test Images
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend';
+        let selectedFiles = [];
+        
+        // File input handling
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        
+        // Drag and drop handling
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files);
+            handleFiles(files);
+        });
+        
+        uploadArea.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+        
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        }
+        
+        function handleFiles(files) {
+            selectedFiles = files.filter(file => file.type.startsWith('image/'));
+            
+            if (selectedFiles.length === 0) {
+                alert('Please select valid image files');
+                return;
+            }
+            
+            displayPreview();
+        }
+        
+        function displayPreview() {
+            const preview = document.getElementById('preview');
+            const imageList = document.getElementById('imageList');
+            
+            imageList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.style.display = 'inline-block';
+                    div.style.margin = '10px';
+                    div.style.textAlign = 'center';
+                    
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <br>
+                        <small>${file.name} (${(file.size / 1024).toFixed(1)} KB)</small>
+                    `;
+                    
+                    imageList.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            preview.style.display = 'block';
+        }
+        
+        async function uploadImages() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>📤 Uploading Images...</h3>';
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const requestId = (i % 3) + 1; // Distribute across requests 1, 2, 3
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('request_id', requestId);
+                    formData.append('image', file);
+                    
+                    const response = await fetch(`${API_BASE}/api/admin/custom-request-images.php`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Admin-Email': 'admin@test.com',
+                            'X-Admin-User-ID': '1'
+                        },
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            successCount++;
+                            results.innerHTML += `<p style="color: green;">✅ ${file.name} → Request #${requestId}</p>`;
+                        } else {
+                            throw new Error(data.message);
+                        }
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                } catch (error) {
+                    errorCount++;
+                    results.innerHTML += `<p style="color: red;">❌ ${file.name}: ${error.message}</p>`;
+                }
+            }
+            
+            results.innerHTML += `
+                <div style="margin-top: 20px; padding: 20px; border-radius: 8px; background: ${successCount > 0 ? '#d4edda' : '#f8d7da'};">
+                    <h4>Upload Complete!</h4>
+                    <p><strong>Success:</strong> ${successCount} images</p>
+                    <p><strong>Errors:</strong> ${errorCount} images</p>
+                    
+                    ${successCount > 0 ? `
+                        <p style="color: green; font-weight: bold;">
+                            🎉 Images uploaded! They should now appear in the admin dashboard.
+                        </p>
+                        <button class="btn btn-success" onclick="window.open('check-uploaded-images.php', '_blank')">
+                            View Uploaded Images
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Clear selection
+            selectedFiles = [];
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+        }
+        
+        async function createTestImages() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>🎨 Creating Test Images...</h3>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/check-uploaded-images.php`);
+                const text = await response.text();
+                
+                results.innerHTML = `
+                    <h3>✅ Test Images Created</h3>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px;">
+                        ${text}
+                    </div>
+                `;
+                
+            } catch (error) {
+                results.innerHTML = `
+                    <h3>❌ Failed to Create Test Images</h3>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

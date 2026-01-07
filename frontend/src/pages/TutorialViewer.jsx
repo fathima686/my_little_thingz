@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTutorialAuth } from '../contexts/TutorialAuthContext';
-import { LuArrowLeft, LuDownload, LuShare2 } from 'react-icons/lu';
+import { LuArrowLeft, LuDownload, LuLock, LuUpload, LuCheck, LuX, LuClock } from 'react-icons/lu';
 import '../styles/tutorial-viewer.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
@@ -14,11 +14,49 @@ export default function TutorialViewer() {
   const [tutorial, setTutorial] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [error, setError] = useState('');
+  const [practiceUpload, setPracticeUpload] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  // Check if user can download videos (Premium and Pro feature)
+  const canDownloadVideos = () => {
+    return subscriptionStatus?.feature_access?.access_levels?.can_download_videos || false;
+  };
+
+  // Check if user can upload practice work (Pro only)
+  const canUploadPractice = () => {
+    return subscriptionStatus?.feature_access?.access_levels?.can_upload_practice_work || 
+           subscriptionStatus?.plan_code === 'pro' || false;
+  };
+
+  // Fetch existing practice upload for this tutorial
+  const fetchPracticeUpload = async () => {
+    if (!canUploadPractice()) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/pro/practice-upload.php?tutorial_id=${id}`, {
+        headers: {
+          'X-Tutorial-Email': tutorialAuth?.email || ''
+        }
+      });
+      const data = await res.json();
+      
+      if (data.status === 'success' && data.uploads.length > 0) {
+        setPracticeUpload(data.uploads[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching practice upload:', error);
+    }
+  };
 
   useEffect(() => {
     fetchTutorial();
     checkAccess();
+    if (tutorialAuth?.email) {
+      fetchPracticeUpload();
+    }
   }, [id, tutorialAuth?.email]);
 
   const fetchTutorial = async () => {
@@ -41,12 +79,35 @@ export default function TutorialViewer() {
 
   const checkAccess = async () => {
     try {
+      // First check subscription status
+      const subRes = await fetch(`${API_BASE}/customer/subscription-status.php`, {
+        headers: {
+          'X-Tutorial-Email': tutorialAuth?.email || ''
+        }
+      });
+      const subData = await subRes.json();
+      
+      console.log('TutorialViewer - Subscription status:', subData);
+      setSubscriptionStatus(subData); // Store subscription status
+      
+      // If user has premium/pro subscription (active, pending, or authenticated), grant access
+      if (subData.status === 'success' && 
+          (subData.plan_code === 'premium' || subData.plan_code === 'pro') &&
+          (subData.is_active || subData.subscription_status === 'pending' || subData.subscription_status === 'authenticated')) {
+        console.log('TutorialViewer - Access granted via subscription:', subData.plan_code, 'status:', subData.subscription_status);
+        setHasAccess(true);
+        return;
+      }
+      
+      // Otherwise check individual tutorial access
       const res = await fetch(`${API_BASE}/customer/check-tutorial-access.php?tutorial_id=${id}&email=${tutorialAuth?.email}`, {
         headers: {
           'X-Tutorials-Email': tutorialAuth?.email || ''
         }
       });
       const data = await res.json();
+      
+      console.log('TutorialViewer - Tutorial access check:', data);
       
       if (data.status === 'success' && data.has_access) {
         setHasAccess(true);
@@ -109,6 +170,71 @@ export default function TutorialViewer() {
   const resourceUrl =
     resolveUrl(tutorial.resource_url || tutorial.resources_url || tutorial.download_url || tutorial.video_url);
 
+  // Handle practice work upload
+  const handlePracticeUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/avi', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Please upload JPG, PNG, GIF, MP4, AVI, or PDF files.');
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size too large. Please upload files smaller than 10MB.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadStatus(null);
+
+    const formData = new FormData();
+    formData.append('practice_file', file);
+    formData.append('tutorial_id', id);
+
+    try {
+      const res = await fetch(`${API_BASE}/pro/practice-upload.php`, {
+        method: 'POST',
+        headers: {
+          'X-Tutorial-Email': tutorialAuth?.email || ''
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      
+      if (data.status === 'success') {
+        setUploadStatus('success');
+        fetchPracticeUpload(); // Refresh upload status
+      } else {
+        setUploadStatus('error');
+        alert(data.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading practice work:', error);
+      setUploadStatus('error');
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Get status icon for practice upload
+  const getPracticeStatusIcon = (status) => {
+    switch (status) {
+      case 'approved':
+        return <LuCheck size={18} className="status-approved" />;
+      case 'rejected':
+        return <LuX size={18} className="status-rejected" />;
+      case 'pending':
+      default:
+        return <LuClock size={18} className="status-pending" />;
+    }
+  };
+
   return (
     <div className="tutorial-viewer-container">
       <header className="viewer-header">
@@ -117,11 +243,6 @@ export default function TutorialViewer() {
           Back to Tutorials
         </Link>
         <h1>{tutorial.title}</h1>
-        <div className="viewer-actions">
-          <button className="action-btn" title="Share">
-            <LuShare2 size={20} />
-          </button>
-        </div>
       </header>
 
       <div className="viewer-content">
@@ -168,16 +289,91 @@ export default function TutorialViewer() {
             </div>
 
             <div className="tutorial-tools">
-              {resourceUrl ? (
-                <a className="tool-btn" href={resourceUrl} download target="_blank" rel="noopener noreferrer">
-                  <LuDownload size={18} />
-                  Download Resources
-                </a>
+              {canDownloadVideos() ? (
+                resourceUrl ? (
+                  <a className="tool-btn" href={resourceUrl} download target="_blank" rel="noopener noreferrer">
+                    <LuDownload size={18} />
+                    Download Resources
+                  </a>
+                ) : (
+                  <button className="tool-btn" disabled title="No resources available">
+                    <LuDownload size={18} />
+                    Download Resources
+                  </button>
+                )
               ) : (
-                <button className="tool-btn" disabled title="No resources available">
-                  <LuDownload size={18} />
-                  Download Resources
-                </button>
+                <div className="download-restricted">
+                  <button className="tool-btn restricted" disabled title="Premium/Pro feature">
+                    <LuLock size={18} />
+                    Download Restricted
+                  </button>
+                  <p className="restriction-note">
+                    Download feature is available for Premium and Pro subscribers only.
+                    <br />
+                    <span>Current plan: <strong>{subscriptionStatus?.plan_code || 'Basic'}</strong></span>
+                  </p>
+                </div>
+              )}
+
+              {/* Practice Upload Section - Pro Only */}
+              {canUploadPractice() && (
+                <div className="practice-upload-section">
+                  <h4>Submit Practice Work</h4>
+                  
+                  {practiceUpload ? (
+                    <div className="existing-upload">
+                      <div className="upload-status">
+                        {getPracticeStatusIcon(practiceUpload.status)}
+                        <span className={`status-text status-${practiceUpload.status}`}>
+                          {practiceUpload.status === 'approved' && 'Approved'}
+                          {practiceUpload.status === 'rejected' && 'Needs Revision'}
+                          {practiceUpload.status === 'pending' && 'Under Review'}
+                        </span>
+                      </div>
+                      
+                      <div className="upload-info">
+                        <p><strong>File:</strong> {practiceUpload.original_filename}</p>
+                        <p><strong>Uploaded:</strong> {new Date(practiceUpload.upload_date).toLocaleDateString()}</p>
+                        {practiceUpload.admin_feedback && (
+                          <div className="admin-feedback">
+                            <p><strong>Feedback:</strong></p>
+                            <p>{practiceUpload.admin_feedback}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <label className="upload-btn secondary">
+                        <LuUpload size={18} />
+                        {practiceUpload.status === 'rejected' ? 'Resubmit Work' : 'Update Submission'}
+                        <input
+                          type="file"
+                          accept="image/*,video/*,.pdf"
+                          onChange={handlePracticeUpload}
+                          disabled={uploading}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="new-upload">
+                      <p>Upload your practice work for this tutorial to track your progress.</p>
+                      <label className="upload-btn">
+                        <LuUpload size={18} />
+                        {uploading ? 'Uploading...' : 'Upload Practice Work'}
+                        <input
+                          type="file"
+                          accept="image/*,video/*,.pdf"
+                          onChange={handlePracticeUpload}
+                          disabled={uploading}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      <p className="upload-hint">
+                        Accepted formats: JPG, PNG, GIF, MP4, AVI, PDF (Max 10MB)
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Pro Subscription Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .highlight { background: yellow; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Pro Subscription Fix Test</h1>
+    <p>Testing the complete fix for Pro subscription detection in live classes section.</p>
+    
+    <div id="results"></div>
+    
+    <button onclick="runCompleteTest()">Run Complete Test</button>
+    <button onclick="setUserToPro()">1. Set User to Pro</button>
+    <button onclick="testProfileAPI()">2. Test Profile API</button>
+    <button onclick="testSubscriptionStatus()">3. Test Subscription Status</button>
+    <button onclick="testLiveWorkshops()">4. Test Live Workshops Access</button>
+
+    <script>
+        const userEmail = 'soudhame52@gmail.com';
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `step ${type}`;
+            stepDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(stepDiv);
+        }
+        
+        async function setUserToPro() {
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/set-user-to-pro.php');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    addResult('✅ Step 1: Set User to Pro', `
+                        <p>Successfully set ${userEmail} to Pro subscription!</p>
+                        <p><strong>Plan:</strong> ${data.subscription.plan_code}</p>
+                        <p><strong>Status:</strong> ${data.subscription.subscription_status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    addResult('❌ Step 1: Set User to Pro Failed', `
+                        <p><strong>Error:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Step 1: Network Error', `<p>${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testProfileAPI() {
+            try {
+                const response = await fetch(`${apiBase}/customer/profile.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    const isPro = data.subscription.plan_code === 'pro';
+                    addResult('✅ Step 2: Profile API Working', `
+                        <p><strong>Plan:</strong> <span class="${isPro ? 'highlight' : ''}">${data.subscription.plan_code}</span></p>
+                        <p><strong>Status:</strong> ${data.subscription.subscription_status}</p>
+                        <p><strong>Is Pro User:</strong> <span class="${data.stats.is_pro_user ? 'highlight' : ''}">${data.stats.is_pro_user}</span></p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, isPro ? 'success' : 'error');
+                } else {
+                    addResult('❌ Step 2: Profile API Error', `
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Message:</strong> ${data.message || 'Unknown error'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Step 2: Network Error', `<p>${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testSubscriptionStatus() {
+            try {
+                const response = await fetch(`${apiBase}/customer/subscription-status.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    const isPro = data.plan_code === 'pro';
+                    const canAccessLiveWorkshops = data.feature_access?.access_levels?.can_access_live_workshops;
+                    
+                    addResult('✅ Step 3: Subscription Status API Working', `
+                        <p><strong>Plan:</strong> <span class="${isPro ? 'highlight' : ''}">${data.plan_code}</span></p>
+                        <p><strong>Status:</strong> ${data.subscription_status}</p>
+                        <p><strong>Can Access Live Workshops:</strong> <span class="${canAccessLiveWorkshops ? 'highlight' : ''}">${canAccessLiveWorkshops}</span></p>
+                        <p><strong>Feature Access Structure:</strong> ${data.feature_access ? '✅ Present' : '❌ Missing'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, (isPro && canAccessLiveWorkshops) ? 'success' : 'error');
+                } else {
+                    addResult('❌ Step 3: Subscription Status API Error', `
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Message:</strong> ${data.message || 'Unknown error'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Step 3: Network Error', `<p>${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testLiveWorkshops() {
+            try {
+                const response = await fetch(`${apiBase}/customer/live-workshops.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    addResult('✅ Step 4: Live Workshops API Working', `
+                        <p><strong>Access Level:</strong> <span class="highlight">${data.access_level}</span></p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><strong>Workshops Count:</strong> ${data.workshops ? data.workshops.length : 0}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    addResult('❌ Step 4: Live Workshops API Error', `
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Message:</strong> ${data.message || 'Unknown error'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Step 4: Network Error', `<p>${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function runCompleteTest() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Starting Complete Pro Subscription Test', 'Testing all components...', 'info');
+            
+            await setUserToPro();
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            
+            await testProfileAPI();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testSubscriptionStatus();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testLiveWorkshops();
+            
+            addResult('🎉 Test Complete', 'All tests finished. Check results above.', 'info');
+        }
+    </script>
+</body>
+</html>

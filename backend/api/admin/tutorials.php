@@ -18,7 +18,7 @@ if ($origin && in_array($origin, $allowed_origins, true)) {
 header("Vary: Origin");
 header("Content-Type: application/json");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id, X-Admin-Email");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(204);

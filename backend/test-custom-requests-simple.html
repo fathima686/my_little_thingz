@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Custom Requests Simple</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .btn { background: #6b46c1; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .result { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; font-size: 12px; max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Custom Requests Simple</h1>
+        <p>Testing the fixed custom requests API</p>
+        
+        <button class="btn" onclick="runDebugFix()">1. Run Debug & Fix</button>
+        <button class="btn" onclick="testAPI()">2. Test API</button>
+        <button class="btn" onclick="testAdminHeaders()">3. Test with Admin Headers</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        
+        async function runDebugFix() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Running debug and fix...';
+            resultDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch('debug-custom-requests-500.php');
+                const html = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = html;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ Debug failed: ${response.status}\n${html}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Network error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing custom requests API...';
+            resultDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php?status=pending&cb=${Date.now()}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    resultDiv.innerHTML = `✅ API Test Success!
+
+Status: ${data.status}
+Message: ${data.message}
+Request Count: ${data.requests ? data.requests.length : 0}
+Total Count: ${data.total_count || 0}
+
+${data.requests && data.requests.length > 0 ? 
+`First Request:
+${JSON.stringify(data.requests[0], null, 2)}` : 
+'No requests found'}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `❌ API Error: ${response.status} ${response.statusText}
+
+Response:
+${errorText}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testAdminHeaders() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing API with admin headers...';
+            resultDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php?status=pending&cb=${Date.now()}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-User-Id': '19',
+                        'X-Admin-Email': 'soudhame52@gmail.com'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    resultDiv.innerHTML = `✅ Admin API Test Success!
+
+Status: ${data.status}
+Message: ${data.message}
+Request Count: ${data.requests ? data.requests.length : 0}
+Total Count: ${data.total_count || 0}
+Filter Applied: ${data.filter_applied}
+
+${data.requests && data.requests.length > 0 ? 
+`Sample Request:
+ID: ${data.requests[0].id}
+Title: ${data.requests[0].title}
+Customer: ${data.requests[0].customer_name}
+Status: ${data.requests[0].status}
+Created: ${data.requests[0].created_at}` : 
+'No requests found'}
+
+🎉 Admin dashboard should now work!`;
+                    resultDiv.className = 'result success';
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `❌ Admin API Error: ${response.status} ${response.statusText}
+
+Response:
+${errorText}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        </script>
+    </div>
+</body>
+</html>

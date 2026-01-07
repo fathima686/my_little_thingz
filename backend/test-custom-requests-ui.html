@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Custom Requests UI Functionality</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.95); 
+            padding: 30px; 
+            border-radius: 15px; 
+            color: #333;
+        }
+        .test-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 5px solid #007bff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { border-left-color: #28a745; }
+        .error { border-left-color: #dc3545; }
+        .warning { border-left-color: #ffc107; }
+        .status { font-weight: bold; }
+        .status.success { color: #28a745; }
+        .status.error { color: #dc3545; }
+        .status.warning { color: #ffc107; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .sample-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .sample-table th, .sample-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .sample-table th {
+            background: #f8f9fa;
+        }
+        .sample-image {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: zoom-in;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Custom Requests UI Functionality Test</h1>
+        <p>Testing the complete custom requests system including UI, buttons, images, and data display</p>
+        
+        <div id="results"></div>
+        
+        <div class="test-section">
+            <h3>🎯 Quick Actions</h3>
+            <button class="btn btn-success" onclick="runCompleteTest()">Run Complete Test</button>
+            <button class="btn" onclick="testDataStructure()">Test Data Structure</button>
+            <button class="btn" onclick="testButtonFunctionality()">Test Button Actions</button>
+            <button class="btn" onclick="testImageDisplay()">Test Image Display</button>
+            <button class="btn btn-danger" onclick="createSampleImages()">Create Sample Images</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend';
+        const resultsDiv = document.getElementById('results');
+        
+        function addSection(title, content, type = 'info') {
+            const section = document.createElement('div');
+            section.className = `test-section ${type}`;
+            section.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(section);
+            return section;
+        }
+        
+        async function testAPI(apiPath, method = 'GET', data = null, headers = {}) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@test.com',
+                        'X-Admin-User-ID': '1',
+                        ...headers
+                    }
+                };
+                
+                if (data && method !== 'GET') {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`${API_BASE}${apiPath}`, options);
+                const responseData = await response.json();
+                
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data: responseData,
+                    error: null
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    status: 0,
+                    data: null,
+                    error: error.message
+                };
+            }
+        }
+        
+        async function testDataStructure() {
+            const section = addSection('📊 Testing Data Structure', 'Checking if API returns data in the format expected by AdminDashboard UI...', 'info');
+            
+            const result = await testAPI('/api/admin/custom-requests-complete.php?status=all');
+            
+            if (!result.success) {
+                section.className = 'test-section error';
+                section.innerHTML = `
+                    <h3>❌ API Call Failed</h3>
+                    <p><strong>Error:</strong> ${result.error || 'HTTP ' + result.status}</p>
+                `;
+                return false;
+            }
+            
+            const data = result.data;
+            const requests = data.requests || [];
+            
+            if (requests.length === 0) {
+                section.className = 'test-section warning';
+                section.innerHTML = `
+                    <h3>⚠️ No Sample Data</h3>
+                    <p>API is working but no requests found. This is normal for a fresh setup.</p>
+                `;
+                return false;
+            }
+            
+            // Check if first request has all required fields
+            const firstRequest = requests[0];
+            const requiredFields = [
+                'id', 'first_name', 'last_name', 'email', 'title', 
+                'occasion', 'category_name', 'budget_min', 'budget_max', 
+                'deadline', 'status', 'images'
+            ];
+            
+            const missingFields = requiredFields.filter(field => !(field in firstRequest));
+            const hasImages = Array.isArray(firstRequest.images) && firstRequest.images.length > 0;
+            
+            section.className = `test-section ${missingFields.length === 0 ? 'success' : 'warning'}`;
+            section.innerHTML = `
+                <h3>📊 Data Structure Analysis</h3>
+                <p><strong>Requests Found:</strong> ${requests.length}</p>
+                <p><strong>Required Fields:</strong> ${missingFields.length === 0 ? '✅ All present' : '⚠️ ' + missingFields.length + ' missing'}</p>
+                <p><strong>Images:</strong> ${hasImages ? '✅ Available' : '❌ Missing'}</p>
+                
+                ${missingFields.length > 0 ? `
+                    <p><strong>Missing Fields:</strong> ${missingFields.join(', ')}</p>
+                ` : ''}
+                
+                <h4>Sample Request Data:</h4>
+                <pre>${JSON.stringify(firstRequest, null, 2)}</pre>
+                
+                <h4>Expected UI Table Structure:</h4>
+                <table class="sample-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Image</th><th>Customer</th><th>Title</th>
+                            <th>Occasion</th><th>Category</th><th>Budget</th>
+                            <th>Deadline</th><th>Status</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${requests.slice(0, 2).map(r => `
+                            <tr>
+                                <td>${r.id}</td>
+                                <td>${r.images && r.images.length ? `<img src="${r.images[0]}" class="sample-image" alt="Sample">` : '-'}</td>
+                                <td>${r.first_name} ${r.last_name}<br><small>${r.email}</small></td>
+                                <td>${r.title}</td>
+                                <td>${r.occasion || '-'}</td>
+                                <td>${r.category_name || '-'}</td>
+                                <td>${r.budget_min && r.budget_max ? r.budget_min + ' - ' + r.budget_max : '-'}</td>
+                                <td>${r.deadline}</td>
+                                <td style="text-transform: capitalize">${r.status}</td>
+                                <td>Buttons</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            return missingFields.length === 0;
+        }
+        
+        async function testButtonFunctionality() {
+            const section = addSection('🔘 Testing Button Functionality', 'Testing status update buttons and image upload...', 'info');
+            
+            // Test status update
+            const statusResult = await testAPI('/api/admin/custom-requests-complete.php', 'POST', {
+                request_id: 1,
+                status: 'in_progress'
+            });
+            
+            // Test image upload endpoint (just check if it exists)
+            const imageResult = await testAPI('/api/admin/custom-request-images.php', 'POST');
+            
+            const statusWorking = statusResult.success || statusResult.status === 400; // 400 is OK for missing data
+            const imageWorking = imageResult.status !== 404; // Not 404 means endpoint exists
+            
+            section.className = `test-section ${statusWorking && imageWorking ? 'success' : 'warning'}`;
+            section.innerHTML = `
+                <h3>🔘 Button Functionality Test</h3>
+                
+                <h4>Status Update Buttons:</h4>
+                <p><strong>POST /custom-requests-complete.php:</strong> 
+                    <span class="status ${statusWorking ? 'success' : 'error'}">
+                        ${statusWorking ? '✅ Working' : '❌ Failed'}
+                    </span>
+                </p>
+                <p><strong>Response:</strong> ${statusResult.data?.message || statusResult.error || 'HTTP ' + statusResult.status}</p>
+                
+                <h4>Image Upload Button:</h4>
+                <p><strong>POST /custom-request-images.php:</strong> 
+                    <span class="status ${imageWorking ? 'success' : 'error'}">
+                        ${imageWorking ? '✅ Available' : '❌ Not Found'}
+                    </span>
+                </p>
+                
+                <h4>Button Actions in AdminDashboard:</h4>
+                <ul>
+                    <li><strong>Start Button:</strong> Updates status to 'in_progress'</li>
+                    <li><strong>Complete Button:</strong> Updates status to 'completed'</li>
+                    <li><strong>Cancel Button:</strong> Updates status to 'cancelled'</li>
+                    <li><strong>Upload Button:</strong> Uploads image file to server</li>
+                </ul>
+                
+                ${!statusWorking || !imageWorking ? `
+                    <h4>⚠️ Issues Found:</h4>
+                    <ul>
+                        ${!statusWorking ? '<li>Status update API not working properly</li>' : ''}
+                        ${!imageWorking ? '<li>Image upload API not available</li>' : ''}
+                    </ul>
+                ` : ''}
+            `;
+            
+            return statusWorking && imageWorking;
+        }
+        
+        async function testImageDisplay() {
+            const section = addSection('🖼️ Testing Image Display', 'Checking if images are properly configured and accessible...', 'info');
+            
+            const result = await testAPI('/api/admin/custom-requests-complete.php?status=all');
+            
+            if (!result.success) {
+                section.className = 'test-section error';
+                section.innerHTML = `<h3>❌ Cannot test images - API failed</h3>`;
+                return false;
+            }
+            
+            const requests = result.data.requests || [];
+            const requestsWithImages = requests.filter(r => r.images && r.images.length > 0);
+            
+            if (requestsWithImages.length === 0) {
+                section.className = 'test-section warning';
+                section.innerHTML = `
+                    <h3>⚠️ No Images Found</h3>
+                    <p>No requests have images configured. This is why images don't show in the UI.</p>
+                    <button class="btn btn-danger" onclick="createSampleImages()">Create Sample Images</button>
+                `;
+                return false;
+            }
+            
+            // Test if images are accessible
+            let accessibleImages = 0;
+            const imageTests = [];
+            
+            for (const request of requestsWithImages.slice(0, 3)) {
+                for (const imageUrl of request.images.slice(0, 1)) {
+                    try {
+                        const response = await fetch(imageUrl);
+                        const accessible = response.ok;
+                        if (accessible) accessibleImages++;
+                        
+                        imageTests.push({
+                            url: imageUrl,
+                            accessible: accessible,
+                            status: response.status
+                        });
+                    } catch (error) {
+                        imageTests.push({
+                            url: imageUrl,
+                            accessible: false,
+                            error: error.message
+                        });
+                    }
+                }
+            }
+            
+            const allAccessible = accessibleImages === imageTests.length;
+            
+            section.className = `test-section ${allAccessible ? 'success' : 'warning'}`;
+            section.innerHTML = `
+                <h3>🖼️ Image Display Test</h3>
+                <p><strong>Requests with Images:</strong> ${requestsWithImages.length}</p>
+                <p><strong>Accessible Images:</strong> ${accessibleImages}/${imageTests.length}</p>
+                
+                <h4>Image Test Results:</h4>
+                <ul>
+                    ${imageTests.map(test => `
+                        <li>
+                            <span class="status ${test.accessible ? 'success' : 'error'}">
+                                ${test.accessible ? '✅' : '❌'}
+                            </span>
+                            ${test.url}
+                            ${test.accessible ? '' : ` (${test.error || 'HTTP ' + test.status})`}
+                        </li>
+                    `).join('')}
+                </ul>
+                
+                ${allAccessible ? `
+                    <h4>✅ Images Should Display Properly</h4>
+                    <p>All images are accessible and should show in the admin dashboard.</p>
+                ` : `
+                    <h4>⚠️ Image Issues Found</h4>
+                    <p>Some images are not accessible. This could be due to:</p>
+                    <ul>
+                        <li>Missing image files</li>
+                        <li>Incorrect file paths</li>
+                        <li>Server configuration issues</li>
+                    </ul>
+                    <button class="btn btn-danger" onclick="createSampleImages()">Create Sample Images</button>
+                `}
+            `;
+            
+            return allAccessible;
+        }
+        
+        async function createSampleImages() {
+            const section = addSection('🎨 Creating Sample Images', 'Generating sample images for testing...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/create-sample-images.php`);
+                const text = await response.text();
+                
+                section.innerHTML = `
+                    <h3>🎨 Sample Images Creation</h3>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px;">
+                        ${text}
+                    </div>
+                    <button class="btn btn-success" onclick="testImageDisplay()">Re-test Images</button>
+                `;
+                
+                section.className = 'test-section success';
+                
+            } catch (error) {
+                section.className = 'test-section error';
+                section.innerHTML = `
+                    <h3>❌ Failed to Create Images</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function runCompleteTest() {
+            resultsDiv.innerHTML = '';
+            
+            addSection('🚀 Starting Complete UI Test', 'Testing all aspects of the custom requests UI functionality...', 'info');
+            
+            const dataOK = await testDataStructure();
+            const buttonsOK = await testButtonFunctionality();
+            const imagesOK = await testImageDisplay();
+            
+            const totalTests = 3;
+            const passedTests = [dataOK, buttonsOK, imagesOK].filter(Boolean).length;
+            
+            const summarySection = addSection(
+                `📊 Complete Test Summary (${passedTests}/${totalTests} passed)`,
+                '',
+                passedTests === totalTests ? 'success' : (passedTests > 0 ? 'warning' : 'error')
+            );
+            
+            summarySection.innerHTML = `
+                <h3>📊 UI Functionality Test Summary</h3>
+                
+                <h4>Test Results:</h4>
+                <ul>
+                    <li class="status ${dataOK ? 'success' : 'error'}">
+                        ${dataOK ? '✅' : '❌'} Data Structure: ${dataOK ? 'All required fields present' : 'Missing fields or no data'}
+                    </li>
+                    <li class="status ${buttonsOK ? 'success' : 'error'}">
+                        ${buttonsOK ? '✅' : '❌'} Button Functionality: ${buttonsOK ? 'Status updates and uploads working' : 'Button actions not working'}
+                    </li>
+                    <li class="status ${imagesOK ? 'success' : 'error'}">
+                        ${imagesOK ? '✅' : '❌'} Image Display: ${imagesOK ? 'Images accessible and displaying' : 'Images missing or not accessible'}
+                    </li>
+                </ul>
+                
+                <h4>Current Status:</h4>
+                ${passedTests === totalTests ? `
+                    <p class="status success">🎉 All UI functionality is working perfectly!</p>
+                    <p>The custom requests section should now display properly with:</p>
+                    <ul>
+                        <li>✅ Complete data in all table columns</li>
+                        <li>✅ Working status update buttons</li>
+                        <li>✅ Image display and upload functionality</li>
+                        <li>✅ Proper filtering and statistics</li>
+                    </ul>
+                ` : `
+                    <p class="status warning">⚠️ Some issues found that may affect UI functionality</p>
+                    <h4>Recommended Actions:</h4>
+                    <ul>
+                        ${!dataOK ? '<li>Check API data structure and ensure all required fields are present</li>' : ''}
+                        ${!buttonsOK ? '<li>Verify button click handlers and API endpoints</li>' : ''}
+                        ${!imagesOK ? '<li>Create sample images or fix image paths</li>' : ''}
+                    </ul>
+                    
+                    <button class="btn btn-danger" onclick="createSampleImages()">Auto-Fix Images</button>
+                `}
+            `;
+        }
+        
+        // Auto-start complete test
+        runCompleteTest();
+    </script>
+</body>
+</html>

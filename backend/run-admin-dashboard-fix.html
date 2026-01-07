@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Run Admin Dashboard Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .btn { background: #6b46c1; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; margin: 10px 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Admin Dashboard Fix</h1>
+        <p>Click the button below to run the admin dashboard error fixes:</p>
+        
+        <button class="btn" onclick="runFix()">Run Admin Dashboard Fix</button>
+        
+        <div id="result" style="margin-top: 20px;"></div>
+        
+        <script>
+        async function runFix() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p class="info">Running fix...</p>';
+            
+            try {
+                const response = await fetch('fix-admin-dashboard-errors.php');
+                const html = await response.text();
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="error">Error: ' + error.message + '</p>';
+            }
+        }
+        </script>
+    </div>
+</body>
+</html>

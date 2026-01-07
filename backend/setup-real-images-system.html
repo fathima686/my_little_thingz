@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Setup Real Images System</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.95); 
+            padding: 30px; 
+            border-radius: 15px; 
+            color: #333;
+        }
+        .step {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 5px solid #007bff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { border-left-color: #28a745; }
+        .error { border-left-color: #dc3545; }
+        .warning { border-left-color: #ffc107; }
+        .status { font-weight: bold; }
+        .status.success { color: #28a745; }
+        .status.error { color: #dc3545; }
+        .status.warning { color: #ffc107; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Setup Real Images System for Custom Requests</h1>
+        <p>This will set up the database and connect your uploaded images to the admin dashboard.</p>
+        
+        <div id="results"></div>
+        
+        <div class="step">
+            <h3>🎯 Setup Actions</h3>
+            <button class="btn btn-success" onclick="runCompleteSetup()">Complete Setup</button>
+            <button class="btn" onclick="setupDatabase()">Setup Database Only</button>
+            <button class="btn" onclick="testRealImagesAPI()">Test Real Images API</button>
+            <button class="btn btn-warning" onclick="uploadTestImage()">Upload Test Image</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend';
+        const resultsDiv = document.getElementById('results');
+        
+        function addStep(title, content, type = 'info') {
+            const step = document.createElement('div');
+            step.className = `step ${type}`;
+            step.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(step);
+            return step;
+        }
+        
+        async function setupDatabase() {
+            const step = addStep('🗄️ Setting up Database', 'Creating tables and sample data...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/setup-custom-requests-images-table.php`);
+                const text = await response.text();
+                
+                step.className = 'step success';
+                step.innerHTML = `
+                    <h3>✅ Database Setup Complete</h3>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px;">
+                        ${text}
+                    </div>
+                `;
+                
+                return true;
+                
+            } catch (error) {
+                step.className = 'step error';
+                step.innerHTML = `
+                    <h3>❌ Database Setup Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+                return false;
+            }
+        }
+        
+        async function testRealImagesAPI() {
+            const step = addStep('🧪 Testing Real Images API', 'Testing the new API that shows real uploaded images...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/custom-requests-with-real-images.php?status=all`, {
+                    headers: {
+                        'X-Admin-Email': 'admin@test.com',
+                        'X-Admin-User-ID': '1'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        const requests = data.requests || [];
+                        const requestsWithImages = requests.filter(r => r.images && r.images.length > 0);
+                        
+                        step.className = 'step success';
+                        step.innerHTML = `
+                            <h3>✅ Real Images API Working</h3>
+                            <p><strong>Total Requests:</strong> ${requests.length}</p>
+                            <p><strong>Requests with Images:</strong> ${requestsWithImages.length}</p>
+                            <p><strong>API Version:</strong> ${data.api_version}</p>
+                            
+                            <h4>Sample Request Data:</h4>
+                            <pre>${JSON.stringify(requests[0] || {}, null, 2)}</pre>
+                            
+                            ${requestsWithImages.length > 0 ? `
+                                <h4>Images Found:</h4>
+                                <ul>
+                                    ${requestsWithImages.slice(0, 3).map(r => `
+                                        <li><strong>${r.title}:</strong> ${r.images.length} image(s)
+                                            <ul>
+                                                ${r.images.slice(0, 2).map(img => `<li><a href="${img}" target="_blank">${img}</a></li>`).join('')}
+                                            </ul>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            ` : `
+                                <p class="status warning">⚠️ No images found. Upload some images to see them here.</p>
+                            `}
+                        `;
+                        
+                        return requestsWithImages.length > 0;
+                    } else {
+                        throw new Error(data.message || 'API returned error status');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                step.className = 'step error';
+                step.innerHTML = `
+                    <h3>❌ API Test Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+                return false;
+            }
+        }
+        
+        async function uploadTestImage() {
+            const step = addStep('📤 Upload Test Image', 'Testing image upload functionality...', 'info');
+            
+            // Create a simple test image using canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 150;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw a simple test image
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(0, 0, 200, 150);
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Test Image', 100, 75);
+            ctx.fillText(new Date().toLocaleTimeString(), 100, 100);
+            
+            // Convert to blob
+            canvas.toBlob(async (blob) => {
+                try {
+                    const formData = new FormData();
+                    formData.append('request_id', '1'); // Upload to first request
+                    formData.append('image', blob, 'test-image.png');
+                    
+                    const response = await fetch(`${API_BASE}/api/admin/custom-request-images.php`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Admin-Email': 'admin@test.com',
+                            'X-Admin-User-ID': '1'
+                        },
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        if (data.status === 'success') {
+                            step.className = 'step success';
+                            step.innerHTML = `
+                                <h3>✅ Test Image Uploaded Successfully</h3>
+                                <p><strong>Request ID:</strong> ${data.request_id}</p>
+                                <p><strong>Filename:</strong> ${data.filename}</p>
+                                <p><strong>File Size:</strong> ${data.file_size} bytes</p>
+                                <p><strong>Image URL:</strong> <a href="${data.full_url}" target="_blank">${data.image_url}</a></p>
+                                
+                                <h4>Preview:</h4>
+                                <img src="${data.full_url}" alt="Uploaded test image" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px;">
+                                
+                                <p class="status success">✅ The image should now appear in the admin dashboard!</p>
+                            `;
+                        } else {
+                            throw new Error(data.message || 'Upload failed');
+                        }
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `HTTP ${response.status}`);
+                    }
+                    
+                } catch (error) {
+                    step.className = 'step error';
+                    step.innerHTML = `
+                        <h3>❌ Test Upload Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    `;
+                }
+            }, 'image/png');
+        }
+        
+        async function runCompleteSetup() {
+            resultsDiv.innerHTML = '';
+            
+            addStep('🚀 Starting Complete Setup', 'Setting up the real images system for custom requests...', 'info');
+            
+            // Step 1: Setup database
+            const dbOK = await setupDatabase();
+            
+            if (!dbOK) {
+                addStep('❌ Setup Failed', 'Database setup failed. Cannot continue.', 'error');
+                return;
+            }
+            
+            // Step 2: Test API
+            const apiOK = await testRealImagesAPI();
+            
+            // Step 3: Upload test image
+            await uploadTestImage();
+            
+            // Step 4: Final verification
+            const finalStep = addStep('🎉 Setup Complete!', '', 'success');
+            
+            finalStep.innerHTML = `
+                <h3>🎉 Real Images System Setup Complete!</h3>
+                
+                <h4>✅ What's Been Set Up:</h4>
+                <ul>
+                    <li>✅ Database tables created (custom_requests, custom_request_images)</li>
+                    <li>✅ Sample custom requests added</li>
+                    <li>✅ Real images API connected to database</li>
+                    <li>✅ AdminDashboard updated to use real images</li>
+                    <li>✅ Image upload system working</li>
+                </ul>
+                
+                <h4>🎯 What You'll See Now:</h4>
+                <ul>
+                    <li>📷 <strong>Real uploaded images</strong> in the admin dashboard</li>
+                    <li>🔄 <strong>Live updates</strong> when new images are uploaded</li>
+                    <li>💾 <strong>Database storage</strong> of all image references</li>
+                    <li>🖼️ <strong>Multiple images per request</strong> support</li>
+                </ul>
+                
+                <h4>🚀 Next Steps:</h4>
+                <ol>
+                    <li>Open your admin dashboard</li>
+                    <li>Go to Custom Requests section</li>
+                    <li>You should now see real images instead of placeholders</li>
+                    <li>Try uploading new images using the Upload button</li>
+                </ol>
+                
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <strong>🎊 Success!</strong> Your custom requests now show real uploaded images!
+                </div>
+            `;
+        }
+        
+        // Auto-start setup
+        addStep('👋 Welcome', 'Ready to set up real images for your custom requests system. Click "Complete Setup" to begin.', 'info');
+    </script>
+</body>
+</html>

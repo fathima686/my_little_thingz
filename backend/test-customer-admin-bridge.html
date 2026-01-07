@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Customer-Admin Bridge</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        .warning { color: #f59e0b; }
+        button { background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        button.success { background: #10b981; }
+        button.success:hover { background: #059669; }
+        .request-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin: 10px 0; background: #f9fafb; }
+        .request-header { font-weight: bold; color: #1f2937; margin-bottom: 10px; }
+        .request-details { color: #6b7280; font-size: 14px; }
+        #output { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; min-height: 200px; max-height: 600px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Customer-Admin Bridge</h1>
+        <p>This tool tests the bridge between customer request submissions and admin dashboard display.</p>
+        
+        <div>
+            <button onclick="runBridgeFix()">1. Run Bridge Fix</button>
+            <button onclick="testDirectDatabase()">2. Test Database Direct</button>
+            <button onclick="testAdminAPI()">3. Test Admin API</button>
+            <button onclick="testEndToEnd()">4. Test End-to-End</button>
+        </div>
+        
+        <div id="output">Click "1. Run Bridge Fix" to start fixing the column mismatch...</div>
+    </div>
+
+    <script>
+        async function runBridgeFix() {
+            document.getElementById('output').innerHTML = '<p class="info">🔄 Running bridge fix...</p>';
+            
+            try {
+                const response = await fetch('fix-customer-admin-column-mismatch.php');
+                const html = await response.text();
+                document.getElementById('output').innerHTML = html;
+            } catch (error) {
+                document.getElementById('output').innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testDirectDatabase() {
+            document.getElementById('output').innerHTML = '<p class="info">🔍 Testing database directly...</p>';
+            
+            try {
+                // Create a simple test query
+                const testData = {
+                    action: 'test_database'
+                };
+                
+                const response = await fetch('api/admin/custom-requests-database-only.php?status=all&debug=1');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    let html = `
+                        <div class="success">
+                            <h3>✅ Database Test Successful!</h3>
+                            <p><strong>Total Requests:</strong> ${data.total_count}</p>
+                            <p><strong>API Version:</strong> ${data.api_version}</p>
+                        </div>
+                    `;
+                    
+                    if (data.requests && data.requests.length > 0) {
+                        html += '<h4>📋 Found Requests:</h4>';
+                        html += '<table>';
+                        html += '<tr><th>ID</th><th>Customer Name</th><th>Email</th><th>Title</th><th>Status</th><th>Source</th></tr>';
+                        
+                        data.requests.forEach(req => {
+                            html += `
+                                <tr>
+                                    <td>${req.id}</td>
+                                    <td>${req.customer_name || 'N/A'}</td>
+                                    <td>${req.customer_email || 'N/A'}</td>
+                                    <td>${req.title || 'N/A'}</td>
+                                    <td>${req.status}</td>
+                                    <td>${req.source || 'form'}</td>
+                                </tr>
+                            `;
+                        });
+                        html += '</table>';
+                    } else {
+                        html += '<p class="warning">No requests found in database.</p>';
+                    }
+                    
+                    document.getElementById('output').innerHTML = html;
+                } else {
+                    document.getElementById('output').innerHTML = `<p class="error">❌ Database Error: ${data.message}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('output').innerHTML = `<p class="error">❌ Test Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testAdminAPI() {
+            document.getElementById('output').innerHTML = '<p class="info">🧪 Testing admin API...</p>';
+            
+            try {
+                const response = await fetch('api/admin/custom-requests-database-only.php?status=all');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    let html = `
+                        <div class="success">
+                            <h3>✅ Admin API Test Successful!</h3>
+                            <p><strong>Total Requests:</strong> ${data.total_count}</p>
+                            <p><strong>Showing:</strong> ${data.showing_count}</p>
+                            <p><strong>API Version:</strong> ${data.api_version}</p>
+                        </div>
+                    `;
+                    
+                    if (data.requests && data.requests.length > 0) {
+                        html += '<h4>📋 Customer Requests for Admin Dashboard:</h4>';
+                        
+                        data.requests.forEach(req => {
+                            html += `
+                                <div class="request-card">
+                                    <div class="request-header">${req.title}</div>
+                                    <div class="request-details">
+                                        <strong>Customer:</strong> ${req.customer_name} (${req.customer_email})<br>
+                                        <strong>Phone:</strong> ${req.customer_phone || 'N/A'}<br>
+                                        <strong>Status:</strong> ${req.status}<br>
+                                        <strong>Description:</strong> ${req.description}<br>
+                                        <strong>Requirements:</strong> ${req.requirements}<br>
+                                        <strong>Budget:</strong> $${req.budget_min} - $${req.budget_max}<br>
+                                        <strong>Deadline:</strong> ${req.deadline || 'N/A'}<br>
+                                        <strong>Created:</strong> ${req.created_at}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                            <div class="success">
+                                <h4>🎉 Success!</h4>
+                                <p>Customer requests are now properly formatted for the admin dashboard!</p>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="warning">
+                                <h4>⚠️ No Requests Found</h4>
+                                <p>The API is working but no customer requests were found. This could mean:</p>
+                                <ul>
+                                    <li>No customers have submitted requests yet</li>
+                                    <li>Requests might be in a different table</li>
+                                    <li>The bridge needs more configuration</li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    document.getElementById('output').innerHTML = html;
+                } else {
+                    document.getElementById('output').innerHTML = `<p class="error">❌ API Error: ${data.message}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('output').innerHTML = `<p class="error">❌ API Test Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testEndToEnd() {
+            document.getElementById('output').innerHTML = '<p class="info">🔄 Testing end-to-end flow...</p>';
+            
+            let html = '<h3>🧪 End-to-End Test Results</h3>';
+            
+            try {
+                // Test 1: Check if customer APIs exist
+                html += '<h4>Step 1: Customer API Check</h4>';
+                const customerApis = [
+                    'api/customer/custom-requests.php',
+                    'api/customer/custom-request.php',
+                    'api/customer/cart-customization.php'
+                ];
+                
+                for (const api of customerApis) {
+                    try {
+                        const response = await fetch(api, { method: 'HEAD' });
+                        if (response.ok || response.status === 405) {
+                            html += `<p class="success">✅ ${api} - Available</p>`;
+                        } else {
+                            html += `<p class="warning">⚠️ ${api} - Status: ${response.status}</p>`;
+                        }
+                    } catch (e) {
+                        html += `<p class="error">❌ ${api} - Not accessible</p>`;
+                    }
+                }
+                
+                // Test 2: Check admin API
+                html += '<h4>Step 2: Admin API Check</h4>';
+                const adminResponse = await fetch('api/admin/custom-requests-database-only.php?status=all');
+                const adminData = await adminResponse.json();
+                
+                if (adminData.status === 'success') {
+                    html += `<p class="success">✅ Admin API working - Found ${adminData.total_count} requests</p>`;
+                } else {
+                    html += `<p class="error">❌ Admin API error: ${adminData.message}</p>`;
+                }
+                
+                // Test 3: Check data flow
+                html += '<h4>Step 3: Data Flow Analysis</h4>';
+                if (adminData.requests && adminData.requests.length > 0) {
+                    const hasCustomerData = adminData.requests.some(req => 
+                        req.customer_name && req.customer_name !== 'Unknown Customer'
+                    );
+                    
+                    if (hasCustomerData) {
+                        html += '<p class="success">✅ Customer data is flowing to admin dashboard</p>';
+                    } else {
+                        html += '<p class="warning">⚠️ Requests found but missing customer details</p>';
+                    }
+                } else {
+                    html += '<p class="warning">⚠️ No requests found - customers may not have submitted any yet</p>';
+                }
+                
+                html += `
+                    <div class="info">
+                        <h4>📋 Summary</h4>
+                        <p>The bridge between customer submissions and admin dashboard is now active.</p>
+                        <p>If you still don't see requests, try submitting a test request through your customer form.</p>
+                    </div>
+                `;
+                
+                document.getElementById('output').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('output').innerHTML = html + `<p class="error">❌ End-to-End Test Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

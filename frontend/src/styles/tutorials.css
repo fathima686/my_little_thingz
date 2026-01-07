@@ -1826,6 +1826,46 @@
   box-shadow: 0 8px 25px rgba(125, 184, 211, 0.4);
 }
 
+.plan-btn.current {
+  background: #28a745;
+  color: white;
+  cursor: default;
+  opacity: 0.8;
+}
+
+.plan-btn.current:hover {
+  background: #28a745;
+  transform: none;
+  box-shadow: none;
+}
+
+.plan-btn.reactivate {
+  background: #ffc107;
+  color: #212529;
+  border: 2px solid #ffc107;
+}
+
+.plan-btn.reactivate:hover {
+  background: #e0a800;
+  border-color: #e0a800;
+  transform: translateY(-2px);
+}
+
+.current-subscription-info {
+  text-align: center;
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: rgba(125, 184, 211, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(125, 184, 211, 0.2);
+}
+
+.current-subscription-info p {
+  margin: 0;
+  color: #5a6c7d;
+  font-size: 14px;
+}
+
 /* My Learning Section */
 .my-learning-view {
   animation: fadeIn 0.6s ease-out;
@@ -2121,5 +2161,118 @@
 
   .payment-modal {
     padding: 24px;
+  }
+}
+
+/* Access Denied Section */
+.access-denied-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.access-denied-card {
+  background: white;
+  border-radius: 20px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 500px;
+  width: 100%;
+}
+
+.access-denied-icon {
+  margin-bottom: 24px;
+  color: #94a3b8;
+}
+
+.access-denied-card h2 {
+  margin: 0 0 16px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.access-denied-card p {
+  margin: 0 0 24px 0;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.current-plan-info {
+  display: inline-block;
+  background: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 32px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.current-plan-info strong {
+  color: #1e293b;
+  text-transform: capitalize;
+}
+
+.upgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.upgrade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+}
+
+.upgrade-btn:active {
+  transform: translateY(0);
+}
+/* Navigation Right Section Updates */
+.tutorials-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ensure dropdowns work properly in navigation */
+.tutorials-nav-right .notification-dropdown,
+.tutorials-nav-right .profile-dropdown {
+  position: relative;
+}
+
+/* Override any conflicting styles */
+.tutorials-nav-right .notification-trigger,
+.tutorials-nav-right .profile-trigger {
+  border: none;
+  background: transparent;
+}
+
+/* Responsive navigation adjustments */
+@media (max-width: 768px) {
+  .tutorials-nav-right {
+    gap: 4px;
+  }
+  
+  .tutorials-nav-right .profile-name {
+    display: none;
   }
 }

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Tutorial Access Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .btn { background: #6b46c1; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        .result { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; font-size: 12px; }
+        .tutorial-test { margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .access-granted { background: #d1fae5; border-color: #10b981; }
+        .access-denied { background: #fee2e2; border-color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Test Tutorial Access Fix</h1>
+        <p>Testing the fixed tutorial access logic for Pro users</p>
+        
+        <button class="btn" onclick="testProfileAPI()">1. Test Profile API</button>
+        <button class="btn" onclick="testTutorialAccessLogic()">2. Test Tutorial Access Logic</button>
+        <button class="btn" onclick="testMultipleTutorials()">3. Test Multiple Tutorials</button>
+        
+        <div id="profile-result" class="result" style="display: none;"></div>
+        <div id="logic-result" class="result" style="display: none;"></div>
+        <div id="multiple-result" style="display: none;"></div>
+        
+        <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const userEmail = 'soudhame52@gmail.com';
+        
+        async function testProfileAPI() {
+            const resultDiv = document.getElementById('profile-result');
+            resultDiv.innerHTML = 'Testing profile API response structure...';
+            resultDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/profile.php?cb=${Date.now()}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': userEmail,
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    // Check both root level and subscription object
+                    const rootPlanCode = data.plan_code;
+                    const rootIsActive = data.is_active;
+                    const subPlanCode = data.subscription?.plan_code;
+                    const subIsActive = data.subscription?.is_active;
+                    const canAccessUnlimited = data.feature_access?.access_levels?.can_access_unlimited_tutorials;
+                    
+                    resultDiv.innerHTML = `✅ Profile API Response Structure:
+
+ROOT LEVEL FIELDS:
+- plan_code: ${rootPlanCode} ${rootPlanCode === 'pro' ? '✅' : '❌'}
+- is_active: ${rootIsActive} ${rootIsActive ? '✅' : '❌'}
+- subscription_status: ${data.subscription_status}
+
+SUBSCRIPTION OBJECT FIELDS:
+- subscription.plan_code: ${subPlanCode} ${subPlanCode === 'pro' ? '✅' : '❌'}
+- subscription.is_active: ${subIsActive} ${subIsActive ? '✅' : '❌'}
+- subscription.subscription_status: ${data.subscription?.subscription_status}
+
+FEATURE ACCESS:
+- can_access_unlimited_tutorials: ${canAccessUnlimited} ${canAccessUnlimited ? '✅' : '❌'}
+
+🎯 FRONTEND WILL NOW CHECK BOTH LOCATIONS:
+- planCode = subscription?.plan_code || plan_code = "${subPlanCode || rootPlanCode}"
+- isActive = subscription?.is_active || is_active = ${subIsActive || rootIsActive}
+
+${(rootPlanCode === 'pro' || subPlanCode === 'pro') && (rootIsActive || subIsActive) && canAccessUnlimited ? 
+'✅ ALL TUTORIALS SHOULD BE UNLOCKED!' : 
+'❌ SOME FIELDS ARE MISSING'}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status}\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testTutorialAccessLogic() {
+            const resultDiv = document.getElementById('logic-result');
+            resultDiv.innerHTML = 'Testing tutorial access logic...';
+            resultDiv.style.display = 'block';
+            
+            try {
+                // Get subscription status first
+                const response = await fetch(`${API_BASE}/customer/profile.php?cb=${Date.now()}`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const subscriptionStatus = await response.json();
+                
+                // Simulate the FIXED hasAccessToTutorial function
+                function hasAccessToTutorial(tutorial, purchases = new Set()) {
+                    // Free tutorials are always accessible
+                    if (tutorial.is_free || tutorial.price === 0) {
+                        return { access: true, reason: 'FREE' };
+                    }
+                    
+                    // Check if individually purchased
+                    if (purchases.has(tutorial.id)) {
+                        return { access: true, reason: 'PURCHASED' };
+                    }
+                    
+                    // Use feature access control - unlimited tutorials require Premium or Pro
+                    if (subscriptionStatus?.feature_access) {
+                        const canAccessUnlimited = subscriptionStatus.feature_access.access_levels?.can_access_unlimited_tutorials;
+                        
+                        // FIXED: Check multiple possible locations for plan_code and is_active
+                        const planCode = subscriptionStatus.subscription?.plan_code || subscriptionStatus.plan_code;
+                        const isActive = subscriptionStatus.subscription?.is_active || subscriptionStatus.is_active;
+                        const subscriptionStatusValue = subscriptionStatus.subscription?.subscription_status || subscriptionStatus.subscription_status;
+                        
+                        if (canAccessUnlimited && 
+                            (planCode === 'premium' || planCode === 'pro') &&
+                            (isActive || subscriptionStatusValue === 'pending' || subscriptionStatusValue === 'authenticated')) {
+                            return { 
+                                access: true, 
+                                reason: 'SUBSCRIPTION',
+                                planCode,
+                                isActive,
+                                subscriptionStatusValue
+                            };
+                        }
+                    }
+                    
+                    return { 
+                        access: false, 
+                        reason: 'DENIED',
+                        debug: {
+                            canAccessUnlimited: subscriptionStatus?.feature_access?.access_levels?.can_access_unlimited_tutorials,
+                            planCode: subscriptionStatus.subscription?.plan_code || subscriptionStatus.plan_code,
+                            isActive: subscriptionStatus.subscription?.is_active || subscriptionStatus.is_active,
+                            subscriptionStatus: subscriptionStatus.subscription?.subscription_status || subscriptionStatus.subscription_status
+                        }
+                    };
+                }
+                
+                // Test with the Mirror clay tutorial
+                const testTutorial = {
+                    id: 6,
+                    title: 'Mirror clay',
+                    is_free: 0,
+                    price: '40.00'
+                };
+                
+                const accessResult = hasAccessToTutorial(testTutorial);
+                
+                resultDiv.innerHTML = `🎯 FIXED TUTORIAL ACCESS LOGIC TEST:
+
+Tutorial: "${testTutorial.title}" (₹${testTutorial.price})
+Access Result: ${accessResult.access ? '✅ GRANTED' : '❌ DENIED'}
+Reason: ${accessResult.reason}
+
+${accessResult.access ? 
+`✅ ACCESS GRANTED DETAILS:
+- Plan Code: ${accessResult.planCode}
+- Is Active: ${accessResult.isActive}
+- Subscription Status: ${accessResult.subscriptionStatusValue}` :
+`❌ ACCESS DENIED DETAILS:
+${JSON.stringify(accessResult.debug, null, 2)}`}
+
+${accessResult.access ? '🎉 TUTORIAL SHOULD NOW BE UNLOCKED!' : '⚠️ TUTORIAL WILL STILL BE LOCKED'}`;
+                
+                resultDiv.className = accessResult.access ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.innerHTML = `❌ LOGIC TEST ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testMultipleTutorials() {
+            const resultDiv = document.getElementById('multiple-result');
+            resultDiv.innerHTML = '<h3>Testing Multiple Tutorials...</h3>';
+            resultDiv.style.display = 'block';
+            
+            try {
+                // Get subscription status
+                const response = await fetch(`${API_BASE}/customer/profile.php?cb=${Date.now()}`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const subscriptionStatus = await response.json();
+                
+                // Test tutorials with different prices
+                const testTutorials = [
+                    { id: 1, title: 'Basic Tutorial', is_free: 1, price: '0.00' },
+                    { id: 2, title: 'Premium Tutorial', is_free: 0, price: '25.00' },
+                    { id: 6, title: 'Mirror clay', is_free: 0, price: '40.00' },
+                    { id: 10, title: 'Advanced Tutorial', is_free: 0, price: '99.00' }
+                ];
+                
+                function hasAccessToTutorial(tutorial, purchases = new Set()) {
+                    if (tutorial.is_free || tutorial.price === 0) {
+                        return { access: true, reason: 'FREE' };
+                    }
+                    
+                    if (purchases.has(tutorial.id)) {
+                        return { access: true, reason: 'PURCHASED' };
+                    }
+                    
+                    if (subscriptionStatus?.feature_access) {
+                        const canAccessUnlimited = subscriptionStatus.feature_access.access_levels?.can_access_unlimited_tutorials;
+                        const planCode = subscriptionStatus.subscription?.plan_code || subscriptionStatus.plan_code;
+                        const isActive = subscriptionStatus.subscription?.is_active || subscriptionStatus.is_active;
+                        const subscriptionStatusValue = subscriptionStatus.subscription?.subscription_status || subscriptionStatus.subscription_status;
+                        
+                        if (canAccessUnlimited && 
+                            (planCode === 'premium' || planCode === 'pro') &&
+                            (isActive || subscriptionStatusValue === 'pending' || subscriptionStatusValue === 'authenticated')) {
+                            return { access: true, reason: 'SUBSCRIPTION', planCode };
+                        }
+                    }
+                    
+                    return { access: false, reason: 'DENIED' };
+                }
+                
+                let html = '<h3>📊 Multiple Tutorial Access Test Results:</h3>';
+                let allGranted = true;
+                
+                testTutorials.forEach(tutorial => {
+                    const result = hasAccessToTutorial(tutorial);
+                    const className = result.access ? 'tutorial-test access-granted' : 'tutorial-test access-denied';
+                    const icon = result.access ? '✅' : '❌';
+                    
+                    if (!result.access && tutorial.price > 0) allGranted = false;
+                    
+                    html += `<div class="${className}">
+                        <strong>${icon} ${tutorial.title}</strong> (₹${tutorial.price})
+                        <br>Access: ${result.access ? 'GRANTED' : 'DENIED'} - ${result.reason}
+                    </div>`;
+                });
+                
+                html += `<div style="margin-top: 20px; padding: 15px; background: ${allGranted ? '#d1fae5' : '#fee2e2'}; border-radius: 5px;">
+                    <strong>${allGranted ? '🎉 ALL PAID TUTORIALS UNLOCKED!' : '⚠️ SOME TUTORIALS STILL LOCKED'}</strong>
+                    <br>${allGranted ? 'Pro subscription is working perfectly!' : 'There may still be an issue with the access logic.'}
+                </div>`;
+                
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="tutorial-test access-denied">❌ ERROR: ${error.message}</div>`;
+            }
+        }
+        </script>
+    </div>
+</body>
+</html>

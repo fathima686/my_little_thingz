@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Admin Dashboard Custom Requests Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-section h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard Custom Requests Fix Test</h1>
+    
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend';
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+        
+        function createTestSection(title) {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            section.innerHTML = `<h3>${title}</h3>`;
+            resultsDiv.appendChild(section);
+            return section;
+        }
+        
+        async function testAPI(apiPath, title) {
+            const section = createTestSection(title);
+            
+            try {
+                const url = `${API_BASE}${apiPath}`;
+                log(`Testing: ${url}`, 'info');
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@test.com',
+                        'X-Admin-User-ID': '1'
+                    }
+                });
+                
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        log('✅ API Response: SUCCESS', 'success');
+                        log(`Requests found: ${data.requests ? data.requests.length : 0}`, 'info');
+                        
+                        if (data.requests && data.requests.length > 0) {
+                            log('Sample request:', 'info');
+                            log(`<pre>${JSON.stringify(data.requests[0], null, 2)}</pre>`);
+                        }
+                        
+                        if (data.stats) {
+                            log('Statistics:', 'info');
+                            log(`<pre>${JSON.stringify(data.stats, null, 2)}</pre>`);
+                        }
+                        
+                        return true;
+                    } else {
+                        log('❌ API returned error status', 'error');
+                        log(`Error: ${data.message}`, 'error');
+                        if (data.debug) {
+                            log(`Debug: ${data.debug}`, 'warning');
+                        }
+                        return false;
+                    }
+                } else {
+                    const text = await response.text();
+                    log('❌ HTTP Error Response:', 'error');
+                    log(`<pre>${text}</pre>`, 'error');
+                    return false;
+                }
+                
+            } catch (error) {
+                log(`❌ Network/Fetch Error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testCORS() {
+            const section = createTestSection('CORS Headers Test');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/custom-requests-fixed.php`, {
+                    method: 'OPTIONS'
+                });
+                
+                log(`OPTIONS request status: ${response.status}`, response.status === 204 ? 'success' : 'error');
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                log('CORS Headers:', 'info');
+                log(`<pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`);
+                
+                return response.status === 204;
+                
+            } catch (error) {
+                log(`❌ CORS test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            log('<h2>Starting Comprehensive API Tests</h2>');
+            
+            const tests = [
+                { path: '/api/admin/custom-requests-minimal.php', title: 'Minimal API (Static Data)' },
+                { path: '/api/admin/custom-requests-fixed.php', title: 'Fixed API (Database)' },
+                { path: '/api/admin/custom-requests-simple.php', title: 'Simple API (Original)' }
+            ];
+            
+            let passedTests = 0;
+            
+            // Test CORS first
+            log('<h3>Testing CORS Support</h3>');
+            const corsOk = await testCORS();
+            if (corsOk) passedTests++;
+            
+            // Test each API
+            for (const test of tests) {
+                const result = await testAPI(test.path, test.title);
+                if (result) passedTests++;
+            }
+            
+            // Summary
+            const section = createTestSection('Test Summary');
+            const totalTests = tests.length + 1; // +1 for CORS
+            
+            if (passedTests === totalTests) {
+                log(`🎉 All ${totalTests} tests passed!`, 'success');
+                log('The admin dashboard should now work properly with custom requests.', 'success');
+            } else {
+                log(`⚠️ ${passedTests}/${totalTests} tests passed`, 'warning');
+                log('Some APIs may still have issues. Check the errors above.', 'warning');
+            }
+            
+            // Recommendation
+            if (passedTests > 0) {
+                log('<h4>Recommendation:</h4>', 'info');
+                if (await testAPI('/api/admin/custom-requests-fixed.php', 'Final Check - Fixed API')) {
+                    log('✅ Use the FIXED API - it has the best error handling and should work reliably.', 'success');
+                } else if (await testAPI('/api/admin/custom-requests-minimal.php', 'Final Check - Minimal API')) {
+                    log('⚠️ Use the MINIMAL API temporarily - it works but uses static data.', 'warning');
+                } else {
+                    log('❌ All APIs have issues. Check server configuration and database connection.', 'error');
+                }
+            }
+        }
+        
+        // Start tests
+        runAllTests();
+    </script>
+</body>
+</html>

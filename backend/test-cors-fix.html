@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CORS Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .response { background: #f5f5f5; padding: 10px; margin: 10px 0; white-space: pre-wrap; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #d00; }
+        .success { background: #e6ffe6; color: #060; }
+        button { background: #007cba; color: white; padding: 8px 15px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h1>CORS Fix Test</h1>
+    <p>Testing if admin APIs now accept X-Admin-Email header</p>
+    
+    <div class="test-section">
+        <h3>Test 1: Suppliers API</h3>
+        <button onclick="testAPI('suppliers')">Test Suppliers API</button>
+        <div id="suppliers-result" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Custom Requests API</h3>
+        <button onclick="testAPI('custom-requests')">Test Custom Requests API</button>
+        <div id="custom-requests-result" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: Supplier Products API</h3>
+        <button onclick="testAPI('supplier-products')">Test Supplier Products API</button>
+        <div id="supplier-products-result" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 4: Artworks API</h3>
+        <button onclick="testAPI('artworks')">Test Artworks API</button>
+        <div id="artworks-result" class="response"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api/admin';
+        
+        async function testAPI(endpoint) {
+            const resultDiv = document.getElementById(`${endpoint}-result`);
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'response';
+            
+            const urls = {
+                'suppliers': `${API_BASE}/suppliers.php?status=pending`,
+                'custom-requests': `${API_BASE}/custom-requests.php?status=pending`,
+                'supplier-products': `${API_BASE}/supplier-products.php?trending=1`,
+                'artworks': `${API_BASE}/artworks.php`
+            };
+            
+            try {
+                const response = await fetch(urls[endpoint], {
+                    headers: {
+                        'X-Admin-Email': 'admin@example.com',
+                        'X-Admin-User-Id': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.className = 'response success';
+                    resultDiv.textContent = `✓ SUCCESS (${response.status})\nResponse: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `✗ HTTP Error ${response.status}\nResponse: ${text}`;
+                }
+            } catch (error) {
+                if (error.message.includes('CORS')) {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `✗ CORS Error: ${error.message}\nThe API still doesn't allow X-Admin-Email header`;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `✗ Network Error: ${error.message}`;
+                }
+            }
+        }
+        
+        // Auto-test all APIs on page load
+        window.onload = function() {
+            setTimeout(() => {
+                ['suppliers', 'custom-requests', 'supplier-products', 'artworks'].forEach(api => {
+                    testAPI(api);
+                });
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

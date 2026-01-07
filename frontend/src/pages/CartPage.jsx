@@ -1,12 +1,58 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuShoppingCart, LuTrash2, LuPlus, LuMinus, LuArrowLeft, LuX, LuWand } from 'react-icons/lu';
+import { LuShoppingCart, LuTrash2, LuPlus, LuMinus, LuArrowLeft, LuX, LuWand, LuMessageCircle } from 'react-icons/lu';
 import { useAuth } from '../contexts/AuthContext';
 import CustomizationModal from '../components/customer/CustomizationModal';
 import AddonSuggestions from '../components/customer/AddonSuggestions';
+import ProductChat from '../components/ProductChat';
 import '../styles/customization-modal.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+
+// WhatsApp number - can be moved to config later
+const WHATSAPP_NUMBER = '919495470077'; // Format: country code + number (no + or spaces)
+
+// Helper function to generate WhatsApp message for a cart item
+const generateWhatsAppMessage = (item) => {
+  const base = parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 0;
+  const effRaw = item?.effective_price ?? item?.offer_price ?? (base > 0 && (item?.offer_percent ?? '') !== '' ? (base * (1 - (parseFloat(item.offer_percent) || 0) / 100)) : null);
+  const eff = effRaw != null ? parseFloat(effRaw) : NaN;
+  const showOffer = base > 0 && Number.isFinite(eff) && eff < base;
+  const finalPrice = showOffer ? eff : base;
+  
+  // Parse selected options if available
+  let optionsText = '';
+  if (item.selected_options) {
+    try {
+      const opts = typeof item.selected_options === 'string' 
+        ? JSON.parse(item.selected_options) 
+        : item.selected_options;
+      if (opts && typeof opts === 'object' && Object.keys(opts).length > 0) {
+        optionsText = '\n\n*Selected Options:*\n' + 
+          Object.entries(opts).map(([k, v]) => `• ${k}: ${v}`).join('\n');
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+  }
+  
+  const message = `Hello! I'm interested in this product:
+
+*${item.title}*
+Price: ₹${finalPrice.toFixed(2)}${showOffer ? ` (Original: ₹${base.toFixed(2)})` : ''}
+Quantity: ${item.quantity}${optionsText}
+
+Could you please provide more details?`;
+  
+  return encodeURIComponent(message);
+};
+
+// WhatsApp Icon Component
+const WhatsAppIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+  </svg>
+);
 
 export default function CartPage() {
   const { auth } = useAuth();
@@ -22,6 +68,10 @@ export default function CartPage() {
   const [customizationStatus, setCustomizationStatus] = useState(null);
   const [showApprovalPopup, setShowApprovalPopup] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState([]); // Track selected addons
+  
+  // Product Chat State
+  const [showProductChat, setShowProductChat] = useState(false);
+  const [chatProduct, setChatProduct] = useState(null);
 
   // Normalized address fields
   const [firstName, setFirstName] = useState('');
@@ -317,6 +367,15 @@ export default function CartPage() {
     checkCustomizationStatus();
   };
 
+  const handleChatWithAdmin = (item) => {
+    setChatProduct({
+      id: item.artwork_id,
+      name: item.title,
+      cartItemId: item.id
+    });
+    setShowProductChat(true);
+  };
+
   const placeOrder = async () => {
     if (items.length === 0) return;
     setPlacing(true);
@@ -432,19 +491,38 @@ export default function CartPage() {
                     <span>{item.quantity}</span>
                     <button onClick={() => updateQty(item, item.quantity + 1)}><LuPlus /></button>
                   </div>
-                  <button 
-                    className="customize-item-btn"
-                    onClick={() => handleCustomizationRequest({
-                      id: item.artwork_id,
-                      title: item.title,
-                      description: `Customize ${item.title}`,
-                      price: item.price,
-                      image_url: item.image_url
-                    })}
-                    title="Customize this item"
-                  >
-                    <LuWand /> Customize
-                  </button>
+                  <div className="cart-item-actions">
+                    <a
+                      href={`https://wa.me/${WHATSAPP_NUMBER}?text=${generateWhatsAppMessage(item)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="whatsapp-btn"
+                      title="Contact via WhatsApp"
+                    >
+                      <WhatsAppIcon size={18} />
+                      <span>WhatsApp</span>
+                    </a>
+                    <button 
+                      className="customize-item-btn"
+                      onClick={() => handleCustomizationRequest({
+                        id: item.artwork_id,
+                        title: item.title,
+                        description: `Customize ${item.title}`,
+                        price: item.price,
+                        image_url: item.image_url
+                      })}
+                      title="Customize this item"
+                    >
+                      <LuWand /> Customize
+                    </button>
+                    <button 
+                      className="chat-item-btn"
+                      onClick={() => handleChatWithAdmin(item)}
+                      title="Chat about this item"
+                    >
+                      <LuMessageCircle /> Chat
+                    </button>
+                  </div>
                 </div>
                 <button className="trash" title="Remove" onClick={() => removeItem(item)}><LuTrash2 /></button>
               </div>
@@ -763,11 +841,44 @@ export default function CartPage() {
           color: #374151;
         }
 
+        .cart-item-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .whatsapp-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          background: #25D366;
+          color: white;
+          border-radius: 6px;
+          text-decoration: none;
+          font-size: 12px;
+          font-weight: 500;
+          transition: all 0.2s;
+          border: none;
+          cursor: pointer;
+        }
+
+        .whatsapp-btn:hover {
+          background: #20BA5A;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+        }
+
+        .whatsapp-btn svg {
+          flex-shrink: 0;
+        }
+
         .customize-item-btn {
           display: flex;
           align-items: center;
           gap: 4px;
-          padding: 6px 12px;
+          padding: 8px 12px;
           border: 1px solid #6b46c1;
           background: transparent;
           color: #6b46c1;
@@ -776,12 +887,53 @@ export default function CartPage() {
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
-          margin-top: 8px;
         }
 
         .customize-item-btn:hover {
           background: #6b46c1;
           color: white;
+        }
+
+        .chat-item-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          background: #f0f9ff;
+          border: 1px solid #0ea5e9;
+          border-radius: 6px;
+          color: #0ea5e9;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .chat-item-btn:hover {
+          background: #0ea5e9;
+          color: white;
+        }
+
+        .chat-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+
+        .chat-container {
+          width: 100%;
+          max-width: 600px;
+          max-height: 80vh;
+          overflow: hidden;
+          border-radius: 12px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         }
 
         /* Approval Popup Styles */
@@ -970,6 +1122,21 @@ export default function CartPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Chat */}
+      {showProductChat && chatProduct && (
+        <div className="chat-overlay">
+          <div className="chat-container">
+            <ProductChat
+              productId={chatProduct.id}
+              userId={auth?.user_id}
+              cartItemId={chatProduct.cartItemId}
+              productName={chatProduct.name}
+              onClose={() => setShowProductChat(false)}
+            />
           </div>
         </div>
       )}

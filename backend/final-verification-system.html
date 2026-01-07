@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Final System Verification Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .dashboard { max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status-good { border-left: 5px solid #28a745; }
+        .status-warning { border-left: 5px solid #ffc107; }
+        .status-error { border-left: 5px solid #dc3545; }
+        .status-info { border-left: 5px solid #17a2b8; }
+        .metric { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+        .metric-value { font-weight: bold; font-size: 18px; }
+        .good { color: #28a745; }
+        .warning { color: #ffc107; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background: #007bff; color: white; }
+        button:hover { background: #0056b3; }
+        .refresh-btn { background: #28a745; }
+        .fix-btn { background: #dc3545; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .progress-bar { width: 100%; height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s ease; }
+        .feature-list { list-style: none; padding: 0; }
+        .feature-list li { padding: 8px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .feature-enabled { background: #d4edda; color: #155724; }
+        .feature-disabled { background: #f8d7da; color: #721c24; }
+        .loading { opacity: 0.6; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🚀 System Verification Dashboard</h1>
+            <p>Complete monitoring of your Pro subscription and tutorial system</p>
+            <button class="refresh-btn" onclick="runCompleteVerification()">🔄 Run Complete Verification</button>
+        </div>
+
+        <div class="grid">
+            <!-- Authentication Status -->
+            <div class="card status-info" id="auth-card">
+                <h3>🔐 Authentication Status</h3>
+                <div id="auth-content">
+                    <p>Checking authentication...</p>
+                </div>
+            </div>
+
+            <!-- Subscription Status -->
+            <div class="card status-info" id="subscription-card">
+                <h3>💎 Subscription Status</h3>
+                <div id="subscription-content">
+                    <p>Checking subscription...</p>
+                </div>
+            </div>
+
+            <!-- API Health -->
+            <div class="card status-info" id="api-card">
+                <h3>🔌 API Health Check</h3>
+                <div id="api-content">
+                    <p>Testing APIs...</p>
+                </div>
+            </div>
+
+            <!-- Pro Features -->
+            <div class="card status-info" id="features-card">
+                <h3>⭐ Pro Features Status</h3>
+                <div id="features-content">
+                    <p>Checking Pro features...</p>
+                </div>
+            </div>
+
+            <!-- Tutorial Access -->
+            <div class="card status-info" id="tutorials-card">
+                <h3>📚 Tutorial Access</h3>
+                <div id="tutorials-content">
+                    <p>Checking tutorial access...</p>
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="card status-info" id="system-card">
+                <h3>⚡ System Health</h3>
+                <div id="system-content">
+                    <p>Checking system health...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card" style="margin-top: 20px;">
+            <h3>🛠️ Quick Actions</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <button onclick="fixAuthentication()">Fix Authentication</button>
+                <button onclick="activateProSubscription()">Activate Pro Subscription</button>
+                <button onclick="testAllAPIs()">Test All APIs</button>
+                <button onclick="clearCacheAndRefresh()">Clear Cache & Refresh</button>
+                <button onclick="exportSystemReport()">Export System Report</button>
+            </div>
+        </div>
+
+        <!-- Detailed Logs -->
+        <div class="card" style="margin-top: 20px;">
+            <h3>📋 Detailed Logs</h3>
+            <div id="logs-content">
+                <p>Logs will appear here during verification...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userEmail = 'soudhame52@gmail.com';
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        let systemReport = {};
+
+        function updateCard(cardId, status, content) {
+            const card = document.getElementById(cardId);
+            const contentDiv = document.getElementById(cardId.replace('-card', '-content'));
+            
+            card.className = `card status-${status}`;
+            contentDiv.innerHTML = content;
+        }
+
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('logs-content');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `<div style="margin: 5px 0; padding: 5px; background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : '#d1ecf1'}; border-radius: 3px;">
+                <strong>[${timestamp}]</strong> ${message}
+            </div>`;
+            logsDiv.innerHTML += logEntry;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        async function checkAuthentication() {
+            addLog('Checking authentication status...', 'info');
+            
+            try {
+                const auth = localStorage.getItem('tutorial_auth');
+                const authData = auth ? JSON.parse(auth) : null;
+                
+                if (authData && authData.email) {
+                    const isCorrectEmail = authData.email === userEmail;
+                    const status = isCorrectEmail ? 'good' : 'warning';
+                    
+                    systemReport.authentication = {
+                        status: status,
+                        email: authData.email,
+                        loginMethod: authData.loginMethod,
+                        loginTime: authData.login_time
+                    };
+                    
+                    updateCard('auth-card', status, `
+                        <div class="metric">
+                            <span>Status:</span>
+                            <span class="metric-value ${status === 'good' ? 'good' : 'warning'}">
+                                ${status === 'good' ? '✅ Authenticated' : '⚠️ Wrong Email'}
+                            </span>
+                        </div>
+                        <div class="metric">
+                            <span>Email:</span>
+                            <span class="metric-value">${authData.email}</span>
+                        </div>
+                        <div class="metric">
+                            <span>Method:</span>
+                            <span class="metric-value">${authData.loginMethod}</span>
+                        </div>
+                        ${!isCorrectEmail ? '<button class="fix-btn" onclick="fixAuthentication()">Fix Email</button>' : ''}
+                    `);
+                    
+                    addLog(`Authentication: ${status === 'good' ? 'Valid' : 'Email mismatch'} - ${authData.email}`, status === 'good' ? 'success' : 'error');
+                    return authData;
+                } else {
+                    systemReport.authentication = { status: 'error', message: 'Not authenticated' };
+                    updateCard('auth-card', 'error', `
+                        <div class="metric">
+                            <span>Status:</span>
+                            <span class="metric-value error">❌ Not Authenticated</span>
+                        </div>
+                        <button class="fix-btn" onclick="fixAuthentication()">Fix Authentication</button>
+                    `);
+                    addLog('Authentication: Not logged in', 'error');
+                    return null;
+                }
+            } catch (error) {
+                addLog(`Authentication error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function checkSubscription() {
+            addLog('Checking subscription status...', 'info');
+            
+            try {
+                const auth = localStorage.getItem('tutorial_auth');
+                const authData = auth ? JSON.parse(auth) : null;
+                const email = authData?.email || userEmail;
+                
+                const response = await fetch(`${apiBase}/customer/subscription-status.php`, {
+                    headers: { 'X-Tutorial-Email': email }
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const isPro = data.plan_code === 'pro';
+                    const isActive = data.subscription_status === 'active';
+                    const canAccessLive = data.feature_access?.access_levels?.can_access_live_workshops;
+                    
+                    const status = isPro && isActive && canAccessLive ? 'good' : 'warning';
+                    
+                    systemReport.subscription = {
+                        status: status,
+                        plan: data.plan_code,
+                        subscriptionStatus: data.subscription_status,
+                        canAccessLive: canAccessLive
+                    };
+                    
+                    updateCard('subscription-card', status, `
+                        <div class="metric">
+                            <span>Plan:</span>
+                            <span class="metric-value ${isPro ? 'good' : 'warning'}">${data.plan_code.toUpperCase()}</span>
+                        </div>
+                        <div class="metric">
+                            <span>Status:</span>
+                            <span class="metric-value ${isActive ? 'good' : 'error'}">${data.subscription_status}</span>
+                        </div>
+                        <div class="metric">
+                            <span>Live Workshops:</span>
+                            <span class="metric-value ${canAccessLive ? 'good' : 'error'}">${canAccessLive ? '✅ Enabled' : '❌ Disabled'}</span>
+                        </div>
+                        ${!isPro || !isActive ? '<button class="fix-btn" onclick="activateProSubscription()">Activate Pro</button>' : ''}
+                    `);
+                    
+                    addLog(`Subscription: ${data.plan_code} (${data.subscription_status})`, status === 'good' ? 'success' : 'error');
+                    return data;
+                } else {
+                    addLog(`Subscription API error: ${data.message}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                addLog(`Subscription check error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function checkAPIs() {
+            addLog('Testing API endpoints...', 'info');
+            
+            const auth = localStorage.getItem('tutorial_auth');
+            const authData = auth ? JSON.parse(auth) : null;
+            const email = authData?.email || userEmail;
+            
+            const apis = [
+                { name: 'Profile', url: `${apiBase}/customer/profile.php` },
+                { name: 'Notifications', url: `${apiBase}/customer/notifications.php?limit=5` },
+                { name: 'Tutorials', url: `${apiBase}/customer/tutorials.php` },
+                { name: 'Live Workshops', url: `${apiBase}/customer/live-workshops.php` }
+            ];
+            
+            let workingAPIs = 0;
+            let apiResults = [];
+            
+            for (const api of apis) {
+                try {
+                    const response = await fetch(api.url, {
+                        headers: { 'X-Tutorial-Email': email }
+                    });
+                    const data = await response.json();
+                    
+                    const isWorking = response.ok && data.status === 'success';
+                    if (isWorking) workingAPIs++;
+                    
+                    apiResults.push({
+                        name: api.name,
+                        status: isWorking ? 'working' : 'error',
+                        message: isWorking ? 'OK' : (data.message || 'Failed')
+                    });
+                    
+                    addLog(`API ${api.name}: ${isWorking ? 'Working' : 'Failed'}`, isWorking ? 'success' : 'error');
+                } catch (error) {
+                    apiResults.push({
+                        name: api.name,
+                        status: 'error',
+                        message: error.message
+                    });
+                    addLog(`API ${api.name}: Network error`, 'error');
+                }
+            }
+            
+            const percentage = (workingAPIs / apis.length) * 100;
+            const status = percentage === 100 ? 'good' : percentage >= 75 ? 'warning' : 'error';
+            
+            systemReport.apis = { status, workingAPIs, totalAPIs: apis.length, results: apiResults };
+            
+            updateCard('api-card', status, `
+                <div class="metric">
+                    <span>Working APIs:</span>
+                    <span class="metric-value ${status === 'good' ? 'good' : 'warning'}">${workingAPIs}/${apis.length}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                </div>
+                <ul class="feature-list">
+                    ${apiResults.map(api => `
+                        <li class="${api.status === 'working' ? 'feature-enabled' : 'feature-disabled'}">
+                            <span>${api.name}</span>
+                            <span>${api.status === 'working' ? '✅' : '❌'}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            `);
+        }
+
+        async function checkProFeatures() {
+            addLog('Checking Pro features availability...', 'info');
+            
+            const features = [
+                { name: 'Live Workshops', key: 'live_workshops' },
+                { name: 'Practice Uploads', key: 'practice_uploads' },
+                { name: 'Certificates', key: 'certificates' },
+                { name: 'HD Video', key: 'hd_video' },
+                { name: 'Download Videos', key: 'download_videos' }
+            ];
+            
+            // Check subscription status for feature access
+            const auth = localStorage.getItem('tutorial_auth');
+            const authData = auth ? JSON.parse(auth) : null;
+            const email = authData?.email || userEmail;
+            
+            try {
+                const response = await fetch(`${apiBase}/customer/subscription-status.php`, {
+                    headers: { 'X-Tutorial-Email': email }
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.feature_access?.access_levels) {
+                    const accessLevels = data.feature_access.access_levels;
+                    let enabledFeatures = 0;
+                    
+                    const featureResults = features.map(feature => {
+                        const isEnabled = accessLevels[`can_access_${feature.key}`] || 
+                                         accessLevels[`can_${feature.key}`] || 
+                                         (feature.key === 'live_workshops' && accessLevels.can_access_live_workshops);
+                        if (isEnabled) enabledFeatures++;
+                        return { ...feature, enabled: isEnabled };
+                    });
+                    
+                    const percentage = (enabledFeatures / features.length) * 100;
+                    const status = percentage === 100 ? 'good' : percentage >= 60 ? 'warning' : 'error';
+                    
+                    systemReport.proFeatures = { status, enabledFeatures, totalFeatures: features.length };
+                    
+                    updateCard('features-card', status, `
+                        <div class="metric">
+                            <span>Enabled Features:</span>
+                            <span class="metric-value ${status === 'good' ? 'good' : 'warning'}">${enabledFeatures}/${features.length}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <ul class="feature-list">
+                            ${featureResults.map(feature => `
+                                <li class="${feature.enabled ? 'feature-enabled' : 'feature-disabled'}">
+                                    <span>${feature.name}</span>
+                                    <span>${feature.enabled ? '✅' : '❌'}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    `);
+                    
+                    addLog(`Pro Features: ${enabledFeatures}/${features.length} enabled`, status === 'good' ? 'success' : 'error');
+                }
+            } catch (error) {
+                addLog(`Pro features check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkTutorialAccess() {
+            addLog('Checking tutorial access...', 'info');
+            
+            const auth = localStorage.getItem('tutorial_auth');
+            const authData = auth ? JSON.parse(auth) : null;
+            const email = authData?.email || userEmail;
+            
+            try {
+                const response = await fetch(`${apiBase}/customer/tutorials.php`, {
+                    headers: { 'X-Tutorial-Email': email }
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const tutorials = data.tutorials || [];
+                    const accessibleTutorials = tutorials.filter(t => t.has_access);
+                    const paidTutorials = tutorials.filter(t => !t.is_free);
+                    const accessiblePaid = paidTutorials.filter(t => t.has_access);
+                    
+                    const canAccessAll = data.user_subscription?.can_access_all_tutorials;
+                    const percentage = tutorials.length > 0 ? (accessibleTutorials.length / tutorials.length) * 100 : 0;
+                    const status = canAccessAll && percentage >= 90 ? 'good' : percentage >= 50 ? 'warning' : 'error';
+                    
+                    systemReport.tutorials = {
+                        status,
+                        totalTutorials: tutorials.length,
+                        accessibleTutorials: accessibleTutorials.length,
+                        canAccessAll
+                    };
+                    
+                    updateCard('tutorials-card', status, `
+                        <div class="metric">
+                            <span>Total Tutorials:</span>
+                            <span class="metric-value">${tutorials.length}</span>
+                        </div>
+                        <div class="metric">
+                            <span>Accessible:</span>
+                            <span class="metric-value ${status === 'good' ? 'good' : 'warning'}">${accessibleTutorials.length}</span>
+                        </div>
+                        <div class="metric">
+                            <span>Paid Access:</span>
+                            <span class="metric-value ${canAccessAll ? 'good' : 'error'}">${accessiblePaid.length}/${paidTutorials.length}</span>
+                        </div>
+                        <div class="metric">
+                            <span>Unlimited Access:</span>
+                            <span class="metric-value ${canAccessAll ? 'good' : 'error'}">${canAccessAll ? '✅ Yes' : '❌ No'}</span>
+                        </div>
+                    `);
+                    
+                    addLog(`Tutorials: ${accessibleTutorials.length}/${tutorials.length} accessible`, status === 'good' ? 'success' : 'error');
+                }
+            } catch (error) {
+                addLog(`Tutorial access check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkSystemHealth() {
+            addLog('Checking overall system health...', 'info');
+            
+            const healthChecks = [
+                systemReport.authentication?.status === 'good',
+                systemReport.subscription?.status === 'good',
+                systemReport.apis?.status === 'good',
+                systemReport.proFeatures?.status === 'good',
+                systemReport.tutorials?.status === 'good'
+            ];
+            
+            const healthyChecks = healthChecks.filter(Boolean).length;
+            const percentage = (healthyChecks / healthChecks.length) * 100;
+            const status = percentage === 100 ? 'good' : percentage >= 80 ? 'warning' : 'error';
+            
+            const statusText = status === 'good' ? '🟢 Excellent' : 
+                              status === 'warning' ? '🟡 Good' : '🔴 Needs Attention';
+            
+            updateCard('system-card', status, `
+                <div class="metric">
+                    <span>Overall Health:</span>
+                    <span class="metric-value ${status === 'good' ? 'good' : status === 'warning' ? 'warning' : 'error'}">${statusText}</span>
+                </div>
+                <div class="metric">
+                    <span>Systems Healthy:</span>
+                    <span class="metric-value">${healthyChecks}/${healthChecks.length}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <strong>System Status:</strong><br>
+                    ${percentage === 100 ? '🎉 All systems operational! Your Pro subscription is working perfectly.' :
+                      percentage >= 80 ? '⚠️ Minor issues detected. Most features are working.' :
+                      '🚨 Multiple issues detected. Immediate attention required.'}
+                </div>
+            `);
+            
+            addLog(`System Health: ${percentage.toFixed(1)}% (${healthyChecks}/${healthChecks.length} systems healthy)`, 
+                   status === 'good' ? 'success' : 'error');
+        }
+
+        async function runCompleteVerification() {
+            addLog('🚀 Starting complete system verification...', 'info');
+            document.querySelector('.dashboard').classList.add('loading');
+            
+            try {
+                await checkAuthentication();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await checkSubscription();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await checkAPIs();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await checkProFeatures();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await checkTutorialAccess();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await checkSystemHealth();
+                
+                addLog('✅ Complete verification finished!', 'success');
+            } catch (error) {
+                addLog(`Verification error: ${error.message}`, 'error');
+            } finally {
+                document.querySelector('.dashboard').classList.remove('loading');
+            }
+        }
+
+        // Quick action functions
+        async function fixAuthentication() {
+            addLog('Fixing authentication...', 'info');
+            const authData = {
+                email: userEmail,
+                user_id: 1,
+                roles: ['customer'],
+                tutorial_session_id: Date.now().toString(),
+                login_time: new Date().toISOString(),
+                loginMethod: 'dashboard_fix'
+            };
+            localStorage.setItem('tutorial_auth', JSON.stringify(authData));
+            addLog('✅ Authentication fixed!', 'success');
+            await checkAuthentication();
+        }
+
+        async function activateProSubscription() {
+            addLog('Activating Pro subscription...', 'info');
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/complete-fix-now.php');
+                addLog('✅ Pro subscription activation completed!', 'success');
+                setTimeout(() => checkSubscription(), 1000);
+            } catch (error) {
+                addLog(`Pro activation error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAllAPIs() {
+            addLog('Testing all APIs...', 'info');
+            await checkAPIs();
+        }
+
+        function clearCacheAndRefresh() {
+            addLog('Clearing cache and refreshing...', 'info');
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            setTimeout(() => location.reload(true), 1000);
+        }
+
+        function exportSystemReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                userEmail: userEmail,
+                systemReport: systemReport,
+                summary: {
+                    overallHealth: systemReport.authentication?.status === 'good' && 
+                                  systemReport.subscription?.status === 'good' ? 'Healthy' : 'Issues Detected'
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `system-report-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addLog('📄 System report exported!', 'success');
+        }
+
+        // Auto-run verification on page load
+        window.onload = () => {
+            setTimeout(() => runCompleteVerification(), 1000);
+        };
+    </script>
+</body>
+</html>

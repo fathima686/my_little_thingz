@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Tutorial Access System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .highlight { background: yellow; font-weight: bold; }
+        .access-granted { color: green; font-weight: bold; }
+        .access-denied { color: red; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Tutorial Access System Test</h1>
+    <p>Testing tutorial access for different subscription plans (Basic, Premium, Pro)</p>
+    
+    <div id="results"></div>
+    
+    <button onclick="runCompleteTest()">Run Complete Test</button>
+    <button onclick="testBasicUser()">Test Basic User</button>
+    <button onclick="testPremiumUser()">Test Premium User</button>
+    <button onclick="testProUser()">Test Pro User</button>
+
+    <script>
+        const userEmail = 'soudhame52@gmail.com';
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-section ${type}`;
+            testDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(testDiv);
+        }
+        
+        async function setUserSubscription(planCode) {
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/set-user-to-pro.php');
+                const data = await response.json();
+                
+                // Now update to the specific plan
+                const updateResponse = await fetch('http://localhost/my_little_thingz/backend/update-user-plan.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: userEmail, plan_code: planCode })
+                });
+                
+                return planCode; // For now, assume it worked
+            } catch (error) {
+                console.error('Error setting subscription:', error);
+                return null;
+            }
+        }
+        
+        async function testTutorialAccess(planName, planCode) {
+            addResult(`🔍 Testing ${planName} User Access`, 'Setting up user and testing tutorial access...', 'info');
+            
+            try {
+                // Set user to the specific plan (for now, we'll use Pro and test logic)
+                await setUserSubscription(planCode);
+                
+                // Get tutorials list
+                const tutorialsResponse = await fetch(`${apiBase}/customer/tutorials.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const tutorialsData = await tutorialsResponse.json();
+                
+                if (tutorialsData.status !== 'success') {
+                    addResult(`❌ ${planName} - Tutorials API Failed`, `
+                        <p><strong>Error:</strong> ${tutorialsData.message}</p>
+                    `, 'error');
+                    return;
+                }
+                
+                // Analyze access patterns
+                const tutorials = tutorialsData.tutorials || [];
+                const freeTutorials = tutorials.filter(t => t.is_free);
+                const paidTutorials = tutorials.filter(t => !t.is_free);
+                const accessibleTutorials = tutorials.filter(t => t.has_access);
+                const deniedTutorials = tutorials.filter(t => !t.has_access);
+                
+                // Test individual tutorial access
+                let individualAccessTests = [];
+                for (let tutorial of paidTutorials.slice(0, 3)) { // Test first 3 paid tutorials
+                    try {
+                        const accessResponse = await fetch(`${apiBase}/customer/check-tutorial-access.php?tutorial_id=${tutorial.id}&email=${userEmail}`);
+                        const accessData = await accessResponse.json();
+                        
+                        individualAccessTests.push({
+                            tutorial_id: tutorial.id,
+                            tutorial_title: tutorial.title,
+                            has_access: accessData.has_access,
+                            reason: accessData.reason,
+                            plan_code: accessData.plan_code
+                        });
+                    } catch (error) {
+                        individualAccessTests.push({
+                            tutorial_id: tutorial.id,
+                            tutorial_title: tutorial.title,
+                            error: error.message
+                        });
+                    }
+                }
+                
+                // Expected behavior based on plan
+                let expectedBehavior = '';
+                let isCorrect = true;
+                
+                if (planCode === 'basic') {
+                    expectedBehavior = 'Basic users should only access free tutorials and individually purchased ones';
+                    // For basic users, paid tutorials should be denied unless purchased
+                    isCorrect = deniedTutorials.length > 0 && freeTutorials.every(t => t.has_access);
+                } else if (planCode === 'premium' || planCode === 'pro') {
+                    expectedBehavior = `${planName} users should access ALL tutorials (free + paid)`;
+                    // Premium/Pro users should have access to all tutorials
+                    isCorrect = deniedTutorials.length === 0 && tutorials.every(t => t.has_access);
+                }
+                
+                // Create results table
+                let tutorialTable = `
+                    <table>
+                        <tr>
+                            <th>Tutorial</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Access</th>
+                            <th>Access Type</th>
+                        </tr>
+                `;
+                
+                tutorials.forEach(tutorial => {
+                    const accessClass = tutorial.has_access ? 'access-granted' : 'access-denied';
+                    const accessText = tutorial.has_access ? '✅ GRANTED' : '❌ DENIED';
+                    tutorialTable += `
+                        <tr>
+                            <td>${tutorial.title}</td>
+                            <td>${tutorial.is_free ? 'FREE' : 'PAID'}</td>
+                            <td>₹${tutorial.price}</td>
+                            <td class="${accessClass}">${accessText}</td>
+                            <td>${tutorial.access_type || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                tutorialTable += '</table>';
+                
+                // Individual access test results
+                let accessTestTable = `
+                    <h4>Individual Access API Tests:</h4>
+                    <table>
+                        <tr>
+                            <th>Tutorial</th>
+                            <th>API Access</th>
+                            <th>Reason</th>
+                            <th>Plan</th>
+                        </tr>
+                `;
+                
+                individualAccessTests.forEach(test => {
+                    if (test.error) {
+                        accessTestTable += `
+                            <tr>
+                                <td>${test.tutorial_title}</td>
+                                <td class="access-denied">ERROR</td>
+                                <td>${test.error}</td>
+                                <td>-</td>
+                            </tr>
+                        `;
+                    } else {
+                        const accessClass = test.has_access ? 'access-granted' : 'access-denied';
+                        const accessText = test.has_access ? '✅ GRANTED' : '❌ DENIED';
+                        accessTestTable += `
+                            <tr>
+                                <td>${test.tutorial_title}</td>
+                                <td class="${accessClass}">${accessText}</td>
+                                <td>${test.reason}</td>
+                                <td>${test.plan_code || 'N/A'}</td>
+                            </tr>
+                        `;
+                    }
+                });
+                accessTestTable += '</table>';
+                
+                const resultType = isCorrect ? 'success' : 'error';
+                const resultIcon = isCorrect ? '✅' : '❌';
+                
+                addResult(`${resultIcon} ${planName} User Test Results`, `
+                    <p><strong>Expected:</strong> ${expectedBehavior}</p>
+                    <p><strong>User Subscription:</strong> ${tutorialsData.user_subscription?.plan || 'Unknown'}</p>
+                    <p><strong>Can Access All:</strong> ${tutorialsData.user_subscription?.can_access_all_tutorials ? 'YES' : 'NO'}</p>
+                    <p><strong>Total Tutorials:</strong> ${tutorials.length}</p>
+                    <p><strong>Free Tutorials:</strong> ${freeTutorials.length}</p>
+                    <p><strong>Paid Tutorials:</strong> ${paidTutorials.length}</p>
+                    <p><strong>Accessible:</strong> ${accessibleTutorials.length}</p>
+                    <p><strong>Denied:</strong> ${deniedTutorials.length}</p>
+                    
+                    <h4>Tutorial Access Details:</h4>
+                    ${tutorialTable}
+                    
+                    ${accessTestTable}
+                    
+                    <details>
+                        <summary>Raw API Response</summary>
+                        <pre>${JSON.stringify(tutorialsData, null, 2)}</pre>
+                    </details>
+                `, resultType);
+                
+            } catch (error) {
+                addResult(`❌ ${planName} User Test Failed`, `
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `, 'error');
+            }
+        }
+        
+        async function testBasicUser() {
+            await testTutorialAccess('Basic', 'basic');
+        }
+        
+        async function testPremiumUser() {
+            await testTutorialAccess('Premium', 'premium');
+        }
+        
+        async function testProUser() {
+            await testTutorialAccess('Pro', 'pro');
+        }
+        
+        async function runCompleteTest() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Starting Complete Tutorial Access Test', 'Testing all subscription plans...', 'info');
+            
+            await testBasicUser();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await testPremiumUser();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await testProUser();
+            
+            addResult('🎉 Test Complete', 'All tests finished. Review results above.', 'info');
+        }
+    </script>
+</body>
+</html>

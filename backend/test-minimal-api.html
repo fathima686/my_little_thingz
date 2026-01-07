@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Minimal API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .btn { background: #6b46c1; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; margin: 10px 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { background: #d1fae5; color: #065f46; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .result { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; white-space: pre-wrap; font-size: 12px; max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Minimal Custom Requests API</h1>
+        <p>Testing the bulletproof minimal API to fix the 500 error</p>
+        
+        <button class="btn" onclick="testAPI()">Test API</button>
+        <button class="btn" onclick="testWithHeaders()">Test with Admin Headers</button>
+        <button class="btn" onclick="testDirectURL()">Test Direct URL</button>
+        
+        <div id="status"></div>
+        <div id="result"></div>
+        
+        <script>
+        const API_URL = 'http://localhost/my_little_thingz/backend/api/admin/custom-requests-database-only.php';
+        
+        async function testAPI() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.innerHTML = '<div class="info">Testing minimal API...</div>';
+            resultDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_URL}?status=pending&t=${Date.now()}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    statusDiv.innerHTML = '<div class="success">✅ API Test Successful!</div>';
+                    resultDiv.innerHTML = `API Response:
+Status: ${data.status}
+Message: ${data.message}
+Request Count: ${data.requests ? data.requests.length : 0}
+Total Count: ${data.total_count || 0}
+
+${data.requests && data.requests.length > 0 ? 
+`Sample Request:
+- ID: ${data.requests[0].id}
+- Title: ${data.requests[0].title}
+- Customer: ${data.requests[0].customer_name}
+- Status: ${data.requests[0].status}
+- Created: ${data.requests[0].created_at}` : 
+'No requests found'}
+
+Full JSON Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    const errorText = await response.text();
+                    statusDiv.innerHTML = '<div class="error">❌ API Error</div>';
+                    resultDiv.innerHTML = `HTTP Status: ${response.status} ${response.statusText}
+
+Response Body:
+${errorText}`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="error">❌ Network Error</div>';
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        async function testWithHeaders() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.innerHTML = '<div class="info">Testing with admin headers...</div>';
+            resultDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_URL}?status=pending&t=${Date.now()}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-User-Id': '19',
+                        'X-Admin-Email': 'soudhame52@gmail.com'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    statusDiv.innerHTML = '<div class="success">✅ Admin Headers Test Successful!</div>';
+                    resultDiv.innerHTML = `Admin API Response:
+Status: ${data.status}
+Message: ${data.message}
+Request Count: ${data.requests ? data.requests.length : 0}
+
+🎉 This means your admin dashboard should now work!
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    const errorText = await response.text();
+                    statusDiv.innerHTML = '<div class="error">❌ Admin Headers Test Failed</div>';
+                    resultDiv.innerHTML = `HTTP Status: ${response.status} ${response.statusText}
+
+Response:
+${errorText}`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="error">❌ Network Error</div>';
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        async function testDirectURL() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.innerHTML = '<div class="info">Opening API URL directly...</div>';
+            
+            const testURL = `${API_URL}?status=all&t=${Date.now()}`;
+            window.open(testURL, '_blank');
+            
+            resultDiv.innerHTML = `Direct URL opened in new tab:
+${testURL}
+
+If you see JSON data (not an error), the API is working correctly.`;
+        }
+        </script>
+    </div>
+</body>
+</html>

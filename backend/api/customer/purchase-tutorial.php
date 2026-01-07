@@ -7,7 +7,7 @@ ini_set('log_errors', 1);
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID, X-Tutorial-Email');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID, X-Tutorial-Email, X-Tutorials-Email');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -50,7 +50,7 @@ try {
 
     // Identify user by email or user_id
     $userId = null;
-    $email = $_SERVER['HTTP_X_TUTORIAL_EMAIL'] ?? null;
+    $email = $_SERVER['HTTP_X_TUTORIAL_EMAIL'] ?? $_SERVER['HTTP_X_TUTORIALS_EMAIL'] ?? null;
     
     if ($email) {
         // Look up user by email
@@ -208,6 +208,8 @@ try {
                 $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
                 if (file_exists($autoloadPath)) {
                     require_once $autoloadPath;
+                } else {
+                    throw new Exception('Composer autoload not found. Run: composer install');
                 }
             }
         } catch (Throwable $e) {
@@ -223,7 +225,7 @@ try {
             http_response_code(500);
             echo json_encode([
                 'status' => 'error',
-                'message' => 'Razorpay SDK not installed. Run composer require razorpay/razorpay in backend/.'
+                'message' => 'Razorpay SDK not available. Please ensure composer dependencies are installed.'
             ]);
             exit;
         }

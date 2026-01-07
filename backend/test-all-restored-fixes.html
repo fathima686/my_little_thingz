@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test All Restored Fixes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .test-section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        .info { color: #3b82f6; font-weight: bold; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+            border-left: 4px solid #e5e7eb;
+            font-size: 12px;
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 500;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .test-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-error { background: #fee2e2; color: #991b1b; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .stats-table th, .stats-table td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        .stats-table th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test All Restored Fixes</h1>
+        <p class="info">This comprehensive test verifies all the fixes that were restored from yesterday.</p>
+        
+        <div class="test-section">
+            <h2>🚀 Quick Actions</h2>
+            <button class="btn-primary" onclick="runAllTests()">Run All Tests</button>
+            <button class="btn-success" onclick="runDatabaseSetup()">Run Database Setup</button>
+            <button class="btn-warning" onclick="clearResults()">Clear Results</button>
+            
+            <div id="overall-progress" style="margin-top: 15px;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+                <span id="progress-text">Ready to test...</span>
+            </div>
+        </div>
+
+        <div class="test-grid">
+            <!-- Live Sessions Tests -->
+            <div class="test-section">
+                <h3>📺 Live Sessions System</h3>
+                <button onclick="testLiveSessions()">Test Live Sessions</button>
+                <div id="live-sessions-result"></div>
+            </div>
+
+            <!-- Custom Requests Tests -->
+            <div class="test-section">
+                <h3>📋 Custom Requests (Database Only)</h3>
+                <button onclick="testCustomRequests()">Test Custom Requests</button>
+                <div id="custom-requests-result"></div>
+            </div>
+
+            <!-- Subscription Tests -->
+            <div class="test-section">
+                <h3>💳 Subscription System</h3>
+                <button onclick="testSubscriptions()">Test Subscriptions</button>
+                <div id="subscriptions-result"></div>
+            </div>
+
+            <!-- Database Structure Tests -->
+            <div class="test-section">
+                <h3>🗄️ Database Structure</h3>
+                <button onclick="testDatabaseStructure()">Test Database</button>
+                <div id="database-result"></div>
+            </div>
+        </div>
+
+        <!-- Detailed Results Section -->
+        <div class="test-section">
+            <h2>📊 Detailed Test Results</h2>
+            <div id="detailed-results"></div>
+        </div>
+
+        <!-- System Statistics -->
+        <div class="test-section">
+            <h2>📈 System Statistics</h2>
+            <div id="system-stats"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const BACKEND_BASE = 'http://localhost/my_little_thingz/backend';
+        
+        let testResults = {
+            liveSessions: null,
+            customRequests: null,
+            subscriptions: null,
+            database: null
+        };
+
+        async function runDatabaseSetup() {
+            updateProgress(0, 'Running database setup...');
+            try {
+                const response = await fetch(`${BACKEND_BASE}/restore-all-yesterday-fixes.php`);
+                const html = await response.text();
+                
+                // Show setup results in a new window
+                const setupWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes');
+                setupWindow.document.write(html);
+                setupWindow.document.title = 'Database Setup Results';
+                
+                updateProgress(100, 'Database setup completed! Check the new window for details.');
+                
+                // Wait a bit then run tests
+                setTimeout(() => {
+                    runAllTests();
+                }, 2000);
+                
+            } catch (error) {
+                updateProgress(0, `Setup failed: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            updateProgress(10, 'Starting comprehensive tests...');
+            
+            await testLiveSessions();
+            updateProgress(30, 'Live sessions tested...');
+            
+            await testCustomRequests();
+            updateProgress(50, 'Custom requests tested...');
+            
+            await testSubscriptions();
+            updateProgress(70, 'Subscriptions tested...');
+            
+            await testDatabaseStructure();
+            updateProgress(90, 'Database structure tested...');
+            
+            await generateSystemStats();
+            updateProgress(100, 'All tests completed!');
+            
+            showDetailedResults();
+        }
+
+        async function testLiveSessions() {
+            const resultDiv = document.getElementById('live-sessions-result');
+            resultDiv.innerHTML = '<p>Testing live sessions...</p>';
+            
+            const tests = [
+                {
+                    name: 'Live Subjects API',
+                    url: `${API_BASE}/customer/live-subjects.php`,
+                    expectedFields: ['subjects']
+                },
+                {
+                    name: 'Live Sessions API',
+                    url: `${API_BASE}/customer/live-sessions.php`,
+                    expectedFields: ['sessions'],
+                    headers: { 'X-User-ID': '1' }
+                }
+            ];
+            
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url, { 
+                        headers: test.headers || {} 
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const text = await response.text();
+                    let data;
+                    
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseError) {
+                        throw new Error('Invalid JSON response');
+                    }
+                    
+                    if (data.status === 'success') {
+                        const hasExpectedFields = test.expectedFields.every(field => 
+                            data.hasOwnProperty(field)
+                        );
+                        
+                        if (hasExpectedFields) {
+                            const count = data[test.expectedFields[0]]?.length || 0;
+                            results.push({
+                                name: test.name,
+                                status: 'success',
+                                message: `✓ Working - ${count} items found`,
+                                data: data
+                            });
+                        } else {
+                            results.push({
+                                name: test.name,
+                                status: 'warning',
+                                message: '⚠ Missing expected fields',
+                                data: data
+                            });
+                        }
+                    } else {
+                        results.push({
+                            name: test.name,
+                            status: 'error',
+                            message: `✗ API Error: ${data.message}`,
+                            data: data
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        name: test.name,
+                        status: 'error',
+                        message: `✗ ${error.message}`,
+                        data: null
+                    });
+                }
+            }
+            
+            testResults.liveSessions = results;
+            displayTestResults(resultDiv, results);
+        }
+
+        async function testCustomRequests() {
+            const resultDiv = document.getElementById('custom-requests-result');
+            resultDiv.innerHTML = '<p>Testing custom requests...</p>';
+            
+            const tests = [
+                {
+                    name: 'Database-Only API',
+                    url: `${API_BASE}/admin/custom-requests-database-only.php`,
+                    headers: {
+                        'X-Admin-User-Id': '1',
+                        'X-Admin-Email': 'admin@test.com'
+                    }
+                },
+                {
+                    name: 'Create Request Test',
+                    url: `${API_BASE}/admin/custom-requests-database-only.php`,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-User-Id': '1',
+                        'X-Admin-Email': 'admin@test.com'
+                    },
+                    body: {
+                        customer_name: 'Test Customer',
+                        customer_email: 'test@example.com',
+                        title: 'Test Request from API Test',
+                        occasion: 'Testing',
+                        description: 'This is a test request created by the comprehensive test suite',
+                        priority: 'medium'
+                    }
+                }
+            ];
+            
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const options = {
+                        method: test.method || 'GET',
+                        headers: test.headers || {}
+                    };
+                    
+                    if (test.body) {
+                        options.body = JSON.stringify(test.body);
+                    }
+                    
+                    const response = await fetch(test.url, options);
+                    const text = await response.text();
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseError) {
+                        throw new Error('Invalid JSON response');
+                    }
+                    
+                    if (data.status === 'success') {
+                        if (test.method === 'POST') {
+                            results.push({
+                                name: test.name,
+                                status: 'success',
+                                message: `✓ Request created: ${data.order_id || 'Unknown ID'}`,
+                                data: data
+                            });
+                        } else {
+                            const count = data.requests?.length || 0;
+                            const dataSource = data.data_source || 'unknown';
+                            results.push({
+                                name: test.name,
+                                status: 'success',
+                                message: `✓ ${count} requests (${dataSource})`,
+                                data: data
+                            });
+                        }
+                    } else {
+                        results.push({
+                            name: test.name,
+                            status: 'error',
+                            message: `✗ ${data.message}`,
+                            data: data
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        name: test.name,
+                        status: 'error',
+                        message: `✗ ${error.message}`,
+                        data: null
+                    });
+                }
+            }
+            
+            testResults.customRequests = results;
+            displayTestResults(resultDiv, results);
+        }
+
+        async function testSubscriptions() {
+            const resultDiv = document.getElementById('subscriptions-result');
+            resultDiv.innerHTML = '<p>Testing subscription system...</p>';
+            
+            // Test subscription-related endpoints
+            const tests = [
+                {
+                    name: 'User Profile API',
+                    url: `${API_BASE}/customer/profile.php`,
+                    headers: { 'X-User-ID': '1' }
+                },
+                {
+                    name: 'Subscription Status',
+                    url: `${API_BASE}/customer/subscription-status.php`,
+                    headers: { 'X-User-ID': '1' }
+                }
+            ];
+            
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url, { 
+                        headers: test.headers || {} 
+                    });
+                    
+                    const text = await response.text();
+                    let data;
+                    
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseError) {
+                        // Some APIs might not exist yet
+                        results.push({
+                            name: test.name,
+                            status: 'warning',
+                            message: '⚠ API not available or returns HTML',
+                            data: null
+                        });
+                        continue;
+                    }
+                    
+                    if (data.status === 'success') {
+                        results.push({
+                            name: test.name,
+                            status: 'success',
+                            message: '✓ API working',
+                            data: data
+                        });
+                    } else {
+                        results.push({
+                            name: test.name,
+                            status: 'warning',
+                            message: `⚠ ${data.message || 'Unknown response'}`,
+                            data: data
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        name: test.name,
+                        status: 'warning',
+                        message: `⚠ ${error.message}`,
+                        data: null
+                    });
+                }
+            }
+            
+            testResults.subscriptions = results;
+            displayTestResults(resultDiv, results);
+        }
+
+        async function testDatabaseStructure() {
+            const resultDiv = document.getElementById('database-result');
+            resultDiv.innerHTML = '<p>Testing database structure...</p>';
+            
+            // Test database connectivity through a simple API
+            try {
+                const response = await fetch(`${API_BASE}/customer/live-subjects.php`);
+                const text = await response.text();
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    throw new Error('Database connection failed - API returns HTML');
+                }
+                
+                if (data.status === 'success') {
+                    const results = [{
+                        name: 'Database Connection',
+                        status: 'success',
+                        message: '✓ Database is accessible',
+                        data: data
+                    }];
+                    
+                    testResults.database = results;
+                    displayTestResults(resultDiv, results);
+                } else {
+                    throw new Error(data.message || 'Database test failed');
+                }
+            } catch (error) {
+                const results = [{
+                    name: 'Database Connection',
+                    status: 'error',
+                    message: `✗ ${error.message}`,
+                    data: null
+                }];
+                
+                testResults.database = results;
+                displayTestResults(resultDiv, results);
+            }
+        }
+
+        function displayTestResults(container, results) {
+            let html = '<div style="margin-top: 10px;">';
+            
+            results.forEach(result => {
+                const badgeClass = result.status === 'success' ? 'badge-success' : 
+                                 result.status === 'warning' ? 'badge-warning' : 'badge-error';
+                
+                html += `
+                    <div style="margin: 8px 0; padding: 8px; border-left: 4px solid ${
+                        result.status === 'success' ? '#10b981' : 
+                        result.status === 'warning' ? '#f59e0b' : '#ef4444'
+                    }; background: #f9fafb;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>${result.name}</strong>
+                            <span class="status-badge ${badgeClass}">${result.status}</span>
+                        </div>
+                        <div style="margin-top: 4px; font-size: 14px;">${result.message}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function showDetailedResults() {
+            const container = document.getElementById('detailed-results');
+            let html = '';
+            
+            Object.entries(testResults).forEach(([category, results]) => {
+                if (results) {
+                    html += `<h3>${category.charAt(0).toUpperCase() + category.slice(1)} Details</h3>`;
+                    
+                    results.forEach(result => {
+                        if (result.data) {
+                            html += `
+                                <details style="margin: 10px 0; border: 1px solid #e5e7eb; border-radius: 4px;">
+                                    <summary style="padding: 10px; background: #f9fafb; cursor: pointer;">
+                                        ${result.name} - ${result.message}
+                                    </summary>
+                                    <pre style="margin: 0; border-top: 1px solid #e5e7eb;">${JSON.stringify(result.data, null, 2)}</pre>
+                                </details>
+                            `;
+                        }
+                    });
+                }
+            });
+            
+            container.innerHTML = html;
+        }
+
+        async function generateSystemStats() {
+            const container = document.getElementById('system-stats');
+            
+            // Collect statistics from test results
+            let totalTests = 0;
+            let passedTests = 0;
+            let warningTests = 0;
+            let failedTests = 0;
+            
+            Object.values(testResults).forEach(results => {
+                if (results) {
+                    results.forEach(result => {
+                        totalTests++;
+                        if (result.status === 'success') passedTests++;
+                        else if (result.status === 'warning') warningTests++;
+                        else failedTests++;
+                    });
+                }
+            });
+            
+            const successRate = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
+            
+            let html = `
+                <table class="stats-table">
+                    <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
+                    <tr>
+                        <td>Total Tests</td>
+                        <td>${totalTests}</td>
+                        <td><span class="status-badge badge-success">Complete</span></td>
+                    </tr>
+                    <tr>
+                        <td>Passed Tests</td>
+                        <td>${passedTests}</td>
+                        <td><span class="status-badge badge-success">${passedTests > 0 ? 'Good' : 'None'}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Warning Tests</td>
+                        <td>${warningTests}</td>
+                        <td><span class="status-badge badge-warning">${warningTests > 0 ? 'Review' : 'None'}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Failed Tests</td>
+                        <td>${failedTests}</td>
+                        <td><span class="status-badge ${failedTests > 0 ? 'badge-error' : 'badge-success'}">${failedTests > 0 ? 'Issues' : 'None'}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Success Rate</td>
+                        <td>${successRate}%</td>
+                        <td><span class="status-badge ${successRate >= 80 ? 'badge-success' : successRate >= 60 ? 'badge-warning' : 'badge-error'}">${successRate >= 80 ? 'Excellent' : successRate >= 60 ? 'Good' : 'Needs Work'}</span></td>
+                    </tr>
+                </table>
+                
+                <h4>System Health Summary:</h4>
+                <div style="padding: 15px; border-radius: 8px; background: ${successRate >= 80 ? '#d1fae5' : successRate >= 60 ? '#fef3c7' : '#fee2e2'};">
+                    ${successRate >= 80 ? 
+                        '🎉 <strong>Excellent!</strong> All major systems are working correctly. Your yesterday\'s fixes have been successfully restored.' :
+                        successRate >= 60 ?
+                        '⚠️ <strong>Good Progress!</strong> Most systems are working, but some issues need attention.' :
+                        '🔧 <strong>Needs Attention!</strong> Several systems require fixes. Please run the database setup first.'
+                    }
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = message;
+        }
+
+        function clearResults() {
+            ['live-sessions-result', 'custom-requests-result', 'subscriptions-result', 'database-result', 'detailed-results', 'system-stats'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            testResults = {
+                liveSessions: null,
+                customRequests: null,
+                subscriptions: null,
+                database: null
+            };
+            
+            updateProgress(0, 'Results cleared. Ready to test...');
+        }
+
+        // Auto-run basic connectivity test on page load
+        window.onload = function() {
+            updateProgress(0, 'Page loaded. Click "Run All Tests" to begin comprehensive testing.');
+        };
+    </script>
+</body>
+</html>

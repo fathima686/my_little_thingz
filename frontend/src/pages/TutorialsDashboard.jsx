@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTutorialAuth } from '../contexts/TutorialAuthContext';
-import { LuPlay, LuLock, LuCheck, LuArrowLeft, LuLogOut, LuHeart, LuBell, LuUser, LuCrown, LuArrowRight, LuBookOpen, LuTrendingUp, LuClock, LuStar, LuSparkles, LuZap, LuInfinity, LuShield } from 'react-icons/lu';
+import { LuPlay, LuLock, LuCheck, LuArrowLeft, LuLogOut, LuHeart, LuBell, LuUser, LuCrown, LuArrowRight, LuBookOpen, LuTrendingUp, LuClock, LuStar, LuSparkles, LuZap, LuInfinity, LuShield, LuVideo, LuPlus, LuUpload, LuAward } from 'react-icons/lu';
 import logo from '../assets/logo.png';
+import LiveSessionsList from '../components/live-teaching/LiveSessionsList';
+import CreateLiveSessionModal from '../components/live-teaching/CreateLiveSessionModal';
+import NotificationDropdown from '../components/NotificationDropdown';
+import ProfileDropdown from '../components/ProfileDropdown';
+import SubscriptionPlansModal from '../components/SubscriptionPlansModal';
+import ProgressTracker from '../components/ProgressTracker';
+import PracticeUpload from '../components/PracticeUpload';
 import handEmbroideryImg from '../assets/hand embroary.jpeg';
 import resinArtImg from '../assets/resin.jpeg';
 import giftMakingImg from '../assets/gift making.jpeg';
@@ -11,44 +18,65 @@ import candleMakingImg from '../assets/candle making.jpeg';
 import jewelryMakingImg from '../assets/jewelary making.jpeg';
 import clayModelingImg from '../assets/clay modeling.jpeg';
 import '../styles/tutorials.css';
+import '../styles/subscription-plans.css';
+import '../styles/progress-tracker.css';
+import '../styles/practice-upload.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+const UPLOADS_BASE = 'http://localhost/my_little_thingz/backend';
+
+// Helper function to get full thumbnail URL
+const getThumbnailUrl = (thumbnailUrl) => {
+  if (!thumbnailUrl) return null;
+  // If it's already a full URL, return as is
+  if (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://')) {
+    return thumbnailUrl;
+  }
+  // If it's a relative path, convert to full URL
+  return `${UPLOADS_BASE}/${thumbnailUrl}`;
+};
 
 // Learning Stats Banner Component
-const LearningStatsBanner = ({ stats }) => (
-  <div className="stats-banner">
-    <div className="stats-card">
-      <div className="stats-icon">
-        <LuBookOpen size={24} />
+const LearningStatsBanner = ({ stats, subscriptionStatus }) => {
+  const isPro = subscriptionStatus?.plan_code === 'pro' || subscriptionStatus?.plan_code === 'premium';
+  
+  return (
+    <div className="stats-banner">
+      <div className="stats-card">
+        <div className="stats-icon">
+          <LuBookOpen size={24} />
+        </div>
+        <div className="stats-content">
+          <div className="stats-number">{stats.purchasedCount}</div>
+          <div className="stats-label">
+            {isPro ? 'Watched Tutorials' : 'Tutorials Purchased'}
+          </div>
+        </div>
       </div>
-      <div className="stats-content">
-        <div className="stats-number">{stats.purchasedCount}</div>
-        <div className="stats-label">Tutorials Purchased</div>
+      <div className="stats-card">
+        <div className="stats-icon">
+          <LuCheck size={24} />
+        </div>
+        <div className="stats-content">
+          <div className="stats-number">{stats.completedCount}</div>
+          <div className="stats-label">Completed</div>
+        </div>
+      </div>
+      <div className="stats-card">
+        <div className="stats-icon">
+          <LuClock size={24} />
+        </div>
+        <div className="stats-content">
+          <div className="stats-number">{stats.totalHours}</div>
+          <div className="stats-label">Hours Learned</div>
+        </div>
       </div>
     </div>
-    <div className="stats-card">
-      <div className="stats-icon">
-        <LuCheck size={24} />
-      </div>
-      <div className="stats-content">
-        <div className="stats-number">{stats.completedCount}</div>
-        <div className="stats-label">Completed</div>
-      </div>
-    </div>
-    <div className="stats-card">
-      <div className="stats-icon">
-        <LuClock size={24} />
-      </div>
-      <div className="stats-content">
-        <div className="stats-number">{stats.totalHours}</div>
-        <div className="stats-label">Hours Learned</div>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 // Featured Section Component
-const FeaturedSection = ({ tutorials, purchases, handleWatchTutorial, handlePurchase }) => (
+const FeaturedSection = ({ tutorials, purchases, handleWatchTutorial, handlePurchase, hasAccessToTutorial }) => (
   <section className="featured-section">
     <div className="section-header">
       <div className="section-title">
@@ -59,19 +87,19 @@ const FeaturedSection = ({ tutorials, purchases, handleWatchTutorial, handlePurc
     </div>
     <div className="featured-grid">
       {tutorials.slice(0, 3).map((tutorial) => {
-        const isPurchased = purchases.has(tutorial.id);
+        const hasAccess = hasAccessToTutorial(tutorial);
         const isFree = tutorial.is_free || tutorial.price === 0;
         return (
           <div key={tutorial.id} className="featured-card">
             <div className="featured-badge">Featured</div>
             <div className="featured-thumbnail">
               {tutorial.thumbnail_url ? (
-                <img src={tutorial.thumbnail_url} alt={tutorial.title} />
+                <img src={getThumbnailUrl(tutorial.thumbnail_url)} alt={tutorial.title} />
               ) : (
                 <div className="featured-placeholder"></div>
               )}
               <div className="featured-overlay">
-                {isPurchased || isFree ? (
+                {hasAccess ? (
                   <button className="featured-play-btn" onClick={() => handleWatchTutorial(tutorial)}>
                     <LuPlay size={28} />
                   </button>
@@ -97,7 +125,7 @@ const FeaturedSection = ({ tutorials, purchases, handleWatchTutorial, handlePurc
 );
 
 // Popular Section Component
-const PopularSection = ({ tutorials, purchases, favorites, toggleFavorite, handleWatchTutorial, handlePurchase }) => (
+const PopularSection = ({ tutorials, purchases, favorites, toggleFavorite, handleWatchTutorial, handlePurchase, hasAccessToTutorial }) => (
   <section className="popular-section">
     <div className="section-header">
       <div className="section-title">
@@ -108,14 +136,14 @@ const PopularSection = ({ tutorials, purchases, favorites, toggleFavorite, handl
     </div>
     <div className="popular-grid">
       {tutorials.slice(0, 6).map((tutorial) => {
-        const isPurchased = purchases.has(tutorial.id);
+        const hasAccess = hasAccessToTutorial(tutorial);
         const isFree = tutorial.is_free || tutorial.price === 0;
         const isFavorite = favorites.has(tutorial.id);
         return (
           <div key={tutorial.id} className="popular-card">
             <div className="popular-thumbnail">
               {tutorial.thumbnail_url ? (
-                <img src={tutorial.thumbnail_url} alt={tutorial.title} />
+                <img src={getThumbnailUrl(tutorial.thumbnail_url)} alt={tutorial.title} />
               ) : (
                 <div className="popular-placeholder"></div>
               )}
@@ -129,7 +157,7 @@ const PopularSection = ({ tutorials, purchases, favorites, toggleFavorite, handl
                 <LuHeart size={16} />
               </button>
               <div className="popular-overlay">
-                {isPurchased || isFree ? (
+                {hasAccess ? (
                   <button className="popular-play" onClick={() => handleWatchTutorial(tutorial)}>
                     <LuPlay size={20} />
                   </button>
@@ -204,13 +232,51 @@ const SubscriptionBenefitsSection = () => (
 );
 
 // Subscription Plans Section
-const SubscriptionPlansSection = ({ subscriptionPlan, setSubscriptionPlan, handlePayment, subscriptionStatus }) => {
+const SubscriptionPlansSection = ({ subscriptionPlan, setSubscriptionPlan, subscriptionStatus, onUpgradeClick }) => {
   const handleSubscriptionUpgrade = (plan) => {
-    if (subscriptionPlan === plan) {
-      return; // Already on this plan
+    // Check if user already has this plan and it's active
+    const currentPlan = subscriptionStatus?.plan_code || subscriptionPlan;
+    const isActive = subscriptionStatus?.subscription_status === 'active' && subscriptionStatus?.is_active;
+    
+    if (currentPlan === plan && isActive) {
+      // User already has this active plan - show message instead of trying to upgrade
+      alert(`You already have an active ${plan.charAt(0).toUpperCase() + plan.slice(1)} subscription!`);
+      return;
     }
-    setSubscriptionPlan(plan);
-    handlePayment('subscription');
+    
+    // Proceed with upgrade/change
+    onUpgradeClick(plan);
+  };
+
+  // Helper function to determine button text and state
+  const getButtonConfig = (planCode) => {
+    const currentPlan = subscriptionStatus?.plan_code || subscriptionPlan;
+    const isActive = subscriptionStatus?.subscription_status === 'active' && subscriptionStatus?.is_active;
+    
+    if (currentPlan === planCode && isActive) {
+      return {
+        text: 'Current Plan',
+        disabled: true,
+        className: 'plan-btn current'
+      };
+    } else if (currentPlan === planCode && !isActive) {
+      return {
+        text: 'Reactivate Plan',
+        disabled: false,
+        className: 'plan-btn reactivate'
+      };
+    } else {
+      const actionText = {
+        'basic': 'Select Basic',
+        'premium': 'Upgrade Now',
+        'pro': 'Upgrade to Pro'
+      };
+      return {
+        text: actionText[planCode] || 'Select Plan',
+        disabled: false,
+        className: planCode === 'premium' ? 'plan-btn primary' : 'plan-btn'
+      };
+    }
   };
 
   return (
@@ -218,24 +284,41 @@ const SubscriptionPlansSection = ({ subscriptionPlan, setSubscriptionPlan, handl
     <div className="plans-header">
       <h1>Choose Your Plan</h1>
       <p>Select the perfect plan for your craft learning journey</p>
+      {subscriptionStatus && (
+        <div className="current-subscription-info">
+          <p>Current: <strong>{subscriptionStatus.plan_code?.charAt(0).toUpperCase() + subscriptionStatus.plan_code?.slice(1)} Plan</strong> 
+          ({subscriptionStatus.subscription_status === 'active' ? 'Active' : 'Inactive'})</p>
+        </div>
+      )}
     </div>
     <div className="plans-grid">
-      <div className={`plan-card ${subscriptionPlan === 'free' ? 'selected' : ''}`}>
+      <div className={`plan-card ${subscriptionPlan === 'basic' ? 'selected' : ''}`}>
         <div className="plan-header">
-          <h3>Free</h3>
+          <h3>Basic</h3>
           <div className="plan-price">
-            <span className="price-amount">₹0</span>
+            <span className="price-amount">₹199</span>
             <span className="price-period">/month</span>
           </div>
         </div>
         <ul className="plan-features">
-          <li><LuCheck size={18} /> Limited free tutorials</li>
-          <li><LuCheck size={18} /> Basic video quality</li>
+          <li><LuCheck size={18} /> Access to free tutorials</li>
+          <li><LuCheck size={18} /> Individual tutorial purchases</li>
+          <li><LuCheck size={18} /> Standard video quality</li>
           <li><LuCheck size={18} /> Community support</li>
+          <li><LuCheck size={18} /> Mobile access</li>
         </ul>
-        <button className="plan-btn" onClick={() => setSubscriptionPlan('free')}>
-          Current Plan
-        </button>
+        {(() => {
+          const config = getButtonConfig('basic');
+          return (
+            <button 
+              className={config.className}
+              onClick={() => handleSubscriptionUpgrade('basic')}
+              disabled={config.disabled}
+            >
+              {config.text}
+            </button>
+          );
+        })()}
       </div>
 
       <div className={`plan-card featured ${subscriptionPlan === 'premium' ? 'selected' : ''}`}>
@@ -248,18 +331,24 @@ const SubscriptionPlansSection = ({ subscriptionPlan, setSubscriptionPlan, handl
           </div>
         </div>
         <ul className="plan-features">
-          <li><LuCheck size={18} /> Unlimited tutorial access</li>
+          <li><LuCheck size={18} /> Access to ALL tutorials</li>
           <li><LuCheck size={18} /> HD video quality</li>
-          <li><LuCheck size={18} /> New content weekly</li>
+          <li><LuCheck size={18} /> Weekly new content</li>
           <li><LuCheck size={18} /> Priority support</li>
           <li><LuCheck size={18} /> Download videos</li>
         </ul>
-        <button 
-          className="plan-btn primary" 
-          onClick={() => handleSubscriptionUpgrade('premium')}
-        >
-          {subscriptionPlan === 'premium' ? 'Current Plan' : 'Upgrade Now'}
-        </button>
+        {(() => {
+          const config = getButtonConfig('premium');
+          return (
+            <button 
+              className={config.className}
+              onClick={() => handleSubscriptionUpgrade('premium')}
+              disabled={config.disabled}
+            >
+              {config.text}
+            </button>
+          );
+        })()}
       </div>
 
       <div className={`plan-card ${subscriptionPlan === 'pro' ? 'selected' : ''}`}>
@@ -271,18 +360,28 @@ const SubscriptionPlansSection = ({ subscriptionPlan, setSubscriptionPlan, handl
           </div>
         </div>
         <ul className="plan-features">
-          <li><LuCheck size={18} /> Everything in Premium</li>
-          <li><LuCheck size={18} /> 1-on-1 mentorship</li>
+          <li><LuCheck size={18} /> Access to ALL tutorials</li>
+          <li><LuCheck size={18} /> HD video quality</li>
+          <li><LuCheck size={18} /> Weekly new content</li>
+          <li><LuCheck size={18} /> Priority support</li>
+          <li><LuCheck size={18} /> Download videos</li>
           <li><LuCheck size={18} /> Live workshops</li>
+          <li><LuCheck size={18} /> 1-on-1 mentorship</li>
           <li><LuCheck size={18} /> Certificate of completion</li>
           <li><LuCheck size={18} /> Early access to new content</li>
         </ul>
-        <button 
-          className="plan-btn" 
-          onClick={() => handleSubscriptionUpgrade('pro')}
-        >
-          {subscriptionPlan === 'pro' ? 'Current Plan' : 'Upgrade to Pro'}
-        </button>
+        {(() => {
+          const config = getButtonConfig('pro');
+          return (
+            <button 
+              className={config.className}
+              onClick={() => handleSubscriptionUpgrade('pro')}
+              disabled={config.disabled}
+            >
+              {config.text}
+            </button>
+          );
+        })()}
       </div>
     </div>
   </div>
@@ -290,10 +389,11 @@ const SubscriptionPlansSection = ({ subscriptionPlan, setSubscriptionPlan, handl
 };
 
 // My Learning Section
-const MyLearningSection = ({ tutorials, purchases, favorites, toggleFavorite, handleWatchTutorial, getLearningStats, getPurchasedTutorials }) => {
+const MyLearningSection = ({ tutorials, purchases, favorites, toggleFavorite, handleWatchTutorial, getLearningStats, getPurchasedTutorials, subscriptionStatus }) => {
   const stats = getLearningStats();
   const purchasedTutorials = getPurchasedTutorials();
   const favoriteTutorials = tutorials.filter(t => favorites.has(t.id));
+  const isPro = subscriptionStatus?.subscription?.plan_code === 'pro' || subscriptionStatus?.plan_code === 'pro';
 
   return (
     <div className="my-learning-view">
@@ -302,14 +402,14 @@ const MyLearningSection = ({ tutorials, purchases, favorites, toggleFavorite, ha
         <p>Track your progress and continue your craft journey</p>
       </div>
 
-      <LearningStatsBanner stats={stats} />
+      <LearningStatsBanner stats={stats} subscriptionStatus={subscriptionStatus} />
 
       {purchasedTutorials.length > 0 && (
         <section className="learning-section">
           <div className="section-header">
             <div className="section-title">
               <LuBookOpen size={24} />
-              <h2>My Purchased Tutorials</h2>
+              <h2>{isPro ? 'My Watched Videos' : 'My Purchased Tutorials'}</h2>
             </div>
           </div>
           <div className="learning-grid">
@@ -319,7 +419,7 @@ const MyLearningSection = ({ tutorials, purchases, favorites, toggleFavorite, ha
                 <div key={tutorial.id} className="learning-card">
                   <div className="learning-thumbnail">
                     {tutorial.thumbnail_url ? (
-                      <img src={tutorial.thumbnail_url} alt={tutorial.title} />
+                      <img src={getThumbnailUrl(tutorial.thumbnail_url)} alt={tutorial.title} />
                     ) : (
                       <div className="learning-placeholder"></div>
                     )}
@@ -359,7 +459,7 @@ const MyLearningSection = ({ tutorials, purchases, favorites, toggleFavorite, ha
               <div key={tutorial.id} className="learning-card">
                 <div className="learning-thumbnail">
                   {tutorial.thumbnail_url ? (
-                    <img src={tutorial.thumbnail_url} alt={tutorial.title} />
+                    <img src={getThumbnailUrl(tutorial.thumbnail_url)} alt={tutorial.title} />
                   ) : (
                     <div className="learning-placeholder"></div>
                   )}
@@ -455,15 +555,28 @@ const matchesCategory = (tutorial, categoryName) => {
   const normalizedCategoryName = normalizeCategory(categoryName);
   const normalizedTutorialCategory = normalizeCategory(tutorial.category);
 
-  // Direct category match
+  // Direct category match (exact match)
   if (normalizedTutorialCategory && normalizedTutorialCategory === normalizedCategoryName) {
     return true;
   }
 
-  // Heuristic match based on title/keywords when category is missing or off
+  // Partial category match (for cases like "Mylanchi / Mehandi Art" vs "Mehandi Art")
+  if (normalizedTutorialCategory && normalizedCategoryName) {
+    if (normalizedTutorialCategory.includes(normalizedCategoryName) || 
+        normalizedCategoryName.includes(normalizedTutorialCategory)) {
+      return true;
+    }
+  }
+
+  // Heuristic match based on title/keywords when category is missing or different
   const keywords = CATEGORY_KEYWORDS[categoryName] || [];
   const title = normalizeCategory(tutorial.title);
-  return keywords.some((kw) => title.includes(normalizeCategory(kw)));
+  const description = normalizeCategory(tutorial.description || '');
+  
+  return keywords.some((kw) => {
+    const normalizedKeyword = normalizeCategory(kw);
+    return title.includes(normalizedKeyword) || description.includes(normalizedKeyword);
+  });
 };
 
 export default function TutorialsDashboard() {
@@ -477,15 +590,36 @@ export default function TutorialsDashboard() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [favorites, setFavorites] = useState(new Set());
   const [viewMode, setViewMode] = useState('categories'); // 'categories' or 'lessons'
-  const [activeNavSection, setActiveNavSection] = useState('home'); // 'home', 'my-learning', 'subscription'
-  const [subscriptionPlan, setSubscriptionPlan] = useState('free'); // 'free', 'premium', 'pro'
+  const [activeNavSection, setActiveNavSection] = useState('home'); // 'home', 'my-learning', 'subscription', 'live-classes'
+  const [subscriptionPlan, setSubscriptionPlan] = useState('basic'); // 'basic', 'premium', 'pro'
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [profileStats, setProfileStats] = useState(null);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [showCreateSessionModal, setShowCreateSessionModal] = useState(false);
+  const [editingSession, setEditingSession] = useState(null);
 
   useEffect(() => {
     fetchTutorials();
     fetchUserPurchases();
     fetchSubscriptionStatus();
+    fetchProfileStats();
+    checkTeacherRole();
   }, [tutorialAuth?.tutorial_session_id]);
+
+  const checkTeacherRole = () => {
+    // Check if user has teacher or admin role
+    if (!tutorialAuth?.roles) {
+      setIsTeacher(false);
+      return;
+    }
+    
+    const roles = Array.isArray(tutorialAuth.roles) 
+      ? tutorialAuth.roles.map(r => String(r).toLowerCase())
+      : [];
+    
+    const hasTeacherRole = roles.includes('teacher') || roles.includes('admin');
+    setIsTeacher(hasTeacherRole);
+  };
 
   const allCategories = useMemo(() => {
     const merged = [...TUTORIAL_CATEGORIES];
@@ -500,7 +634,7 @@ export default function TutorialsDashboard() {
         merged.push({
           id: norm || 'general',
           name: catName,
-          image: t.thumbnail_url || candleMakingImg,
+          image: getThumbnailUrl(t.thumbnail_url) || candleMakingImg,
           color: '#E8F0FF'
         });
       }
@@ -548,22 +682,64 @@ export default function TutorialsDashboard() {
 
   const fetchSubscriptionStatus = async () => {
     try {
-      const res = await fetch(`${API_BASE}/customer/subscription-status.php`, {
+      // FIXED: Use profile API instead of subscription-status API
+      const res = await fetch(`${API_BASE}/customer/profile.php`, {
         headers: {
           'X-Tutorial-Email': tutorialAuth?.email || ''
         }
       });
       const data = await res.json();
       
+      console.log('Subscription status response:', data);
+      
       if (data.status === 'success') {
         setSubscriptionStatus(data);
-        if (data.plan_code) {
-          setSubscriptionPlan(data.plan_code);
-        }
+        
+        // FIXED: Get subscription plan from the correct path
+        const currentPlan = data.subscription?.plan_code || data.plan_code || 'basic';
+        setSubscriptionPlan(currentPlan);
+        
+        console.log('Subscription status set:', {
+          plan_code: currentPlan,
+          subscription_data: data.subscription,
+          feature_access: data.feature_access,
+          can_access_live_workshops: data.feature_access?.access_levels?.can_access_live_workshops,
+          frontend_plan_state: currentPlan
+        });
+      } else {
+        console.log('Subscription status error:', data);
+        // Fallback to basic if API fails
+        setSubscriptionPlan('basic');
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
+      // Fallback to basic if network fails
+      setSubscriptionPlan('basic');
     }
+  };
+
+  const fetchProfileStats = async () => {
+    if (!tutorialAuth?.email) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/customer/profile.php`, {
+        headers: {
+          'X-Tutorial-Email': tutorialAuth.email
+        }
+      });
+      const data = await res.json();
+      
+      if (data.status === 'success' && data.stats) {
+        setProfileStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile stats:', error);
+    }
+  };
+
+  const openSubscriptionCheckout = (plan) => {
+    // Navigate to checkout page
+    navigate(`/tutorials/subscribe?plan=${plan}`);
   };
 
   const handleLogout = () => {
@@ -586,10 +762,74 @@ export default function TutorialsDashboard() {
     setShowPaymentModal(true);
   };
 
+  // Helper function to check if user has access to a tutorial
+  const hasAccessToTutorial = (tutorial) => {
+    // Free tutorials are always accessible (Basic plan feature)
+    if (tutorial.is_free || tutorial.price === 0) {
+      console.log(`Tutorial ${tutorial.id} (${tutorial.title}) - Access: FREE`);
+      return true;
+    }
+    
+    // Check if individually purchased
+    if (purchases.has(tutorial.id)) {
+      console.log(`Tutorial ${tutorial.id} (${tutorial.title}) - Access: PURCHASED`);
+      return true;
+    }
+    
+    // Use feature access control - unlimited tutorials require Premium or Pro
+    if (subscriptionStatus?.feature_access) {
+      const canAccessUnlimited = subscriptionStatus.feature_access.access_levels?.can_access_unlimited_tutorials;
+      
+      // FIXED: Check multiple possible locations for plan_code and is_active
+      const planCode = subscriptionStatus.subscription?.plan_code || subscriptionStatus.plan_code;
+      const isActive = subscriptionStatus.subscription?.is_active || subscriptionStatus.is_active;
+      const subscriptionStatusValue = subscriptionStatus.subscription?.subscription_status || subscriptionStatus.subscription_status;
+      
+      if (canAccessUnlimited && 
+          (planCode === 'premium' || planCode === 'pro') &&
+          (isActive || subscriptionStatusValue === 'pending' || subscriptionStatusValue === 'authenticated')) {
+        console.log(`Tutorial ${tutorial.id} (${tutorial.title}) - Access: SUBSCRIPTION (${planCode}, status: ${subscriptionStatusValue}, active: ${isActive})`);
+        return true;
+      }
+    }
+    
+    console.log(`Tutorial ${tutorial.id} (${tutorial.title}) - Access: DENIED`, {
+      is_free: tutorial.is_free,
+      price: tutorial.price,
+      purchased: purchases.has(tutorial.id),
+      subscription_active: subscriptionStatus?.subscription?.is_active || subscriptionStatus?.is_active,
+      plan_code: subscriptionStatus?.subscription?.plan_code || subscriptionStatus?.plan_code,
+      can_access_unlimited: subscriptionStatus?.feature_access?.access_levels?.can_access_unlimited_tutorials
+    });
+    return false;
+  };
+
   const handleWatchTutorial = (tutorial) => {
-    if (purchases.has(tutorial.id) || tutorial.is_free) {
+    if (hasAccessToTutorial(tutorial)) {
       navigate(`/tutorial/${tutorial.id}`, { state: { tutorial } });
     }
+  };
+
+  // Helper function to check if user can access live workshops (Pro only)
+  const canAccessLiveWorkshops = () => {
+    // Primary check: feature_access from profile API
+    const hasFeatureAccess = subscriptionStatus?.feature_access?.access_levels?.can_access_live_workshops;
+    
+    // Backup check: subscription plan
+    const isProPlan = subscriptionStatus?.subscription?.plan_code === 'pro' || subscriptionPlan === 'pro';
+    
+    // Additional backup: is_pro_user flag
+    const isProUser = subscriptionStatus?.stats?.is_pro_user;
+    
+    console.log('Live workshops access check:', {
+      hasFeatureAccess,
+      isProPlan,
+      isProUser,
+      subscriptionPlan,
+      subscriptionStatus: subscriptionStatus?.subscription
+    });
+    
+    return hasFeatureAccess || isProPlan || isProUser || false;
   };
 
   const toggleFavorite = (tutorialId) => {
@@ -609,8 +849,8 @@ export default function TutorialsDashboard() {
       // Handle subscription upgrade - get plan from subscriptionPlan state
       const planCode = subscriptionPlan;
       
-      if (planCode === 'free') {
-        alert('You are already on the free plan. Please select Premium or Pro to upgrade.');
+      if (planCode === 'basic') {
+        alert('You are already on the basic plan. Please select Premium or Pro to upgrade.');
         return;
       }
 
@@ -642,11 +882,11 @@ export default function TutorialsDashboard() {
           return;
         }
 
-        // If free plan, just update status
-        if (planCode === 'free' || data.subscription_status === 'active') {
-          fetchSubscriptionStatus();
-          alert('Subscription activated successfully!');
-          return;
+        // If basic plan or immediately active, just update status
+        if (planCode === 'basic' || data.subscription_status === 'active') {
+            fetchSubscriptionStatus();
+            alert('Subscription activated successfully!');
+            return;
         }
 
         // For paid plans, open Razorpay checkout
@@ -756,6 +996,9 @@ export default function TutorialsDashboard() {
 
   const openRazorpayCheckout = (orderData, tutorial) => {
     const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_RGXWGOBliVCIpU';
+    
+    console.log('Using Razorpay Key:', razorpayKey); // Debug log
+    console.log('Order Data:', orderData); // Debug log
     
     const options = {
       key: razorpayKey,
@@ -902,10 +1145,22 @@ export default function TutorialsDashboard() {
   };
 
   const getLearningStats = () => {
-    const purchasedCount = purchases.size;
-    const completedCount = Math.floor(purchasedCount * 0.6); // Mock data
-    const totalHours = Math.floor(purchasedCount * 2.5); // Mock data
-    return { purchasedCount, completedCount, totalHours };
+    const isPro = subscriptionStatus?.plan_code === 'pro' || subscriptionStatus?.plan_code === 'premium';
+    
+    if (isPro && profileStats) {
+      // Use real learning data for Pro users
+      return {
+        purchasedCount: profileStats.completed_tutorials + (profileStats.in_progress_tutorials || 0), // Total watched
+        completedCount: profileStats.completed_tutorials,
+        totalHours: profileStats.learning_hours || 0
+      };
+    } else {
+      // Use purchase-based data for Basic users
+      const purchasedCount = purchases.size;
+      const completedCount = Math.floor(purchasedCount * 0.6); // Mock data
+      const totalHours = Math.floor(purchasedCount * 2.5); // Mock data
+      return { purchasedCount, completedCount, totalHours };
+    }
   };
 
   if (loading) {
@@ -955,40 +1210,97 @@ export default function TutorialsDashboard() {
               <LuCrown size={18} />
               <span>Subscription</span>
             </button>
+            <button 
+              className={`nav-link ${activeNavSection === 'live-classes' ? 'active' : ''}`}
+              onClick={() => setActiveNavSection('live-classes')}
+            >
+              <LuVideo size={18} />
+              <span>Live Classes</span>
+            </button>
+            {subscriptionStatus?.plan_code === 'pro' && (
+              <Link 
+                to="/pro-dashboard"
+                className="nav-link pro-dashboard-link"
+              >
+                <LuTrendingUp size={18} />
+                <span>My Progress</span>
+              </Link>
+            )}
             </div>
 
           <div className="tutorials-nav-right">
-            <button 
-              className="nav-item subscription-status"
-              onClick={() => setActiveNavSection('subscription')}
-            >
-              <LuCrown size={18} />
-              <span>Premium</span>
-            </button>
-            <button className="nav-item notifications-btn">
-              <LuBell size={18} />
-              <span className="notification-badge">3</span>
-            </button>
-            <div className="nav-item user-profile">
-              <LuUser size={18} />
-              <span>{tutorialAuth?.email?.split('@')[0] || 'User'}</span>
-            </div>
-            <button onClick={handleLogout} className="nav-item logout-btn">
-              <LuLogOut size={18} />
-              <span>Logout</span>
-            </button>
+            <NotificationDropdown />
+            <ProfileDropdown />
           </div>
               </div>
       </nav>
 
       {/* Main Content */}
       <main className="tutorials-main">
-        {activeNavSection === 'subscription' ? (
+        {activeNavSection === 'live-classes' ? (
+          <div className="live-classes-view">
+            {!canAccessLiveWorkshops() ? (
+              <div className="access-denied-section">
+                <div className="access-denied-card">
+                  <div className="access-denied-icon">
+                    <LuLock size={48} />
+                  </div>
+                  <h2>Live Workshops - Pro Feature</h2>
+                  <p>Live workshops and mentorship sessions are available exclusively for Pro subscribers.</p>
+                  <div className="current-plan-info">
+                    <span>Current Plan: <strong>{subscriptionStatus?.subscription?.plan_code || subscriptionPlan || 'Basic'}</strong></span>
+                  </div>
+                  <button 
+                    className="upgrade-btn"
+                    onClick={() => setActiveNavSection('subscription')}
+                  >
+                    <LuCrown size={18} />
+                    Upgrade to Pro
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {isTeacher && (
+                  <div className="teacher-actions" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                      className="btn-create-session"
+                      onClick={() => {
+                        setEditingSession(null);
+                        setShowCreateSessionModal(true);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 20px',
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <LuPlus size={18} />
+                      Create Live Session
+                    </button>
+                  </div>
+                )}
+                <LiveSessionsList 
+                  auth={tutorialAuth}
+                  isTeacher={isTeacher}
+                />
+              </>
+            )}
+          </div>
+        ) : activeNavSection === 'subscription' ? (
           <SubscriptionPlansSection 
             subscriptionPlan={subscriptionPlan}
             setSubscriptionPlan={setSubscriptionPlan}
-            handlePayment={handlePayment}
             subscriptionStatus={subscriptionStatus}
+            onUpgradeClick={openSubscriptionCheckout}
           />
         ) : activeNavSection === 'my-learning' ? (
           <MyLearningSection 
@@ -999,11 +1311,12 @@ export default function TutorialsDashboard() {
             handleWatchTutorial={handleWatchTutorial}
             getLearningStats={getLearningStats}
             getPurchasedTutorials={getPurchasedTutorials}
+            subscriptionStatus={subscriptionStatus}
           />
         ) : viewMode === 'categories' ? (
           <div className="categories-view">
             {/* Learning Stats Banner */}
-            <LearningStatsBanner stats={getLearningStats()} />
+            <LearningStatsBanner stats={getLearningStats()} subscriptionStatus={subscriptionStatus} />
 
             {/* Categories Header */}
             <div className="categories-header">
@@ -1037,7 +1350,7 @@ export default function TutorialsDashboard() {
                               {categoryTutorials.slice(0, 3).map((tutorial, idx) => (
                                 <div key={tutorial.id} className="category-tutorial-mini">
                                   {tutorial.thumbnail_url ? (
-                                    <img src={tutorial.thumbnail_url} alt={tutorial.title} />
+                                    <img src={getThumbnailUrl(tutorial.thumbnail_url)} alt={tutorial.title} />
                                   ) : (
                                     <div className="category-tutorial-mini-placeholder"></div>
                                   )}
@@ -1075,6 +1388,7 @@ export default function TutorialsDashboard() {
                 toggleFavorite={toggleFavorite}
                 handleWatchTutorial={handleWatchTutorial}
                 handlePurchase={handlePurchase}
+                hasAccessToTutorial={hasAccessToTutorial}
               />
             )}
 
@@ -1097,7 +1411,7 @@ export default function TutorialsDashboard() {
                 </div>
               ) : (
                 getCategoryTutorials().map((tutorial) => {
-            const isPurchased = purchases.has(tutorial.id);
+            const hasAccess = hasAccessToTutorial(tutorial);
             const isFree = tutorial.is_free || tutorial.price === 0;
                   const isFavorite = favorites.has(tutorial.id);
                   const progress = Math.floor(Math.random() * 100); // Mock progress
@@ -1106,12 +1420,12 @@ export default function TutorialsDashboard() {
                     <div key={tutorial.id} className="lesson-card">
                       <div className="lesson-thumbnail">
                         {tutorial.thumbnail_url ? (
-                    <img src={tutorial.thumbnail_url} alt={tutorial.title} />
+                    <img src={getThumbnailUrl(tutorial.thumbnail_url)} alt={tutorial.title} />
                         ) : (
                           <div className="lesson-placeholder"></div>
                   )}
                         <div className="lesson-overlay">
-                    {isPurchased || isFree ? (
+                    {hasAccess ? (
                       <button 
                               className="play-button-overlay"
                         onClick={() => handleWatchTutorial(tutorial)}
@@ -1154,12 +1468,7 @@ export default function TutorialsDashboard() {
                   </div>
 
                         <div className="lesson-footer">
-                    {isPurchased ? (
-                      <div className="purchased-badge">
-                        <LuCheck size={16} />
-                              <span>Purchased</span>
-                      </div>
-                    ) : isFree ? (
+                    {hasAccess ? (
                       <button 
                               className="watch-btn"
                         onClick={() => handleWatchTutorial(tutorial)}
@@ -1206,7 +1515,7 @@ export default function TutorialsDashboard() {
             <div className="payment-modal-content">
               <div className="tutorial-summary">
                 <img 
-                  src={selectedTutorial.thumbnail_url} 
+                  src={getThumbnailUrl(selectedTutorial.thumbnail_url)} 
                   alt={selectedTutorial.title}
                   className="summary-thumbnail"
                 />
@@ -1237,6 +1546,24 @@ export default function TutorialsDashboard() {
           </div>
         </div>
       )}
+
+      {/* Create/Edit Live Session Modal */}
+      {showCreateSessionModal && (
+        <CreateLiveSessionModal
+          isOpen={showCreateSessionModal}
+          onClose={() => {
+            setShowCreateSessionModal(false);
+            setEditingSession(null);
+          }}
+          onSuccess={() => {
+            // Refresh sessions list if needed
+            window.location.reload(); // Simple refresh, or you could use state management
+          }}
+          session={editingSession}
+          auth={tutorialAuth}
+        />
+      )}
+
     </div>
   );
 }

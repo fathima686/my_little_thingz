@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Admin Dashboard APIs</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .btn { background: #6b46c1; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        .result { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Admin Dashboard API Tests</h1>
+        <p>Testing all admin dashboard APIs to ensure CORS and 500 errors are fixed.</p>
+        
+        <div class="test-section">
+            <h3>1. Test Live Sessions API (CORS Fix)</h3>
+            <button class="btn" onclick="testLiveSessions()">Test Live Sessions</button>
+            <div id="live-sessions-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Test Custom Requests API (500 Error Fix)</h3>
+            <button class="btn" onclick="testCustomRequests()">Test Custom Requests</button>
+            <div id="custom-requests-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Test Live Subjects API</h3>
+            <button class="btn" onclick="testLiveSubjects()">Test Live Subjects</button>
+            <div id="live-subjects-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Test Create Live Session (Admin)</h3>
+            <button class="btn" onclick="testCreateSession()">Test Create Session</button>
+            <div id="create-session-result" class="result"></div>
+        </div>
+        
+        <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const adminHeaders = {
+            'Content-Type': 'application/json',
+            'X-Admin-User-Id': '19',
+            'X-Admin-Email': 'soudhame52@gmail.com'
+        };
+        
+        async function testLiveSessions() {
+            const resultDiv = document.getElementById('live-sessions-result');
+            resultDiv.innerHTML = 'Testing live sessions API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/teacher/live-sessions.php`, {
+                    method: 'GET',
+                    headers: adminHeaders
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Live sessions API working\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testCustomRequests() {
+            const resultDiv = document.getElementById('custom-requests-result');
+            resultDiv.innerHTML = 'Testing custom requests API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/custom-requests-database-only.php?status=pending`, {
+                    method: 'GET',
+                    headers: adminHeaders
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Custom requests API working\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testLiveSubjects() {
+            const resultDiv = document.getElementById('live-subjects-result');
+            resultDiv.innerHTML = 'Testing live subjects API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/teacher/live-subjects.php`, {
+                    method: 'GET',
+                    headers: adminHeaders
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Live subjects API working\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testCreateSession() {
+            const resultDiv = document.getElementById('create-session-result');
+            resultDiv.innerHTML = 'Testing create live session...';
+            
+            try {
+                const testData = {
+                    subject_id: 1,
+                    title: 'Test Admin Session',
+                    description: 'Test session created by admin',
+                    google_meet_link: 'https://meet.google.com/test-admin-session',
+                    scheduled_date: '2026-01-10',
+                    scheduled_time: '15:00:00',
+                    duration_minutes: 60,
+                    max_participants: 30
+                };
+                
+                const response = await fetch(`${API_BASE}/teacher/live-sessions.php`, {
+                    method: 'POST',
+                    headers: adminHeaders,
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `✅ SUCCESS: Create session working\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${data}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        </script>
+    </div>
+</body>
+</html>

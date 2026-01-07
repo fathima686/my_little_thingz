@@ -2,9 +2,23 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import CustomizationRequests from "../components/admin/CustomizationRequests";
+import CreateLiveSessionModal from "../components/live-teaching/CreateLiveSessionModal";
+import { LuVideo, LuPlus, LuPencil, LuTrash2, LuCalendar, LuClock, LuUsers, LuExternalLink } from "react-icons/lu";
 import "../styles/admin.css";
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
+const UPLOADS_BASE = "http://localhost/my_little_thingz/backend";
+
+// Helper function to get full thumbnail URL
+const getThumbnailUrl = (thumbnailUrl) => {
+  if (!thumbnailUrl) return null;
+  // If it's already a full URL, return as is
+  if (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://')) {
+    return thumbnailUrl;
+  }
+  // If it's a relative path, convert to full URL
+  return `${UPLOADS_BASE}/${thumbnailUrl}`;
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -43,7 +57,14 @@ export default function AdminDashboard() {
   const [reviewsReplyDraft, setReviewsReplyDraft] = useState({});
   const [reviewsSentiments, setReviewsSentiments] = useState({});
 
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | tutorials | settings
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | tutorials | live-sessions | settings
+
+  // Live Sessions management state
+  const [liveSessions, setLiveSessions] = useState([]);
+  const [liveSubjects, setLiveSubjects] = useState([]);
+  const [liveSessionFilter, setLiveSessionFilter] = useState('all'); // all, scheduled, live, completed
+  const [showCreateSessionModal, setShowCreateSessionModal] = useState(false);
+  const [editingLiveSession, setEditingLiveSession] = useState(null);
 
   // Tutorials management state
   const [tutorials, setTutorials] = useState([]);
@@ -161,6 +182,9 @@ export default function AdminDashboard() {
         case 'tutorials':
           await Promise.all([fetchTutorials(), fetchTutorialCategories()]);
           break;
+        case 'live-sessions':
+          await Promise.all([fetchLiveSessions(), fetchLiveSubjects()]);
+          break;
         default:
           // Refresh all data for unknown sections
           await Promise.all([
@@ -184,7 +208,11 @@ export default function AdminDashboard() {
   // Derive admin header for simple authorization to backend admin endpoints
   const adminHeader = useMemo(() => {
     const id = auth?.user_id ? Number(auth.user_id) : 0;
-    return id > 0 ? { "X-Admin-User-Id": String(id) } : {};
+    const email = auth?.email || '';
+    return id > 0 ? { 
+      "X-Admin-User-Id": String(id),
+      "X-Admin-Email": email
+    } : {};
   }, [auth]);
 
   // Sidebar cart drawer state and helpers
@@ -319,7 +347,8 @@ export default function AdminDashboard() {
 
   const fetchRequests = async (st = reqFilter) => {
     try {
-      const url = `${API_BASE}/admin/custom-requests.php?status=${encodeURIComponent(st)}`;
+      // Use database-only API to show ONLY real entries (no sample data)
+      const url = `${API_BASE}/admin/custom-requests-database-only.php?status=${encodeURIComponent(st)}`;
       const res = await fetch(url, { headers: { ...adminHeader } });
       const data = await res.json();
       if (res.ok && data.status === "success") {
@@ -330,7 +359,7 @@ export default function AdminDashboard() {
 
   const updateRequestStatus = async (requestId, status) => {
     try {
-      const res = await fetch(`${API_BASE}/admin/custom-requests.php`, {
+      const res = await fetch(`${API_BASE}/admin/custom-requests-database-only.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...adminHeader },
         body: JSON.stringify({ request_id: requestId, status })
@@ -435,8 +464,15 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (res.ok && data.status === 'success') {
         setReviews(data.items || []);
-        // Analyze sentiments for reviews with comments
-        analyzeReviewsSentiments(data.items.filter(r => r.comment));
+        // Analyze sentiments asynchronously (non-blocking)
+        // This won't affect the UI if the ML service is unavailable
+        (async () => {
+          try {
+            await analyzeReviewsSentiments(data.items.filter(r => r.comment));
+          } catch (e) {
+            // Silently fail - sentiment analysis is optional
+          }
+        })();
       }
     } catch (e) {
       console.error('Failed to load reviews:', e);
@@ -446,34 +482,61 @@ export default function AdminDashboard() {
   };
 
   const analyzeReviewsSentiments = async (reviewsList) => {
+    // Skip sentiment analysis if ML service is not available
+    // This is optional functionality and shouldn't break the dashboard
+    if (!reviewsList || reviewsList.length === 0) return;
+    
     try {
       const sentimentPromises = reviewsList.map(async (r) => {
         if (!r.comment) return { id: r.id, error: true };
         
         try {
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+          
           const res = await fetch('http://localhost:5001/api/ml/sentiment/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ review_text: r.comment })
+            body: JSON.stringify({ review_text: r.comment }),
+            signal: controller.signal
           });
+          
+          clearTimeout(timeoutId);
+          
           if (res.ok) {
             const data = await res.json();
             return { id: r.id, ...data };
           }
         } catch (err) {
-          console.error(`Failed to analyze review ${r.id}:`, err);
+          // Silently handle errors - ML service is optional
+          // Only log in development mode
+          if (process.env.NODE_ENV === 'development') {
+            console.debug(`Sentiment analysis unavailable for review ${r.id} (ML service may not be running)`);
+          }
         }
         return { id: r.id, error: true };
       });
       
-      const results = await Promise.all(sentimentPromises);
+      const results = await Promise.allSettled(sentimentPromises);
       const sentimentMap = {};
-      results.forEach(result => {
-        sentimentMap[result.id] = result;
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          sentimentMap[result.value.id] = result.value;
+        } else {
+          // Handle rejected promises gracefully
+          const reviewId = reviewsList[index]?.id;
+          if (reviewId) {
+            sentimentMap[reviewId] = { id: reviewId, error: true };
+          }
+        }
       });
       setReviewsSentiments(sentimentMap);
     } catch (e) {
-      console.error('Failed to analyze sentiments:', e);
+      // Silently handle errors - sentiment analysis is optional
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Sentiment analysis service unavailable:', e.message);
+      }
     }
   };
 
@@ -572,6 +635,79 @@ export default function AdminDashboard() {
     }
   };
 
+  // Live Sessions management functions
+  const fetchLiveSessions = async (filter = null) => {
+    try {
+      const statusFilter = filter !== null ? filter : liveSessionFilter;
+      const url = `${API_BASE}/teacher/live-sessions.php${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`;
+      // Use admin header for admin users (admins can access teacher endpoints)
+      const headers = {
+        ...adminHeader,
+        'X-User-ID': auth?.user_id || '',
+      };
+      // Add token if available (optional for admins)
+      if (auth?.token) {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+      }
+      const res = await fetch(url, { headers });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setLiveSessions(data.sessions || []);
+      } else if (res.status === 401 || res.status === 403) {
+        console.error('Access denied:', data.message || 'Unauthorized');
+      }
+    } catch (e) {
+      console.error('Failed to load live sessions:', e);
+    }
+  };
+
+  const fetchLiveSubjects = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/customer/live-subjects.php`);
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setLiveSubjects(data.subjects || []);
+      }
+    } catch (e) {
+      console.error('Failed to load live subjects:', e);
+    }
+  };
+
+  const handleDeleteLiveSession = async (sessionId) => {
+    if (!confirm('Are you sure you want to delete this live session?')) return;
+    
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...adminHeader,
+        'X-User-ID': auth?.user_id || '',
+      };
+      if (auth?.token) {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+      }
+      const res = await fetch(`${API_BASE}/teacher/live-sessions.php`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ id: sessionId })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        alert('Session deleted successfully');
+        fetchLiveSessions();
+      } else {
+        alert(data.message || 'Failed to delete session');
+      }
+    } catch (e) {
+      alert('Network error deleting session');
+    }
+  };
+
+  const handleLiveSessionSuccess = () => {
+    fetchLiveSessions();
+    setShowCreateSessionModal(false);
+    setEditingLiveSession(null);
+  };
+
   const handleTutorialThumbnailChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -579,7 +715,7 @@ export default function AdminDashboard() {
         setTutorialNotice({ type: 'error', text: 'Thumbnail image must be less than 5MB' });
         return;
       }
-      setTutorialForm({ ...tutorialForm, thumbnail: file });
+      setTutorialForm({ ...tutorialForm, thumbnail: file, thumbnail_url: '' });
       const reader = new FileReader();
       reader.onloadend = () => setTutorialThumbnailPreview(reader.result);
       reader.readAsDataURL(file);
@@ -688,7 +824,7 @@ export default function AdminDashboard() {
       is_free: tutorial.is_free ? true : false,
       category: tutorial.category || "",
     });
-    setTutorialThumbnailPreview(tutorial.thumbnail_url || null);
+    setTutorialThumbnailPreview(getThumbnailUrl(tutorial.thumbnail_url));
   };
 
   const handleDeleteTutorial = async (id) => {
@@ -1113,6 +1249,7 @@ export default function AdminDashboard() {
           <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }} title="Order Requirements">Order Requirements</button>
           <button className={activeSection === 'reviews' ? 'active' : ''} onClick={() => { setActiveSection('reviews'); fetchReviews(); }} title="Customer Reviews">Customer Reviews</button>
           <button className={activeSection === 'tutorials' ? 'active' : ''} onClick={() => { setActiveSection('tutorials'); fetchTutorials(); fetchTutorialCategories(); }} title="Tutorial Videos Management">Tutorials</button>
+          <button className={activeSection === 'live-sessions' ? 'active' : ''} onClick={() => { setActiveSection('live-sessions'); fetchLiveSessions(); fetchLiveSubjects(); }} title="Live Teaching Sessions">Live Sessions</button>
           {/* Promotional Offers removed as requested */}
           <div className="cart-mini" style={{marginTop:12, padding:'10px 8px', background:'#f8f7ff', borderRadius:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -1352,7 +1489,7 @@ export default function AdminDashboard() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th>S.No</th>
                       <th>Supplier</th>
                       <th>Image</th>
                       <th>Name</th>
@@ -1369,9 +1506,9 @@ export default function AdminDashboard() {
                     {supplierProducts.length === 0 ? (
                       <tr><td colSpan={11} className="muted">No trending products</td></tr>
                     ) : (
-                      supplierProducts.map(p => (
+                      supplierProducts.map((p, index) => (
                         <tr key={p.id}>
-                          <td>{p.id}</td>
+                          <td>{index + 1}</td>
                           <td>{p.supplier_name} <div className="muted" style={{fontSize:12}}>#{p.supplier_id}</div></td>
                           <td>
                             {p.image_url ? (
@@ -1632,16 +1769,12 @@ export default function AdminDashboard() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th>S.No</th>
                       <th>Supplier</th>
                       <th>Image</th>
                       <th>Name</th>
                       <th>SKU</th>
                       <th>Category</th>
-                      <th>Type</th>
-                      <th>Size</th>
-                      <th>Color</th>
-                      <th>Brand</th>
                       <th>Qty</th>
                       <th>Price</th>
                       <th>Availability</th>
@@ -1651,11 +1784,11 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody>
                     {supplierInventory.length === 0 ? (
-                      <tr><td colSpan={15} className="muted">No inventory</td></tr>
+                      <tr><td colSpan={11} className="muted">No inventory</td></tr>
                     ) : (
-                      supplierInventory.map(m => (
+                      supplierInventory.map((m, index) => (
                         <tr key={m.id}>
-                          <td>{m.id}</td>
+                          <td>{index + 1}</td>
                           <td>{m.supplier_name} <div className="muted" style={{fontSize:12}}>#{m.supplier_id}</div></td>
                           <td>
                             {m.image_url ? (
@@ -1672,10 +1805,6 @@ export default function AdminDashboard() {
                           <td>{m.name}</td>
                           <td>{m.sku || '-'}</td>
                           <td>{m.category || '-'}</td>
-                          <td>{m.type || '-'}</td>
-                          <td>{m.size || '-'}</td>
-                          <td>{m.color || '-'}</td>
-                          <td>{m.brand || '-'}</td>
                           <td>{m.quantity}</td>
                           <td>{Number(m.price||0).toFixed(2)}</td>
                           <td style={{ textTransform:'capitalize' }}>{m.availability}</td>
@@ -2333,7 +2462,15 @@ export default function AdminDashboard() {
                             className="input" 
                             type="url"
                             value={tutorialForm.thumbnail_url} 
-                            onChange={e => setTutorialForm({ ...tutorialForm, thumbnail_url: e.target.value })}
+                            onChange={e => {
+                              const url = e.target.value;
+                              setTutorialForm({ ...tutorialForm, thumbnail_url: url, thumbnail: null });
+                              if (url) {
+                                setTutorialThumbnailPreview(getThumbnailUrl(url));
+                              } else {
+                                setTutorialThumbnailPreview(null);
+                              }
+                            }}
                             placeholder="https://example.com/thumbnail.jpg"
                           />
                         </div>
@@ -2387,9 +2524,12 @@ export default function AdminDashboard() {
                             <div style={{ display: 'flex', gap: 16 }}>
                               {tutorial.thumbnail_url && (
                                 <img 
-                                  src={tutorial.thumbnail_url} 
+                                  src={getThumbnailUrl(tutorial.thumbnail_url)} 
                                   alt={tutorial.title}
                                   style={{ width: 150, height: 100, objectFit: 'cover', borderRadius: 6 }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
                                 />
                               )}
                               <div style={{ flex: 1 }}>
@@ -2446,10 +2586,182 @@ export default function AdminDashboard() {
               </section>
             )}
 
+            {activeSection === 'live-sessions' && (
+              <section id="live-sessions" className="widget" style={{ marginTop: 12 }}>
+                <div className="widget-head">
+                  <h4>Live Teaching Sessions</h4>
+                  <div className="controls" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select 
+                      className="select" 
+                      value={liveSessionFilter} 
+                      onChange={(e) => {
+                        const newFilter = e.target.value;
+                        setLiveSessionFilter(newFilter);
+                        fetchLiveSessions(newFilter);
+                      }}
+                    >
+                      <option value="all">All Sessions</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="live">Live Now</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <button 
+                      className="btn btn-primary tiny" 
+                      onClick={() => {
+                        setEditingLiveSession(null);
+                        setShowCreateSessionModal(true);
+                      }}
+                    >
+                      <LuPlus size={14} /> Create Session
+                    </button>
+                    <button className="btn btn-soft tiny" onClick={fetchLiveSessions}>Refresh</button>
+                  </div>
+                </div>
+                <div className="widget-body">
+                  {liveSessions.length === 0 ? (
+                    <div className="muted" style={{ padding: 40, textAlign: 'center' }}>
+                      No live sessions found. Create your first session to get started.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 16 }}>
+                      {liveSessions.map(session => {
+                        const scheduledDateTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+                        const isPast = scheduledDateTime < new Date();
+                        const statusColors = {
+                          scheduled: { bg: '#dbeafe', color: '#1e40af' },
+                          live: { bg: '#d1fae5', color: '#065f46' },
+                          completed: { bg: '#f3f4f6', color: '#374151' },
+                          cancelled: { bg: '#fee2e2', color: '#991b1b' }
+                        };
+                        const statusStyle = statusColors[session.status] || statusColors.scheduled;
+
+                        return (
+                          <div 
+                            key={session.id} 
+                            style={{ 
+                              border: '1px solid #e5e7eb', 
+                              borderRadius: 8, 
+                              padding: 16,
+                              background: '#fff'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                                  <h5 style={{ margin: 0 }}>{session.title}</h5>
+                                  <span style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    background: statusStyle.bg,
+                                    color: statusStyle.color,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase'
+                                  }}>
+                                    {session.status}
+                                  </span>
+                                  <span style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    background: `${session.subject_color}20`,
+                                    color: session.subject_color,
+                                    fontSize: 11,
+                                    fontWeight: 500
+                                  }}>
+                                    {session.subject_name}
+                                  </span>
+                                </div>
+                                {session.description && (
+                                  <p style={{ margin: '8px 0', color: '#6b7280', fontSize: 14 }}>
+                                    {session.description}
+                                  </p>
+                                )}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 12, fontSize: 13, color: '#4b5563' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <LuCalendar size={14} />
+                                    <span>{scheduledDateTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <LuClock size={14} />
+                                    <span>{scheduledDateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <LuClock size={14} />
+                                    <span>{session.duration_minutes} minutes</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <LuUsers size={14} />
+                                    <span>{session.registered_count || 0} / {session.max_participants} registered</span>
+                                  </div>
+                                </div>
+                                <div style={{ marginTop: 12 }}>
+                                  <a 
+                                    href={session.google_meet_link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      gap: 6, 
+                                      color: '#667eea', 
+                                      textDecoration: 'none',
+                                      fontSize: 13,
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    <LuExternalLink size={14} />
+                                    {session.google_meet_link}
+                                  </a>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button 
+                                  className="btn btn-soft tiny" 
+                                  onClick={() => {
+                                    setEditingLiveSession(session);
+                                    setShowCreateSessionModal(true);
+                                  }}
+                                >
+                                  <LuPencil size={14} /> Edit
+                                </button>
+                                <button 
+                                  className="btn btn-danger tiny" 
+                                  onClick={() => handleDeleteLiveSession(session.id)}
+                                >
+                                  <LuTrash2 size={14} /> Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Promotional Offers section removed as requested */}
           </div>
         </div>
       </main>
+
+      {/* Create/Edit Live Session Modal */}
+      {showCreateSessionModal && (
+        <CreateLiveSessionModal
+          isOpen={showCreateSessionModal}
+          onClose={() => {
+            setShowCreateSessionModal(false);
+            setEditingLiveSession(null);
+          }}
+          onSuccess={handleLiveSessionSuccess}
+          session={editingLiveSession}
+          auth={auth}
+          isAdmin={true}
+          adminHeader={adminHeader}
+        />
+      )}
 
       {/* Edit Artwork Modal */}
       {editArtwork && (

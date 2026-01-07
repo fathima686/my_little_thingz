@@ -11,7 +11,7 @@ if (in_array($origin, $allowed, true)) {
 }
 header('Vary: Origin');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-User-Id, X-Admin-Email');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(204);

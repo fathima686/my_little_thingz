@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test: Watched Videos Change</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Test: "My Purchased Tutorials" → "My Watched Videos" Change</h1>
+    
+    <div class="test-section success">
+        <h2>✅ Changes Made Successfully</h2>
+        <p>The following changes have been implemented in <code>frontend/src/pages/TutorialsDashboard.jsx</code>:</p>
+        <ul>
+            <li><strong>Section Title:</strong> Now shows "My Watched Videos" for Pro users and "My Purchased Tutorials" for Basic users</li>
+            <li><strong>Stats Label:</strong> Already had conditional logic showing "Watched Tutorials" for Pro users</li>
+            <li><strong>Logic Added:</strong> Added <code>isPro</code> variable to detect Pro subscription status</li>
+        </ul>
+    </div>
+
+    <div class="test-section info">
+        <h2>📋 What Was Changed</h2>
+        <h3>1. Added Pro Detection Logic</h3>
+        <pre><code>const isPro = subscriptionStatus?.subscription?.plan_code === 'pro' || subscriptionStatus?.plan_code === 'pro';</code></pre>
+        
+        <h3>2. Updated Section Title</h3>
+        <pre><code>&lt;h2&gt;{isPro ? 'My Watched Videos' : 'My Purchased Tutorials'}&lt;/h2&gt;</code></pre>
+        
+        <h3>3. Existing Stats Label (Already Correct)</h3>
+        <pre><code>{isPro ? 'Watched Tutorials' : 'Tutorials Purchased'}</code></pre>
+    </div>
+
+    <div class="test-section info">
+        <h2>🔍 Other Files Checked</h2>
+        <ul>
+            <li><strong>ProfileDropdown.jsx:</strong> ✅ Already has correct conditional logic</li>
+            <li><strong>ProfileEdit.jsx:</strong> ✅ Already has correct conditional logic</li>
+            <li><strong>Backend APIs:</strong> ✅ No changes needed - they handle the logic correctly</li>
+        </ul>
+    </div>
+
+    <div class="test-section success">
+        <h2>🎉 Expected Behavior</h2>
+        <h3>For Pro Users:</h3>
+        <ul>
+            <li>Section title shows: <strong>"My Watched Videos"</strong></li>
+            <li>Stats show: <strong>"Watched Tutorials"</strong> instead of "Tutorials Purchased"</li>
+            <li>All videos are accessible without individual purchase</li>
+        </ul>
+        
+        <h3>For Basic Users:</h3>
+        <ul>
+            <li>Section title shows: <strong>"My Purchased Tutorials"</strong></li>
+            <li>Stats show: <strong>"Tutorials Purchased"</strong></li>
+            <li>Only purchased and free tutorials are accessible</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Next Steps</h2>
+        <ol>
+            <li>Refresh your tutorial dashboard page</li>
+            <li>Check that Pro users see "My Watched Videos" section</li>
+            <li>Verify Basic users still see "My Purchased Tutorials"</li>
+            <li>Test that the functionality works correctly for both user types</li>
+        </ol>
+    </div>
+</body>
+</html>
+</script>

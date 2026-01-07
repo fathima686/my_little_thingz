@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Design Editor - Live Preview System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .design-workspace {
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+        
+        .canvas-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .canvas-wrapper {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 10px;
+            background: #fff;
+            position: relative;
+        }
+        
+        .tools-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tool-group {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .tool-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .tool-button {
+            margin: 5px;
+            min-width: 80px;
+        }
+        
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .color-preview {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .version-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .status-badge {
+            font-size: 0.9em;
+            padding: 6px 12px;
+        }
+        
+        .customer-request {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .design-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9em;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .save-controls {
+            position: sticky;
+            bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        #designCanvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .font-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .range-input {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="design-workspace">
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Left Sidebar - Tools and Info -->
+                <div class="col-md-3">
+                    <!-- Order Info -->
+                    <div class="version-info">
+                        <h6 class="mb-2">
+                            <i class="fas fa-info-circle"></i> Order #<span id="currentOrderId">-</span>
+                        </h6>
+                        <div class="mb-2">
+                            <span class="badge status-badge" id="currentStatus">Loading...</span>
+                        </div>
+                        <div class="small">
+                            Version: <strong id="currentVersion">-</strong><br>
+                            Last Updated: <span id="lastUpdated">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Customer Request -->
+                    <div class="customer-request" id="customerRequest" style="display: none;">
+                        <h6><i class="fas fa-user"></i> Customer Request</h6>
+                        <div id="customerRequestContent"></div>
+                    </div>
+
+                    <!-- Design Tools -->
+                    <div class="tools-panel">
+                        <h6><i class="fas fa-tools"></i> Design Tools</h6>
+                        
+                        <!-- Text Tools -->
+                        <div class="tool-group">
+                            <label class="form-label small fw-bold">Text</label>
+                            <div class="mb-2">
+                                <button class="btn btn-outline-primary btn-sm tool-button" id="addTextBtn">
+                                    <i class="fas fa-font"></i> Add Text
+                                </button>
+                            </div>
+                            <div class="font-controls">
+                                <select class="form-select form-select-sm" id="fontFamily">
+                                    <option value="Arial">Arial</option>
+                                    <option value="Times New Roman">Times</option>
+                                    <option value="Helvetica">Helvetica</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Verdana">Verdana</option>
+                                </select>
+                                <input type="range" class="form-range range-input" id="fontSize" min="12" max="72" value="24">
+                                <span class="small" id="fontSizeDisplay">24px</span>
+                            </div>
+                            <div class="color-picker-wrapper mt-2">
+                                <input type="color" class="form-control form-control-color" id="textColor" value="#000000">
+                                <label class="small">Text Color</label>
+                            </div>
+                        </div>
+
+                        <!-- Image Tools -->
+                        <div class="tool-group">
+                            <label class="form-label small fw-bold">Images</label>
+                            <div class="mb-2">
+                                <input type="file" class="form-control form-control-sm" id="imageUpload" accept="image/*">
+                            </div>
+                            <button class="btn btn-outline-success btn-sm tool-button" id="uploadImageBtn">
+                                <i class="fas fa-image"></i> Add Image
+                            </button>
+                        </div>
+
+                        <!-- Object Controls -->
+                        <div class="tool-group">
+                            <label class="form-label small fw-bold">Object Controls</label>
+                            <div class="d-flex flex-wrap gap-1">
+                                <button class="btn btn-outline-secondary btn-sm" id="deleteObjectBtn">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="bringForwardBtn">
+                                    <i class="fas fa-arrow-up"></i> Forward
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="sendBackwardBtn">
+                                    <i class="fas fa-arrow-down"></i> Backward
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Controls -->
+                        <div class="tool-group">
+                            <label class="form-label small fw-bold">Canvas</label>
+                            <div class="d-flex flex-wrap gap-1">
+                                <button class="btn btn-outline-warning btn-sm" id="clearCanvasBtn">
+                                    <i class="fas fa-eraser"></i> Clear All
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" id="resetZoomBtn">
+                                    <i class="fas fa-search"></i> Reset Zoom
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Design History -->
+                    <div class="tools-panel">
+                        <h6><i class="fas fa-history"></i> Version History</h6>
+                        <div class="design-history" id="designHistory">
+                            <div class="text-center text-muted">Loading history...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Canvas Area -->
+                <div class="col-md-9">
+                    <div class="canvas-container">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-paint-brush"></i> Design Canvas</h5>
+                            <div>
+                                <button class="btn btn-outline-secondary btn-sm" id="previewBtn">
+                                    <i class="fas fa-eye"></i> Preview
+                                </button>
+                                <button class="btn btn-primary btn-sm" id="saveDesignBtn">
+                                    <i class="fas fa-save"></i> Save Design
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="canvas-wrapper">
+                            <canvas id="designCanvas" width="600" height="400"></canvas>
+                            <div class="loading-overlay" id="canvasLoading" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save Controls -->
+                    <div class="save-controls">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <label class="form-label small">Design Notes (Optional)</label>
+                                <textarea class="form-control form-control-sm" id="designNotes" rows="2" placeholder="Add notes about this design version..."></textarea>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-success" id="saveAndNotifyBtn">
+                                    <i class="fas fa-paper-plane"></i> Save & Notify Customer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="js/design-editor.js"></script>
+</body>
+</html>

@@ -28,7 +28,7 @@ export default function SupplierDashboard() {
   const [allMaterials, setAllMaterials] = useState([]); // full list for inventory section
 
   // Forms
-  const [matForm, setMatForm] = useState({ name: "", sku: "", category: "", quantity: "", image_url: "" });
+  const [matForm, setMatForm] = useState({ name: "", sku: "", category: "", quantity: "", price: "", image_url: "" });
   const [updating, setUpdating] = useState(false);
 
   // Product modal (edit/delete)
@@ -37,7 +37,7 @@ export default function SupplierDashboard() {
 
   // Material modal (edit/delete)
   const [matModalOpen, setMatModalOpen] = useState(false);
-  const [matEditForm, setMatEditForm] = useState({ id: 0, name: "", sku: "", category: "", quantity: 0, image_url: "" });
+  const [matEditForm, setMatEditForm] = useState({ id: 0, name: "", sku: "", category: "", quantity: 0, price: 0, image_url: "" });
 
   // Requirements message modal
   const [reqModalOpen, setReqModalOpen] = useState(false);
@@ -131,12 +131,13 @@ export default function SupplierDashboard() {
           sku: matForm.sku,
           category: matForm.category,
           quantity: Number(matForm.quantity) || 0,
+          price: Number(matForm.price) || 0,
           image_url: matForm.image_url
         })
       });
       const data = await res.json();
       if (res.ok && data.status === "success") {
-        setMatForm({ name: "", sku: "", category: "", quantity: 0, image_url: "" });
+        setMatForm({ name: "", sku: "", category: "", quantity: 0, price: 0, image_url: "" });
         await loadInventory();
         setActiveSection('inventory');
       } else {
@@ -350,6 +351,7 @@ export default function SupplierDashboard() {
                       ))}
                     </select>
                     <input className="select" placeholder="Qty" type="number" value={matForm.quantity} onChange={e=>setMatForm(v=>({...v, quantity:e.target.value}))} />
+                    <input className="select" placeholder="Price" type="number" step="0.01" value={matForm.price || ''} onChange={e=>setMatForm(v=>({...v, price:e.target.value}))} />
 
                     <div style={{gridColumn:'span 6'}}>
                       <label className="muted">Or upload image</label>
@@ -380,11 +382,12 @@ export default function SupplierDashboard() {
                   <table className="table" style={{ marginTop: 12 }}>
                     <thead>
                       <tr>
-                        <th>ID</th>
+                        <th>S.No</th>
                         <th>Name</th>
                         <th>Category</th>
                         <th>SKU</th>
                         <th>Qty</th>
+                        <th>Price</th>
                         <th>Availability</th>
                         <th>Updated</th>
                         <th>Actions</th>
@@ -392,11 +395,11 @@ export default function SupplierDashboard() {
                     </thead>
                     <tbody>
                       {allMaterials.length === 0 ? (
-                        <tr><td colSpan={8} className="muted">No inventory yet</td></tr>
+                        <tr><td colSpan={9} className="muted">No inventory yet</td></tr>
                       ) : (
-                        allMaterials.map(m => (
+                        allMaterials.map((m, index) => (
                           <tr key={m.id}>
-                            <td>{m.id}</td>
+                            <td>{index + 1}</td>
                             <td style={{display:'flex', alignItems:'center', gap:8}}>
                               {m.image_url ? <img alt={m.name} src={m.image_url} style={{width:36,height:36,objectFit:'cover',borderRadius:6}}/> : null}
                               <span>{m.name}</span>
@@ -404,11 +407,12 @@ export default function SupplierDashboard() {
                             <td>{m.category || '—'}</td>
                             <td>{m.sku || '—'}</td>
                             <td>{m.quantity}</td>
+                            <td>{Number(m.price || 0).toFixed(2)}</td>
                             <td style={{ textTransform:'capitalize' }}>{m.availability}</td>
                             <td>{new Date(m.updated_at).toLocaleString()}</td>
                             <td>
                               <button className="btn btn-soft tiny" onClick={() => {
-                                setMatEditForm({ id: m.id, name: m.name, sku: m.sku || '', category: m.category || '', quantity: m.quantity, image_url: m.image_url || '' });
+                                setMatEditForm({ id: m.id, name: m.name, sku: m.sku || '', category: m.category || '', quantity: m.quantity, price: m.price || 0, image_url: m.image_url || '' });
                                 setMatModalOpen(true);
                               }}>Edit</button>
                             </td>
@@ -519,6 +523,7 @@ export default function SupplierDashboard() {
                         {categories.map(n => (<option key={n} value={n}>{n}</option>))}
                       </select>
                       <input className="select" placeholder="Qty" type="number" value={matEditForm.quantity} onChange={e=>setMatEditForm(v=>({...v, quantity:e.target.value}))} />
+                      <input className="select" placeholder="Price" type="number" step="0.01" value={matEditForm.price} onChange={e=>setMatEditForm(v=>({...v, price:e.target.value}))} />
 
                       <input className="select" placeholder="Image URL" value={matEditForm.image_url} onChange={e=>setMatEditForm(v=>({...v, image_url:e.target.value}))} />
                       <div style={{gridColumn:'span 2'}}>

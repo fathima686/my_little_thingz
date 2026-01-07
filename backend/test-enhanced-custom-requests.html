@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Enhanced Custom Requests</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .btn { background: #6b46c1; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { background: #d1fae5; color: #065f46; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .request-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .customer-info { background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 5px 0; }
+        .description { background: #fff3e0; padding: 10px; border-radius: 5px; margin: 5px 0; }
+        .requirements { background: #f3e5f5; padding: 10px; border-radius: 5px; margin: 5px 0; }
+        .images { display: flex; gap: 10px; margin: 10px 0; }
+        .images img { width: 100px; height: 75px; object-fit: cover; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test Enhanced Custom Requests API</h1>
+        <p>Testing the enhanced API with full customer details, descriptions, and images</p>
+        
+        <button class="btn" onclick="testEnhancedAPI()">Test Enhanced API</button>
+        <button class="btn" onclick="testAllStatuses()">Test All Status Filters</button>
+        <button class="btn" onclick="clearAndReload()">Clear Data & Reload</button>
+        
+        <div id="status"></div>
+        <div id="results"></div>
+        
+        <script>
+        const API_URL = 'http://localhost/my_little_thingz/backend/api/admin/custom-requests-database-only.php';
+        
+        async function testEnhancedAPI() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.innerHTML = '<div class="success">Testing enhanced custom requests API...</div>';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_URL}?status=all&t=${Date.now()}`, {
+                    headers: {
+                        'X-Admin-User-Id': '19',
+                        'X-Admin-Email': 'soudhame52@gmail.com'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    statusDiv.innerHTML = `<div class="success">✅ Enhanced API Test Successful!
+                    <br>Found ${data.requests.length} requests with full details</div>`;
+                    
+                    let html = '<h2>📋 Custom Requests with Full Details:</h2>';
+                    
+                    if (data.requests && data.requests.length > 0) {
+                        data.requests.forEach(request => {
+                            html += `<div class="request-card">
+                                <h3>🎯 ${request.title}</h3>
+                                
+                                <div class="customer-info">
+                                    <h4>👤 Customer Information:</h4>
+                                    <p><strong>Name:</strong> ${request.customer_name} (${request.first_name} ${request.last_name})</p>
+                                    <p><strong>Email:</strong> ${request.email}</p>
+                                    <p><strong>Phone:</strong> ${request.phone || 'Not provided'}</p>
+                                    <p><strong>Category:</strong> ${request.category_name}</p>
+                                </div>
+                                
+                                <div class="description">
+                                    <h4>📝 Description:</h4>
+                                    <p>${request.description || 'No description provided'}</p>
+                                </div>
+                                
+                                <div class="requirements">
+                                    <h4>📋 Requirements:</h4>
+                                    <p>${request.requirements || 'No specific requirements'}</p>
+                                </div>
+                                
+                                <div>
+                                    <h4>🖼️ Images:</h4>
+                                    <div class="images">
+                                        ${request.images.map(img => `<img src="${img}" alt="Request image" />`).join('')}
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                    <span><strong>Status:</strong> ${request.status}</span>
+                                    <span><strong>Priority:</strong> ${request.priority}</span>
+                                    <span><strong>Budget:</strong> $${request.budget_min} - $${request.budget_max}</span>
+                                    <span><strong>Deadline:</strong> ${request.deadline} (${request.days_until_deadline} days)</span>
+                                </div>
+                                
+                                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                                    <strong>Order ID:</strong> ${request.order_id} | 
+                                    <strong>Created:</strong> ${request.created_at}
+                                </div>
+                            </div>`;
+                        });
+                        
+                        html += `<div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <h3>📊 Statistics:</h3>
+                            <p>Total Requests: ${data.stats.total_requests}</p>
+                            <p>Pending: ${data.stats.pending_requests}</p>
+                            <p>In Progress: ${data.stats.in_progress_requests}</p>
+                            <p>Completed: ${data.stats.completed_requests}</p>
+                            <p>Cancelled: ${data.stats.cancelled_requests}</p>
+                        </div>`;
+                        
+                        html += `<div style="background: #f0f8ff; padding: 15px; border-radius: 5px;">
+                            <h3>🎉 Success! Your admin dashboard should now show:</h3>
+                            <ul>
+                                <li>✅ Customer names, emails, and phone numbers</li>
+                                <li>✅ Full descriptions and requirements</li>
+                                <li>✅ Sample images for each request</li>
+                                <li>✅ Budget information and deadlines</li>
+                                <li>✅ Status and priority information</li>
+                            </ul>
+                        </div>`;
+                    } else {
+                        html += '<p>No requests found. The API will create sample data on first run.</p>';
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    const errorText = await response.text();
+                    statusDiv.innerHTML = '<div class="error">❌ API Error</div>';
+                    resultsDiv.innerHTML = `<pre>${errorText}</pre>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="error">❌ Network Error</div>';
+                resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testAllStatuses() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.innerHTML = '<div class="success">Testing all status filters...</div>';
+            
+            const statuses = ['all', 'pending', 'submitted', 'in_progress', 'completed'];
+            let html = '<h2>📊 Status Filter Test Results:</h2>';
+            
+            for (const status of statuses) {
+                try {
+                    const response = await fetch(`${API_URL}?status=${status}&t=${Date.now()}`, {
+                        headers: {
+                            'X-Admin-User-Id': '19',
+                            'X-Admin-Email': 'soudhame52@gmail.com'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        html += `<p>✅ Status "${status}": ${data.requests.length} requests</p>`;
+                    } else {
+                        html += `<p>❌ Status "${status}": Error ${response.status}</p>`;
+                    }
+                } catch (error) {
+                    html += `<p>❌ Status "${status}": ${error.message}</p>`;
+                }
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        async function clearAndReload() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<div class="success">This would clear existing data and reload sample data...</div>';
+            
+            // Note: In a real implementation, you might want to add a clear data endpoint
+            // For now, just reload the test
+            setTimeout(() => {
+                testEnhancedAPI();
+            }, 1000);
+        }
+        </script>
+    </div>
+</body>
+</html>

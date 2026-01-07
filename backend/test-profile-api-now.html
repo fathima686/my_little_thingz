@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Profile API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Profile API Test</h1>
+    <button onclick="testProfileAPI()">Test Profile API</button>
+    <div id="results"></div>
+
+    <script>
+        async function testProfileAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/api/customer/profile.php', {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': 'soudhame52@gmail.com'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const text = await response.text();
+                console.log('Raw response:', text);
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Invalid JSON response: ' + text);
+                }
+                
+                if (response.ok && data.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Profile API Working!</h3>
+                            <p><strong>Plan:</strong> ${data.subscription.plan_code}</p>
+                            <p><strong>Status:</strong> ${data.subscription.subscription_status}</p>
+                            <p><strong>Is Pro:</strong> ${data.stats.is_pro_user}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Profile API Error</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Message:</strong> ${data.message || 'Unknown error'}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network/Parse Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = () => testProfileAPI();
+    </script>
+</body>
+</html>

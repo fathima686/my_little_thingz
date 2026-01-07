@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Subscription Profile Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 250px; }
+    </style>
+</head>
+<body>
+    <h1>Fix Subscription Profile Issue</h1>
+    <p class="info">This tool will help debug and fix the subscription profile display issue.</p>
+
+    <div class="step">
+        <h3>Step 1: Debug Current Subscription Data</h3>
+        <label>Email to debug:</label>
+        <input type="email" id="debugEmail" value="soudhame52@gmail.com" placeholder="Enter email address">
+        <button onclick="debugSubscription()">Debug Subscription</button>
+        <div id="debug-results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Test Fixed Profile API</h3>
+        <button onclick="testFixedProfile()">Test Fixed Profile API</button>
+        <div id="profile-results"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Update Subscription Status</h3>
+        <p>If your subscription shows as inactive but should be active:</p>
+        <label>Email:</label>
+        <input type="email" id="updateEmail" value="soudhame52@gmail.com" placeholder="Enter email address">
+        <label>Plan Code:</label>
+        <select id="planCode">
+            <option value="basic">Basic</option>
+            <option value="premium">Premium</option>
+            <option value="pro">Pro</option>
+        </select>
+        <button onclick="updateSubscriptionStatus()">Activate Subscription</button>
+        <div id="update-results"></div>
+    </div>
+
+    <script>
+        async function debugSubscription() {
+            const email = document.getElementById('debugEmail').value;
+            const resultsDiv = document.getElementById('debug-results');
+            
+            if (!email) {
+                resultsDiv.innerHTML = '<p class="error">Please enter an email address</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p class="info">Debugging subscription data...</p>';
+
+            try {
+                const response = await fetch(`debug-profile-subscription.php?email=${encodeURIComponent(email)}`);
+                const text = await response.text();
+                
+                resultsDiv.innerHTML = `
+                    <p class="success">Debug completed!</p>
+                    <pre>${text}</pre>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testFixedProfile() {
+            const email = document.getElementById('debugEmail').value || 'soudhame52@gmail.com';
+            const resultsDiv = document.getElementById('profile-results');
+            
+            resultsDiv.innerHTML = '<p class="info">Testing fixed profile API...</p>';
+
+            try {
+                const response = await fetch('api/customer/profile.php', {
+                    headers: {
+                        'X-Tutorial-Email': email
+                    }
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Profile API working correctly!</p>
+                        <h4>Subscription Info:</h4>
+                        <pre>${JSON.stringify(data.subscription, null, 2)}</pre>
+                        <h4>Stats:</h4>
+                        <pre>${JSON.stringify(data.stats, null, 2)}</pre>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Profile API error:</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function updateSubscriptionStatus() {
+            const email = document.getElementById('updateEmail').value;
+            const planCode = document.getElementById('planCode').value;
+            const resultsDiv = document.getElementById('update-results');
+            
+            if (!email) {
+                resultsDiv.innerHTML = '<p class="error">Please enter an email address</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p class="info">Updating subscription status...</p>';
+
+            try {
+                const response = await fetch('update-subscription-status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        plan_code: planCode,
+                        is_active: 1,
+                        subscription_status: 'active'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Subscription updated successfully!</p>
+                        <p>Plan: ${planCode} | Status: Active</p>
+                        <p>Please refresh your profile page to see the changes.</p>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Update failed:</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Inactive Pro Subscription</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #0056b3; }
+        .highlight { background: yellow; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Fix Inactive Pro Subscription</h1>
+    <p>This tool will check your current subscription status and activate your Pro subscription if it's inactive.</p>
+    
+    <div id="results"></div>
+    
+    <button onclick="checkCurrentStatus()">1. Check Current Status</button>
+    <button onclick="activateProSubscription()">2. Activate Pro Subscription</button>
+    <button onclick="testAfterFix()">3. Test After Fix</button>
+    <button onclick="runCompleteFlow()">🚀 Run Complete Fix</button>
+
+    <script>
+        const userEmail = 'soudhame52@gmail.com';
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `step ${type}`;
+            stepDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(stepDiv);
+        }
+        
+        async function checkCurrentStatus() {
+            addResult('🔍 Checking Current Subscription Status', 'Fetching current profile and subscription data...', 'info');
+            
+            try {
+                // Check profile API
+                const profileResponse = await fetch(`${apiBase}/customer/profile.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const profileData = await profileResponse.json();
+                
+                // Check subscription status API
+                const statusResponse = await fetch(`${apiBase}/customer/subscription-status.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const statusData = await statusResponse.json();
+                
+                let statusSummary = '';
+                let isActive = false;
+                let isPro = false;
+                
+                if (profileData.status === 'success') {
+                    const sub = profileData.subscription;
+                    isPro = sub.plan_code === 'pro';
+                    isActive = sub.subscription_status === 'active' && sub.is_active;
+                    
+                    statusSummary = `
+                        <h4>Profile API Results:</h4>
+                        <p><strong>Plan:</strong> <span class="${isPro ? 'highlight' : ''}">${sub.plan_code}</span></p>
+                        <p><strong>Status:</strong> <span class="${isActive ? 'highlight' : ''}">${sub.subscription_status}</span></p>
+                        <p><strong>Is Active:</strong> <span class="${sub.is_active ? 'highlight' : ''}">${sub.is_active ? 'YES' : 'NO'}</span></p>
+                        <p><strong>Price:</strong> ₹${sub.price}</p>
+                    `;
+                } else {
+                    statusSummary = `<p>❌ Profile API Error: ${profileData.message}</p>`;
+                }
+                
+                if (statusData.status === 'success') {
+                    const canAccessLive = statusData.feature_access?.access_levels?.can_access_live_workshops;
+                    statusSummary += `
+                        <h4>Subscription Status API Results:</h4>
+                        <p><strong>Plan:</strong> ${statusData.plan_code}</p>
+                        <p><strong>Can Access Live Workshops:</strong> <span class="${canAccessLive ? 'highlight' : ''}">${canAccessLive ? 'YES' : 'NO'}</span></p>
+                    `;
+                } else {
+                    statusSummary += `<p>❌ Subscription Status API Error: ${statusData.message}</p>`;
+                }
+                
+                // Determine if fix is needed
+                const needsFix = !isActive || !isPro;
+                const resultType = needsFix ? 'warning' : 'success';
+                const resultIcon = needsFix ? '⚠️' : '✅';
+                
+                statusSummary += `
+                    <h4>Analysis:</h4>
+                    <p><strong>Is Pro Plan:</strong> ${isPro ? 'YES' : 'NO'}</p>
+                    <p><strong>Is Active:</strong> ${isActive ? 'YES' : 'NO'}</p>
+                    <p><strong>Needs Fix:</strong> ${needsFix ? 'YES - Subscription needs activation' : 'NO - Already working'}</p>
+                `;
+                
+                addResult(`${resultIcon} Current Status Check`, statusSummary, resultType);
+                
+                if (needsFix) {
+                    addResult('🔧 Action Required', `
+                        <p>Your Pro subscription is not active. This is why Pro features aren't working.</p>
+                        <p><strong>Click "Activate Pro Subscription" to fix this issue.</strong></p>
+                    `, 'warning');
+                }
+                
+            } catch (error) {
+                addResult('❌ Status Check Failed', `<p>Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function activateProSubscription() {
+            addResult('🔧 Activating Pro Subscription', 'Running activation script...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/activate-pro-subscription.php');
+                const text = await response.text();
+                
+                // Check if activation was successful
+                if (text.includes('SUCCESS! Pro Subscription is now ACTIVE')) {
+                    addResult('✅ Pro Subscription Activated!', `
+                        <p>Your Pro subscription has been successfully activated!</p>
+                        <details>
+                            <summary>View Activation Details</summary>
+                            <div style="max-height: 400px; overflow-y: auto;">${text}</div>
+                        </details>
+                    `, 'success');
+                } else {
+                    addResult('❌ Activation Failed', `
+                        <p>There was an issue activating your subscription.</p>
+                        <details>
+                            <summary>View Error Details</summary>
+                            <div style="max-height: 400px; overflow-y: auto;">${text}</div>
+                        </details>
+                    `, 'error');
+                }
+                
+            } catch (error) {
+                addResult('❌ Activation Error', `<p>Network error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testAfterFix() {
+            addResult('🧪 Testing After Fix', 'Verifying that Pro features are now working...', 'info');
+            
+            try {
+                // Test profile API
+                const profileResponse = await fetch(`${apiBase}/customer/profile.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const profileData = await profileResponse.json();
+                
+                // Test live workshops API
+                const workshopsResponse = await fetch(`${apiBase}/customer/live-workshops.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const workshopsData = await workshopsResponse.json();
+                
+                // Test tutorials API
+                const tutorialsResponse = await fetch(`${apiBase}/customer/tutorials.php`, {
+                    headers: { 'X-Tutorial-Email': userEmail }
+                });
+                const tutorialsData = await tutorialsResponse.json();
+                
+                let testResults = '';
+                let allPassed = true;
+                
+                // Check profile
+                if (profileData.status === 'success' && 
+                    profileData.subscription.plan_code === 'pro' && 
+                    profileData.subscription.subscription_status === 'active') {
+                    testResults += '<p>✅ Profile API: Shows active Pro subscription</p>';
+                } else {
+                    testResults += '<p>❌ Profile API: Still not showing active Pro</p>';
+                    allPassed = false;
+                }
+                
+                // Check live workshops
+                if (workshopsData.status === 'success' && workshopsData.access_level === 'pro') {
+                    testResults += '<p>✅ Live Workshops API: Pro access granted</p>';
+                } else {
+                    testResults += '<p>❌ Live Workshops API: Access still denied</p>';
+                    allPassed = false;
+                }
+                
+                // Check tutorials
+                if (tutorialsData.status === 'success' && 
+                    tutorialsData.user_subscription?.can_access_all_tutorials) {
+                    testResults += '<p>✅ Tutorials API: Can access all tutorials</p>';
+                } else {
+                    testResults += '<p>❌ Tutorials API: Still limited access</p>';
+                    allPassed = false;
+                }
+                
+                const resultType = allPassed ? 'success' : 'error';
+                const resultIcon = allPassed ? '🎉' : '❌';
+                
+                testResults += `
+                    <h4>Summary:</h4>
+                    <p><strong>All Tests Passed:</strong> ${allPassed ? 'YES' : 'NO'}</p>
+                    ${allPassed ? 
+                        '<p>🎉 <strong>Your Pro subscription is now fully active and working!</strong></p>' : 
+                        '<p>⚠️ Some issues remain. You may need to refresh your browser or check the database.</p>'
+                    }
+                `;
+                
+                addResult(`${resultIcon} Post-Fix Test Results`, testResults, resultType);
+                
+            } catch (error) {
+                addResult('❌ Test Failed', `<p>Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function runCompleteFlow() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Starting Complete Fix Flow', 'Running all steps to fix your inactive Pro subscription...', 'info');
+            
+            await checkCurrentStatus();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await activateProSubscription();
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            await testAfterFix();
+            
+            addResult('🏁 Complete!', `
+                <p>The fix process is complete. Here's what you should do next:</p>
+                <ol>
+                    <li><strong>Refresh your browser</strong> (Ctrl+F5 or Cmd+Shift+R)</li>
+                    <li><strong>Check your profile section</strong> - should now show "Active" Pro subscription</li>
+                    <li><strong>Go to Live Classes</strong> - should now show "Pro" instead of "Basic"</li>
+                    <li><strong>Try accessing Pro features</strong> - all should now work</li>
+                </ol>
+                <p>If you still see issues after refreshing, please let me know!</p>
+            `, 'info');
+        }
+    </script>
+</body>
+</html>

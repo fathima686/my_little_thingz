@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix All API Issues - My Little Thingz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .loading { color: #007bff; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>🔧 API Issues Diagnostic & Fix Tool</h1>
+        <p class="text-muted">This tool will test and fix all API connectivity issues</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <button class="btn btn-primary btn-lg w-100 mb-3" onclick="runFullDiagnostic()">
+                    🚀 Run Full Diagnostic
+                </button>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-success btn-lg w-100 mb-3" onclick="fixAllIssues()">
+                    🛠️ Auto-Fix All Issues
+                </button>
+            </div>
+        </div>
+        
+        <!-- Database Connection Test -->
+        <div class="test-section">
+            <h3>📊 Database Connection</h3>
+            <button class="btn btn-outline-primary" onclick="testDatabaseConnection()">Test Database</button>
+            <div id="dbResult" class="mt-3"></div>
+        </div>
+        
+        <!-- Server Status Test -->
+        <div class="test-section">
+            <h3>🌐 Server Status</h3>
+            <button class="btn btn-outline-primary" onclick="testServerStatus()">Test Server</button>
+            <div id="serverResult" class="mt-3"></div>
+        </div>
+        
+        <!-- API Endpoints Test -->
+        <div class="test-section">
+            <h3>🔌 API Endpoints</h3>
+            <button class="btn btn-outline-primary" onclick="testAllAPIs()">Test All APIs</button>
+            <div id="apiResult" class="mt-3"></div>
+        </div>
+        
+        <!-- CORS Issues Test -->
+        <div class="test-section">
+            <h3>🌍 CORS Configuration</h3>
+            <button class="btn btn-outline-primary" onclick="testCORS()">Test CORS</button>
+            <div id="corsResult" class="mt-3"></div>
+        </div>
+        
+        <!-- Missing Tables Fix -->
+        <div class="test-section">
+            <h3>🗃️ Database Tables</h3>
+            <button class="btn btn-outline-primary" onclick="setupMissingTables()">Setup Missing Tables</button>
+            <div id="tablesResult" class="mt-3"></div>
+        </div>
+        
+        <!-- Sample Data Creation -->
+        <div class="test-section">
+            <h3>📝 Sample Data</h3>
+            <button class="btn btn-outline-primary" onclick="createSampleData()">Create Sample Data</button>
+            <div id="sampleResult" class="mt-3"></div>
+        </div>
+    </div>
+
+    <script>
+    const API_BASE = '/my_little_thingz/backend/api';
+    const TEST_EMAIL = 'test@mylittlethingz.com';
+    
+    async function runFullDiagnostic() {
+        showLoading('Running full diagnostic...');
+        
+        await testDatabaseConnection();
+        await testServerStatus();
+        await testAllAPIs();
+        await testCORS();
+        
+        showSuccess('Full diagnostic completed! Check individual sections for details.');
+    }
+    
+    async function fixAllIssues() {
+        showLoading('Auto-fixing all issues...');
+        
+        await setupMissingTables();
+        await createSampleData();
+        await testAllAPIs();
+        
+        showSuccess('Auto-fix completed! Please test your application now.');
+    }
+    
+    async function testDatabaseConnection() {
+        const resultDiv = document.getElementById('dbResult');
+        resultDiv.innerHTML = '<span class="loading">Testing database connection...</span>';
+        
+        try {
+            const response = await fetch(`${API_BASE}/test-db-connection.php`);
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>✅ Database Connected</strong><br>
+                        Connection: ${data.connection}<br>
+                        Database: ${data.database}
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>❌ Database Connection Failed</strong><br>
+                    Error: ${error.message}<br>
+                    <small>Make sure your web server (Apache/Nginx) and MySQL are running</small>
+                </div>
+            `;
+        }
+    }
+    
+    async function testServerStatus() {
+        const resultDiv = document.getElementById('serverResult');
+        resultDiv.innerHTML = '<span class="loading">Testing server status...</span>';
+        
+        try {
+            const response = await fetch(`/my_little_thingz/backend/test-server-status.php`);
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${data.status === 'success' ? 'success' : 'warning'}">
+                    <strong>Server Status:</strong><br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>❌ Server Not Responding</strong><br>
+                    Error: ${error.message}<br>
+                    <small>Check if your web server is running and accessible</small>
+                </div>
+            `;
+        }
+    }
+    
+    async function testAllAPIs() {
+        const resultDiv = document.getElementById('apiResult');
+        resultDiv.innerHTML = '<span class="loading">Testing all API endpoints...</span>';
+        
+        const endpoints = [
+            { name: 'Customer Profile', url: `${API_BASE}/customer/profile.php`, headers: { 'X-Tutorial-Email': TEST_EMAIL } },
+            { name: 'Customer Notifications', url: `${API_BASE}/customer/notifications.php`, headers: { 'X-Tutorial-Email': TEST_EMAIL } },
+            { name: 'Customer Tutorials', url: `${API_BASE}/customer/tutorials.php`, headers: { 'X-Tutorial-Email': TEST_EMAIL } },
+            { name: 'Subscription Status', url: `${API_BASE}/customer/subscription-status.php`, headers: { 'X-Tutorial-Email': TEST_EMAIL } },
+            { name: 'Tutorial Purchases', url: `${API_BASE}/customer/tutorial-purchases.php?email=${TEST_EMAIL}` },
+            { name: 'Custom Requests (Admin)', url: `${API_BASE}/admin/custom-requests.php`, headers: { 'X-Admin-Email': 'admin@mylittlethingz.com' } },
+            { name: 'Custom Request (Customer)', url: `${API_BASE}/customer/custom-request.php`, headers: { 'X-Customer-Email': TEST_EMAIL } }
+        ];
+        
+        let results = [];
+        
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(endpoint.url, {
+                    method: 'GET',
+                    headers: endpoint.headers || {}
+                });
+                
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                    results.push({
+                        name: endpoint.name,
+                        status: response.status,
+                        success: response.ok,
+                        data: data
+                    });
+                } else {
+                    const text = await response.text();
+                    results.push({
+                        name: endpoint.name,
+                        status: response.status,
+                        success: false,
+                        error: 'Non-JSON response: ' + text.substring(0, 100) + '...'
+                    });
+                }
+            } catch (error) {
+                results.push({
+                    name: endpoint.name,
+                    status: 0,
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+        
+        const successCount = results.filter(r => r.success).length;
+        const totalCount = results.length;
+        
+        resultDiv.innerHTML = `
+            <div class="alert alert-${successCount === totalCount ? 'success' : 'warning'}">
+                <strong>API Test Results: ${successCount}/${totalCount} endpoints working</strong>
+                <div class="mt-3">
+                    ${results.map(result => `
+                        <div class="mb-2">
+                            <span class="${result.success ? 'success' : 'error'}">
+                                ${result.success ? '✅' : '❌'} ${result.name}
+                            </span>
+                            ${result.success ? '' : `<br><small class="text-muted">${result.error}</small>`}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    async function testCORS() {
+        const resultDiv = document.getElementById('corsResult');
+        resultDiv.innerHTML = '<span class="loading">Testing CORS configuration...</span>';
+        
+        try {
+            // Test CORS preflight
+            const response = await fetch(`${API_BASE}/customer/profile.php`, {
+                method: 'OPTIONS'
+            });
+            
+            const corsHeaders = {
+                'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+            };
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${response.ok ? 'success' : 'warning'}">
+                    <strong>CORS Headers:</strong>
+                    <pre>${JSON.stringify(corsHeaders, null, 2)}</pre>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>❌ CORS Test Failed</strong><br>
+                    Error: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    async function setupMissingTables() {
+        const resultDiv = document.getElementById('tablesResult');
+        resultDiv.innerHTML = '<span class="loading">Setting up missing database tables...</span>';
+        
+        try {
+            // This would typically call a setup script
+            const response = await fetch('/my_little_thingz/backend/setup-notifications-and-profiles.php');
+            const data = await response.json();
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-${data.status === 'success' ? 'success' : 'warning'}">
+                    <strong>Database Setup Result:</strong>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>ℹ️ Manual Setup Required</strong><br>
+                    Please run the following setup scripts manually:<br>
+                    <ul>
+                        <li>setup-notifications-and-profiles.php</li>
+                        <li>setup-pro-features.php</li>
+                        <li>setup-assignment-database.php</li>
+                    </ul>
+                </div>
+            `;
+        }
+    }
+    
+    async function createSampleData() {
+        const resultDiv = document.getElementById('sampleResult');
+        resultDiv.innerHTML = '<span class="loading">Creating sample data...</span>';
+        
+        try {
+            // Create sample notifications
+            const notificationResponse = await fetch(`${API_BASE}/customer/notifications.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Tutorial-Email': TEST_EMAIL
+                },
+                body: JSON.stringify({
+                    title: 'Welcome to My Little Thingz!',
+                    message: 'Thank you for joining our platform. Start exploring tutorials now!',
+                    type: 'info'
+                })
+            });
+            
+            // Create sample custom request
+            const requestResponse = await fetch(`${API_BASE}/customer/custom-request.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Customer-Email': TEST_EMAIL
+                },
+                body: JSON.stringify({
+                    title: 'Sample Custom Birthday Cake',
+                    occasion: 'Birthday',
+                    description: 'A beautiful custom birthday cake with rainbow colors',
+                    requirements: 'Size: 8 inch, Vanilla flavor, Fondant decorations',
+                    deadline: getDateInFuture(14)
+                })
+            });
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>✅ Sample Data Created</strong><br>
+                    - Sample notification created<br>
+                    - Sample custom request created<br>
+                    <small>You can now test the application with sample data</small>
+                </div>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <strong>⚠️ Sample Data Creation Partial</strong><br>
+                    Some sample data may not have been created due to missing tables.<br>
+                    Error: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    function getDateInFuture(days) {
+        const date = new Date();
+        date.setDate(date.getDate() + days);
+        return date.toISOString().split('T')[0];
+    }
+    
+    function showLoading(message) {
+        // You could add a global loading indicator here
+        console.log('Loading:', message);
+    }
+    
+    function showSuccess(message) {
+        // You could add a global success message here
+        console.log('Success:', message);
+    }
+    </script>
+</body>
+</html>

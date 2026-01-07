@@ -158,6 +158,12 @@ export default function Login() {
             <p className="muted">Sign in to continue</p>
           </div>
 
+          <div className="back-to-home">
+            <Link to="/" className="btn secondary back-btn">
+              ← Back to Home
+            </Link>
+          </div>
+
           {banner && (
             <div className={`banner ${banner.type}`} role="status" aria-live="polite">
               {banner.text}

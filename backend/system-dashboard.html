@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Little Things - System Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header p { font-size: 1.2em; opacity: 0.9; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 12px 35px rgba(0,0,0,0.2); }
+        .card-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .card-icon { font-size: 2em; margin-right: 15px; }
+        .card-title { font-size: 1.4em; font-weight: 600; color: #333; }
+        .card-description { color: #666; margin-bottom: 20px; line-height: 1.6; }
+        .tools-list { list-style: none; }
+        .tool-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; transition: background 0.2s ease; }
+        .tool-item:hover { background: #e9ecef; }
+        .tool-name { font-weight: 500; color: #495057; }
+        .tool-btn { padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: background 0.2s ease; }
+        .tool-btn:hover { background: #0056b3; }
+        .tool-btn.primary { background: #28a745; }
+        .tool-btn.primary:hover { background: #218838; }
+        .tool-btn.warning { background: #ffc107; color: #212529; }
+        .tool-btn.warning:hover { background: #e0a800; }
+        .tool-btn.danger { background: #dc3545; }
+        .tool-btn.danger:hover { background: #c82333; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-good { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-error { background: #dc3545; }
+        .quick-actions { background: linear-gradient(135deg, #28a745, #20c997); color: white; margin-bottom: 20px; }
+        .quick-actions .card-title { color: white; }
+        .quick-actions .card-description { color: rgba(255,255,255,0.9); }
+        .quick-actions .tool-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .quick-actions .tool-btn:hover { background: rgba(255,255,255,0.3); }
+        .footer { text-align: center; color: white; margin-top: 40px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 My Little Things</h1>
+            <p>Complete System Dashboard & Management Tools</p>
+        </div>
+
+        <div class="grid">
+            <!-- Quick Actions -->
+            <div class="card quick-actions">
+                <div class="card-header">
+                    <div class="card-icon">🚀</div>
+                    <div class="card-title">Quick Actions</div>
+                </div>
+                <div class="card-description">
+                    Essential tools to fix common issues and verify system health.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Complete System Verification</span>
+                        <button class="tool-btn primary" onclick="openTool('final-verification-system.html')">Run Now</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Emergency Authentication Fix</span>
+                        <button class="tool-btn warning" onclick="openTool('emergency-auth-fix.html')">Fix Auth</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Complete Pro Subscription Fix</span>
+                        <button class="tool-btn danger" onclick="openTool('complete-fix-now.php')">Fix Pro</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Frontend Authentication Test</span>
+                        <button class="tool-btn" onclick="openTool('test-frontend-auth.html')">Test</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Subscription Management -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💎</div>
+                    <div class="card-title">Subscription Management</div>
+                </div>
+                <div class="card-description">
+                    Tools to manage and troubleshoot subscription plans and Pro features.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Subscription Plan Logic Test</span>
+                        <button class="tool-btn" onclick="openTool('test-subscription-plan-logic.html')">Test</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Fix Inactive Subscription</span>
+                        <button class="tool-btn" onclick="openTool('fix-inactive-subscription.html')">Fix</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Activate Pro Subscription</span>
+                        <button class="tool-btn" onclick="openTool('activate-pro-subscription.php')">Activate</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Update User Plan</span>
+                        <button class="tool-btn" onclick="openTool('update-user-plan.php')">Update</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tutorial System -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📚</div>
+                    <div class="card-title">Tutorial System</div>
+                </div>
+                <div class="card-description">
+                    Comprehensive tutorial access testing and management tools.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Tutorial Access System Test</span>
+                        <button class="tool-btn" onclick="openTool('test-tutorial-access-system.html')">Test</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Pro Subscription Fix</span>
+                        <button class="tool-btn" onclick="openTool('test-pro-subscription-fix.html')">Fix</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Profile API Test</span>
+                        <button class="tool-btn" onclick="openTool('test-profile-api-now.html')">Test</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Quick Subscription Test</span>
+                        <button class="tool-btn" onclick="openTool('quick-test-subscription.php')">Test</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- API Testing -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🔌</div>
+                    <div class="card-title">API Testing & Debugging</div>
+                </div>
+                <div class="card-description">
+                    Tools to test, debug, and fix API endpoints and server issues.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Debug API Errors</span>
+                        <button class="tool-btn" onclick="openTool('debug-api-errors.php')">Debug</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Test Server Status</span>
+                        <button class="tool-btn" onclick="openTool('test-server-status.php')">Test</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Fix All API Issues</span>
+                        <button class="tool-btn" onclick="openTool('fix-all-api-issues.html')">Fix</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Test Database Connection</span>
+                        <button class="tool-btn" onclick="openTool('api/test-db-connection.php')">Test</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- System Setup -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⚙️</div>
+                    <div class="card-title">System Setup & Configuration</div>
+                </div>
+                <div class="card-description">
+                    Complete system setup, database initialization, and configuration tools.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Complete System Setup</span>
+                        <button class="tool-btn" onclick="openTool('complete-system-setup.php')">Setup</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Setup Pro Features</span>
+                        <button class="tool-btn" onclick="openTool('setup-pro-features.php')">Setup</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Fix Database Schema</span>
+                        <button class="tool-btn" onclick="openTool('fix-database-schema.php')">Fix</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Setup User Profiles</span>
+                        <button class="tool-btn" onclick="openTool('setup-user-profiles.php')">Setup</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Custom Features -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🎨</div>
+                    <div class="card-title">Custom Features</div>
+                </div>
+                <div class="card-description">
+                    Custom request management, design approval, and specialized features.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Custom Requests Dashboard</span>
+                        <button class="tool-btn" onclick="openTool('../frontend/admin/custom-requests-dashboard.html')">Admin</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Custom Request Form</span>
+                        <button class="tool-btn" onclick="openTool('../frontend/customer/custom-request-form.html')">Customer</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Test Custom Requests</span>
+                        <button class="tool-btn" onclick="openTool('test-custom-requests.html')">Test</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Design Approval System</span>
+                        <button class="tool-btn" onclick="openTool('../frontend/customer/design-approval.html')">View</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Documentation -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📖</div>
+                    <div class="card-title">Documentation & Guides</div>
+                </div>
+                <div class="card-description">
+                    Comprehensive guides, summaries, and troubleshooting documentation.
+                </div>
+                <ul class="tools-list">
+                    <li class="tool-item">
+                        <span class="tool-name">Tutorial Access System Summary</span>
+                        <button class="tool-btn" onclick="openTool('../TUTORIAL_ACCESS_SYSTEM_SUMMARY.md')">View</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Troubleshooting Guide</span>
+                        <button class="tool-btn" onclick="openTool('../TROUBLESHOOTING_GUIDE.md')">View</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Razorpay Setup Guide</span>
+                        <button class="tool-btn" onclick="openTool('../RAZORPAY_TUTORIAL_FIX_GUIDE.md')">View</button>
+                    </li>
+                    <li class="tool-item">
+                        <span class="tool-name">Chat Setup Instructions</span>
+                        <button class="tool-btn" onclick="openTool('../CHAT_SETUP_INSTRUCTIONS.md')">View</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- System Status -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">System Status</div>
+                </div>
+                <div class="card-description">
+                    Real-time system status and health monitoring.
+                </div>
+                <div id="system-status">
+                    <div class="tool-item">
+                        <span class="tool-name">
+                            <span class="status-indicator status-good"></span>
+                            Database Connection
+                        </span>
+                        <span id="db-status">Checking...</span>
+                    </div>
+                    <div class="tool-item">
+                        <span class="tool-name">
+                            <span class="status-indicator status-warning"></span>
+                            Authentication System
+                        </span>
+                        <span id="auth-status">Checking...</span>
+                    </div>
+                    <div class="tool-item">
+                        <span class="tool-name">
+                            <span class="status-indicator status-good"></span>
+                            API Endpoints
+                        </span>
+                        <span id="api-status">Checking...</span>
+                    </div>
+                    <div class="tool-item">
+                        <span class="tool-name">
+                            <span class="status-indicator status-error"></span>
+                            Pro Subscription
+                        </span>
+                        <span id="subscription-status">Needs Fix</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>My Little Things - Craft Tutorial Platform | System Dashboard v2.0</p>
+            <p>For support and troubleshooting, use the tools above or check the documentation.</p>
+        </div>
+    </div>
+
+    <script>
+        function openTool(url) {
+            // Open in new tab
+            window.open(url, '_blank');
+        }
+
+        // Check system status on load
+        async function checkSystemStatus() {
+            // Check authentication
+            const auth = localStorage.getItem('tutorial_auth');
+            const authStatus = document.getElementById('auth-status');
+            if (auth) {
+                try {
+                    const authData = JSON.parse(auth);
+                    authStatus.textContent = authData.email ? 'Logged In' : 'Invalid';
+                    authStatus.previousElementSibling.querySelector('.status-indicator').className = 
+                        'status-indicator ' + (authData.email ? 'status-good' : 'status-error');
+                } catch (e) {
+                    authStatus.textContent = 'Error';
+                    authStatus.previousElementSibling.querySelector('.status-indicator').className = 'status-indicator status-error';
+                }
+            } else {
+                authStatus.textContent = 'Not Logged In';
+                authStatus.previousElementSibling.querySelector('.status-indicator').className = 'status-indicator status-error';
+            }
+
+            // Check database connection
+            try {
+                const response = await fetch('api/test-db-connection.php');
+                const data = await response.json();
+                const dbStatus = document.getElementById('db-status');
+                dbStatus.textContent = data.status === 'success' ? 'Connected' : 'Error';
+                dbStatus.previousElementSibling.querySelector('.status-indicator').className = 
+                    'status-indicator ' + (data.status === 'success' ? 'status-good' : 'status-error');
+            } catch (e) {
+                document.getElementById('db-status').textContent = 'Error';
+            }
+
+            // Check API endpoints
+            try {
+                const response = await fetch('api/customer/profile.php', {
+                    headers: { 'X-Tutorial-Email': 'test@example.com' }
+                });
+                const apiStatus = document.getElementById('api-status');
+                apiStatus.textContent = response.ok ? 'Working' : 'Error';
+                apiStatus.previousElementSibling.querySelector('.status-indicator').className = 
+                    'status-indicator ' + (response.ok ? 'status-good' : 'status-error');
+            } catch (e) {
+                document.getElementById('api-status').textContent = 'Error';
+            }
+        }
+
+        // Run status check on page load
+        window.onload = () => {
+            checkSystemStatus();
+        };
+    </script>
+</body>
+</html>

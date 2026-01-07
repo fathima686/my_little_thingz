@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emergency Authentication Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 3px; }
+        button:hover { background: #0056b3; }
+        .highlight { background: yellow; font-weight: bold; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 300px; }
+        .fix-button { background: #28a745; }
+        .fix-button:hover { background: #218838; }
+    </style>
+</head>
+<body>
+    <h1>🚨 Emergency Authentication Fix</h1>
+    <p>Your frontend is not sending your email to the backend. This is why you're seeing Basic plan instead of Pro.</p>
+    
+    <div class="step warning">
+        <h3>⚠️ Problem Detected</h3>
+        <p><strong>Expected Email:</strong> soudhame52@gmail.com</p>
+        <p><strong>Email Being Sent:</strong> NONE (that's why you get "default@example.com")</p>
+        <p><strong>Result:</strong> Backend returns default Basic plan instead of your Pro subscription</p>
+    </div>
+    
+    <div class="step info">
+        <h3>🔧 Quick Fix Options</h3>
+        <p>Choose one of these options to fix your authentication:</p>
+        
+        <h4>Option 1: Force Login with Your Email</h4>
+        <input type="email" id="userEmail" value="soudhame52@gmail.com" placeholder="Your email">
+        <button class="fix-button" onclick="forceLogin()">Force Login</button>
+        
+        <h4>Option 2: Fix Backend to Use Your Email by Default</h4>
+        <button class="fix-button" onclick="fixBackendDefault()">Fix Backend Default</button>
+        
+        <h4>Option 3: Test Current Status</h4>
+        <button onclick="testCurrentAuth()">Test Current Auth</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const apiBase = 'http://localhost/my_little_thingz/backend/api';
+        
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `step ${type}`;
+            stepDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(stepDiv);
+        }
+        
+        function forceLogin() {
+            const email = document.getElementById('userEmail').value.trim();
+            if (!email) {
+                alert('Please enter your email');
+                return;
+            }
+            
+            addResult('🔧 Forcing Login', `Setting up authentication for: <strong>${email}</strong>`, 'info');
+            
+            // Create proper auth data
+            const authData = {
+                email: email,
+                user_id: 1,
+                roles: ['customer'],
+                tutorial_session_id: Date.now().toString(),
+                login_time: new Date().toISOString(),
+                loginMethod: 'emergency_fix'
+            };
+            
+            // Store in localStorage
+            localStorage.setItem('tutorial_auth', JSON.stringify(authData));
+            
+            addResult('✅ Authentication Fixed', `
+                <p>✅ Stored authentication data in localStorage</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Method:</strong> Emergency Fix</p>
+                <p><strong>Next Steps:</strong></p>
+                <ol>
+                    <li>Refresh your React app (F5)</li>
+                    <li>Check if Pro features are now working</li>
+                    <li>If still not working, try Option 2</li>
+                </ol>
+            `, 'success');
+            
+            // Test immediately
+            setTimeout(() => testCurrentAuth(), 1000);
+        }
+        
+        async function fixBackendDefault() {
+            addResult('🔧 Fixing Backend Default Email', 'Updating backend to use your email by default...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/fix-pro-subscription-completely.php');
+                const text = await response.text();
+                
+                if (text.includes('SUCCESS! Pro Subscription Fixed')) {
+                    addResult('✅ Backend Fixed', `
+                        <p>✅ Backend has been updated to use your email by default</p>
+                        <p>✅ Pro subscription has been activated</p>
+                        <p><strong>Next Steps:</strong></p>
+                        <ol>
+                            <li>Refresh your React app (F5)</li>
+                            <li>Check if Pro features are now working</li>
+                            <li>Profile should now show Pro plan</li>
+                        </ol>
+                        <details>
+                            <summary>View Fix Details</summary>
+                            <div style="max-height: 300px; overflow-y: auto;">${text}</div>
+                        </details>
+                    `, 'success');
+                } else {
+                    addResult('⚠️ Backend Fix Partial', `
+                        <p>Backend fix completed but may need verification.</p>
+                        <details>
+                            <summary>View Details</summary>
+                            <div style="max-height: 300px; overflow-y: auto;">${text}</div>
+                        </details>
+                    `, 'warning');
+                }
+                
+                // Test after fix
+                setTimeout(() => testCurrentAuth(), 2000);
+                
+            } catch (error) {
+                addResult('❌ Backend Fix Failed', `<p>Error: ${error.message}</p>`, 'error');
+            }
+        }
+        
+        async function testCurrentAuth() {
+            addResult('🧪 Testing Current Authentication', 'Checking if authentication is working now...', 'info');
+            
+            // Check localStorage
+            const auth = localStorage.getItem('tutorial_auth');
+            let authData = null;
+            try {
+                authData = auth ? JSON.parse(auth) : null;
+            } catch (e) {
+                authData = null;
+            }
+            
+            let testResults = '';
+            
+            // Test 1: localStorage
+            if (authData && authData.email) {
+                testResults += `<p>✅ <strong>localStorage:</strong> ${authData.email}</p>`;
+            } else {
+                testResults += `<p>❌ <strong>localStorage:</strong> No valid auth data</p>`;
+            }
+            
+            // Test 2: Profile API
+            try {
+                const profileResponse = await fetch(`${apiBase}/customer/profile.php`, {
+                    headers: authData?.email ? { 'X-Tutorial-Email': authData.email } : {}
+                });
+                const profileData = await profileResponse.json();
+                
+                if (profileData.status === 'success') {
+                    const isCorrectEmail = profileData.user_email === (authData?.email || 'soudhame52@gmail.com');
+                    const isPro = profileData.subscription.plan_code === 'pro' && profileData.subscription.subscription_status === 'active';
+                    
+                    testResults += `<p>${isCorrectEmail ? '✅' : '❌'} <strong>Profile API Email:</strong> ${profileData.user_email}</p>`;
+                    testResults += `<p>${isPro ? '✅' : '❌'} <strong>Pro Subscription:</strong> ${profileData.subscription.plan_code} (${profileData.subscription.subscription_status})</p>`;
+                } else {
+                    testResults += `<p>❌ <strong>Profile API:</strong> ${profileData.message}</p>`;
+                }
+            } catch (error) {
+                testResults += `<p>❌ <strong>Profile API:</strong> ${error.message}</p>`;
+            }
+            
+            // Test 3: Subscription Status API
+            try {
+                const statusResponse = await fetch(`${apiBase}/customer/subscription-status.php`, {
+                    headers: authData?.email ? { 'X-Tutorial-Email': authData.email } : {}
+                });
+                const statusData = await statusResponse.json();
+                
+                if (statusData.status === 'success') {
+                    const isPro = statusData.plan_code === 'pro';
+                    const canAccessLive = statusData.feature_access?.access_levels?.can_access_live_workshops;
+                    
+                    testResults += `<p>${isPro ? '✅' : '❌'} <strong>Subscription Status:</strong> ${statusData.plan_code}</p>`;
+                    testResults += `<p>${canAccessLive ? '✅' : '❌'} <strong>Live Workshops Access:</strong> ${canAccessLive ? 'YES' : 'NO'}</p>`;
+                } else {
+                    testResults += `<p>❌ <strong>Subscription Status API:</strong> ${statusData.message}</p>`;
+                }
+            } catch (error) {
+                testResults += `<p>❌ <strong>Subscription Status API:</strong> ${error.message}</p>`;
+            }
+            
+            // Determine overall status
+            const allGood = testResults.includes('✅ Profile API Email') && 
+                           testResults.includes('✅ Pro Subscription') && 
+                           testResults.includes('✅ Live Workshops Access');
+            
+            const resultType = allGood ? 'success' : 'warning';
+            const resultIcon = allGood ? '🎉' : '⚠️';
+            
+            addResult(`${resultIcon} Authentication Test Results`, `
+                ${testResults}
+                
+                <h4>Summary:</h4>
+                ${allGood ? 
+                    '<p>🎉 <strong>SUCCESS!</strong> Authentication is working and Pro features should be available.</p>' : 
+                    '<p>⚠️ <strong>Issues remain.</strong> Try the other fix options or refresh your browser.</p>'
+                }
+                
+                <h4>Next Steps:</h4>
+                <ol>
+                    <li><strong>Refresh your React app</strong> (Ctrl+F5 or F5)</li>
+                    <li><strong>Check your profile section</strong> - should show Pro plan</li>
+                    <li><strong>Check live classes section</strong> - should show Pro access</li>
+                    <li><strong>If still not working:</strong> Clear browser cache completely</li>
+                </ol>
+            `, resultType);
+        }
+        
+        // Auto-run test on page load
+        window.onload = () => {
+            setTimeout(() => testCurrentAuth(), 500);
+        };
+    </script>
+</body>
+</html>

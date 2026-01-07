@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Product Chat</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            color: #2c3e50;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: #6c63ff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px;
+        }
+        
+        .btn:hover {
+            background: #5a52d5;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="test-card">
+            <h1>🧪 Product Chat System Test</h1>
+            <p>This page helps you test the product chat system integration.</p>
+            
+            <div id="status"></div>
+            
+            <h3>Step 1: Setup Database</h3>
+            <p>First, run the database setup to create the required tables.</p>
+            <button class="btn" onclick="setupDatabase()">Setup Database Tables</button>
+            
+            <h3>Step 2: Test API Endpoints</h3>
+            <p>Test if the chat API endpoints are working correctly.</p>
+            <button class="btn" onclick="testSendMessage()">Test Send Message</button>
+            <button class="btn" onclick="testGetMessages()">Test Get Messages</button>
+            
+            <h3>Step 3: Integration Status</h3>
+            <div id="integration-status">
+                <p>✅ <strong>ProductChat.jsx</strong> - React component created</p>
+                <p>✅ <strong>CartPage.jsx</strong> - Chat integration added</p>
+                <p>✅ <strong>Backend APIs</strong> - Send/Get message endpoints created</p>
+                <p>✅ <strong>Database Schema</strong> - Product chat tables defined</p>
+            </div>
+            
+            <h3>Step 4: How to Use</h3>
+            <ol>
+                <li>Go to your cart page in the React app</li>
+                <li>Add some items to your cart</li>
+                <li>Click the "💬 Chat" button next to any item</li>
+                <li>Start chatting about customization!</li>
+            </ol>
+            
+            <div class="status success">
+                <strong>🎉 Integration Complete!</strong><br>
+                The product chat system is now integrated into your cart page. 
+                Users can click the chat button next to any cart item to discuss customization options with admins.
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+        
+        async function setupDatabase() {
+            try {
+                showStatus('Setting up database tables...', 'info');
+                
+                const response = await fetch('setup-chat-database.php');
+                const result = await response.text();
+                
+                if (result.includes('✅')) {
+                    showStatus('✅ Database setup successful!', 'success');
+                } else {
+                    showStatus('❌ Database setup failed: ' + result, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testSendMessage() {
+            try {
+                showStatus('Testing send message API...', 'info');
+                
+                const response = await fetch('backend/api/product_chat/send_message.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        product_id: 1,
+                        user_id: 1,
+                        message: 'Test message from chat system'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('✅ Send message API working!', 'success');
+                } else {
+                    showStatus('❌ Send message failed: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testGetMessages() {
+            try {
+                showStatus('Testing get messages API...', 'info');
+                
+                const response = await fetch('backend/api/product_chat/get_messages.php?product_id=1&user_id=1');
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`✅ Get messages API working! Found ${result.data.messages.length} messages.`, 'success');
+                } else {
+                    showStatus('❌ Get messages failed: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

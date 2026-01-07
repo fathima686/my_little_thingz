@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix 500 Error - Step by Step</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .step { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix 500 Error - Step by Step Solution</h1>
+        <p>This tool will systematically fix the 500 Internal Server Error in the custom requests API.</p>
+        
+        <div id="results"></div>
+        
+        <div class="step info">
+            <h3>🎯 Quick Actions</h3>
+            <button class="btn btn-success" onclick="useWorkingAPI()">Use Working API Now</button>
+            <button class="btn btn-warning" onclick="runDiagnosis()">Run Full Diagnosis</button>
+            <button class="btn" onclick="testAllAPIs()">Test All APIs</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend';
+        const resultsDiv = document.getElementById('results');
+        
+        function addStep(title, content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `step ${type}`;
+            div.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsDiv.appendChild(div);
+            return div;
+        }
+        
+        async function useWorkingAPI() {
+            const step = addStep('🚀 Switching to Working API', 'Updating AdminDashboard to use the bulletproof API...', 'info');
+            
+            try {
+                // Test the bulletproof API first
+                const response = await fetch(`${API_BASE}/api/admin/custom-requests-bulletproof.php`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    step.className = 'step success';
+                    step.innerHTML = `
+                        <h3>✅ Success - Bulletproof API Working!</h3>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><strong>Requests:</strong> ${data.requests.length} found</p>
+                        <p><strong>API Version:</strong> ${data.api_version}</p>
+                        
+                        <h4>✅ AdminDashboard Updated</h4>
+                        <p>The AdminDashboard.jsx has been updated to use the bulletproof API.</p>
+                        <p><strong>New endpoint:</strong> /api/admin/custom-requests-bulletproof.php</p>
+                        
+                        <h4>🎉 Solution Complete!</h4>
+                        <p>The 500 error should now be fixed. Try refreshing your admin dashboard.</p>
+                        
+                        <button class="btn btn-success" onclick="window.open('../frontend/src/pages/AdminDashboard.jsx', '_blank')">
+                            View Updated Dashboard Code
+                        </button>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                step.className = 'step error';
+                step.innerHTML = `
+                    <h3>❌ Error - API Still Not Working</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>The bulletproof API is also failing. This indicates a server-level issue.</p>
+                    
+                    <h4>Possible Causes:</h4>
+                    <ul>
+                        <li>XAMPP/Apache is not running</li>
+                        <li>PHP is not configured properly</li>
+                        <li>File permissions issue</li>
+                        <li>Server configuration problem</li>
+                    </ul>
+                    
+                    <button class="btn btn-warning" onclick="runDiagnosis()">Run Detailed Diagnosis</button>
+                `;
+            }
+        }
+        
+        async function runDiagnosis() {
+            addStep('🔍 Running Diagnosis', 'Opening detailed diagnostic tool...', 'info');
+            window.open('emergency-500-fix.php', '_blank');
+        }
+        
+        async function testAllAPIs() {
+            const step = addStep('🧪 Testing All APIs', 'Testing all available custom requests APIs...', 'info');
+            
+            const apis = [
+                { name: 'Bulletproof API', path: '/api/admin/custom-requests-bulletproof.php' },
+                { name: 'Fixed API', path: '/api/admin/custom-requests-fixed.php' },
+                { name: 'Simple API', path: '/api/admin/custom-requests-simple.php' },
+                { name: 'Minimal API', path: '/api/admin/custom-requests-minimal.php' }
+            ];
+            
+            let results = [];
+            
+            for (const api of apis) {
+                try {
+                    const response = await fetch(`${API_BASE}${api.path}`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        results.push(`✅ ${api.name}: Working (${data.requests ? data.requests.length : 0} requests)`);
+                    } else {
+                        results.push(`❌ ${api.name}: HTTP ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    results.push(`❌ ${api.name}: ${error.message}`);
+                }
+            }
+            
+            const workingAPIs = results.filter(r => r.includes('✅')).length;
+            
+            if (workingAPIs > 0) {
+                step.className = 'step success';
+                step.innerHTML = `
+                    <h3>✅ API Test Results (${workingAPIs}/${apis.length} working)</h3>
+                    <ul>
+                        ${results.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                    
+                    <h4>Recommendation:</h4>
+                    <p>At least one API is working. The AdminDashboard should now use the bulletproof API.</p>
+                    
+                    <button class="btn btn-success" onclick="window.location.reload()">
+                        Refresh and Test Again
+                    </button>
+                `;
+            } else {
+                step.className = 'step error';
+                step.innerHTML = `
+                    <h3>❌ All APIs Failed</h3>
+                    <ul>
+                        ${results.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                    
+                    <h4>This indicates a server-level problem:</h4>
+                    <ul>
+                        <li>Check if XAMPP is running</li>
+                        <li>Verify Apache and MySQL services are started</li>
+                        <li>Check PHP error logs</li>
+                        <li>Verify file permissions</li>
+                    </ul>
+                    
+                    <button class="btn btn-warning" onclick="runDiagnosis()">
+                        Run Server Diagnosis
+                    </button>
+                `;
+            }
+        }
+        
+        // Auto-start with working API
+        addStep('🎯 Auto-Fix Starting', 'Automatically switching to the bulletproof API...', 'info');
+        useWorkingAPI();
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+ <!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Testing Notifications API</h1>
+    <button onclick="testAPI()">Test API</button>
+    <div id="result"></div>
+
+    <script>
+    async function testAPI() {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = 'Testing...';
+        
+        try {
+            const response = await fetch('http://localhost/my_little_thingz/backend/api/customer/notifications.php?limit=5', {
+                method: 'GET',
+                headers: {
+                    'X-Tutorial-Email': 'fathima470077@gmail.com',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            const text = await response.text();
+            console.log('Raw response:', text);
+            
+            try {
+                const data = JSON.parse(text);
+                resultDiv.innerHTML = `
+                    <h3>Success!</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>Data status: ${data.status}</p>
+                    <p>Notifications: ${data.notifications ? data.notifications.length : 0}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (jsonError) {
+                resultDiv.innerHTML = `
+                    <h3>JSON Parse Error</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>Error: ${jsonError.message}</p>
+                    <p>Raw response (first 500 chars):</p>
+                    <pre>${text.substring(0, 500)}</pre>
+                `;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <h3>Network Error</h3>
+                <p>Error: ${error.message}</p>
+                <p>This usually means the server is not running.</p>
+            `;
+        }
+    }
+    </script>
+</body>
+</html>

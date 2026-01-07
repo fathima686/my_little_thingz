@@ -96,6 +96,36 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
 .banner.success { background: #e8ffef; color: #0b5d2a; border: 1px solid #9ce0b8; }
 .banner.error { background: #ffefef; color: #7a0c0c; border: 1px solid #f3a7a7; }
 
+/* Back to Home button */
+.back-to-home {
+  margin: 16px 0 8px;
+  text-align: center;
+}
+
+.back-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  height: auto;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #f8f9fa;
+  color: var(--text);
+  border-color: #d7e4ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+}
+
 /* Micro-interactions for inputs */
 input:active { transform: translateY(1px); }
 

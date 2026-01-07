@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Table Check and Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Database Table Check and Fix</h1>
+    <div id="results"></div>
+
+    <script>
+        async function checkAndFixTables() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p class="info">Checking and fixing database tables...</p>';
+
+            try {
+                const response = await fetch('setup-user-profiles.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <p class="success">✓ Database setup completed successfully!</p>
+                        <pre>${text}</pre>
+                        <p class="info">You can now refresh your tutorial page to test the video functionality.</p>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <p class="error">✗ Error setting up database:</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <p class="error">✗ Error: ${error.message}</p>
+                    <p class="info">Make sure your web server is running and PHP is configured properly.</p>
+                `;
+            }
+        }
+
+        // Run the check automatically
+        checkAndFixTables();
+    </script>
+</body>
+</html>

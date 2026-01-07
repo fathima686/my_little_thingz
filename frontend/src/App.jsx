@@ -26,6 +26,9 @@ import TutorialsDashboard from "./pages/TutorialsDashboard";
 import TutorialViewer from "./pages/TutorialViewer";
 import TutorialLogin from "./pages/TutorialLogin";
 import TutorialRegister from "./pages/TutorialRegister";
+import SubscriptionCheckout from "./pages/SubscriptionCheckout";
+import ProfileEdit from "./pages/ProfileEdit";
+import ProDashboard from "./pages/ProDashboard";
 
 
 function App() {
@@ -84,6 +87,26 @@ function App() {
                 element={
                   <TutorialProtectedRoute>
                     <TutorialViewer />
+                  </TutorialProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/tutorials/subscribe" 
+                element={<SubscriptionCheckout />} 
+              />
+              <Route 
+                path="/tutorial-profile" 
+                element={
+                  <TutorialProtectedRoute>
+                    <ProfileEdit />
+                  </TutorialProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/pro-dashboard" 
+                element={
+                  <TutorialProtectedRoute>
+                    <ProDashboard />
                   </TutorialProtectedRoute>
                 } 
               />

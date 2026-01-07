@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID, X-Tutorial-Email');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID, X-Tutorial-Email, X-Tutorials-Email');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -23,7 +23,7 @@ try {
 
     // Identify user by email or user_id
     $userId = null;
-    $email = $_SERVER['HTTP_X_TUTORIAL_EMAIL'] ?? null;
+    $email = $_SERVER['HTTP_X_TUTORIAL_EMAIL'] ?? $_SERVER['HTTP_X_TUTORIALS_EMAIL'] ?? null;
     
     if ($email) {
         // Look up user by email

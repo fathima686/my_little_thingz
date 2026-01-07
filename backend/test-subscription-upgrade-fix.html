@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Subscription Upgrade Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .test-section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        .info { color: #3b82f6; font-weight: bold; }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 14px;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status-success { background: #d1fae5; color: #065f46; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .status-info { background: #dbeafe; color: #1e40af; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Subscription Upgrade Fix Test</h1>
+        
+        <div class="test-section">
+            <h2>Step 1: Run the Fix</h2>
+            <p>Click the button below to run the subscription upgrade fix:</p>
+            <button class="btn-primary" onclick="runFix()">Run Subscription Fix</button>
+            <div id="fixResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 2: Test Subscription Status</h2>
+            <p>Test the subscription status API:</p>
+            <input type="email" id="testEmail" placeholder="Enter email to test" value="soudhame52@gmail.com" style="padding: 8px; width: 300px; margin-right: 10px;">
+            <button class="btn-success" onclick="checkStatus()">Check Status</button>
+            <div id="statusResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 3: Test Subscription Upgrade</h2>
+            <p>Test upgrading subscription plans:</p>
+            <div>
+                <button class="btn-warning" onclick="testUpgrade('free')">Upgrade to Free</button>
+                <button class="btn-warning" onclick="testUpgrade('premium')">Upgrade to Premium</button>
+                <button class="btn-warning" onclick="testUpgrade('pro')">Upgrade to Pro</button>
+            </div>
+            <div id="upgradeResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 4: Verify Fix</h2>
+            <p>After running the fix and tests, verify the results:</p>
+            <button class="btn-success" onclick="verifyFix()">Verify Complete Fix</button>
+            <div id="verifyResults"></div>
+        </div>
+    </div>
+
+    <script>
+        function runFix() {
+            const resultsDiv = document.getElementById('fixResults');
+            resultsDiv.innerHTML = '<div class="status-info">Running fix...</div>';
+            
+            fetch('fix-subscription-upgrade-issue.php')
+                .then(response => response.text())
+                .then(data => {
+                    resultsDiv.innerHTML = '<div class="status-success">Fix completed!</div><pre>' + data + '</pre>';
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = '<div class="status-error">Error running fix: ' + error.message + '</div>';
+                });
+        }
+        
+        function checkStatus() {
+            const email = document.getElementById('testEmail').value;
+            const resultsDiv = document.getElementById('statusResults');
+            
+            if (!email) {
+                resultsDiv.innerHTML = '<div class="status-error">Please enter an email</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="status-info">Checking status...</div>';
+            
+            fetch('api/customer/subscription-status-fixed.php?email=' + encodeURIComponent(email))
+                .then(response => response.json())
+                .then(data => {
+                    resultsDiv.innerHTML = '<div class="status-success">Status retrieved!</div><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = '<div class="status-error">Error checking status: ' + error.message + '</div>';
+                });
+        }
+        
+        function testUpgrade(planCode) {
+            const email = document.getElementById('testEmail').value;
+            const resultsDiv = document.getElementById('upgradeResults');
+            
+            if (!email) {
+                resultsDiv.innerHTML = '<div class="status-error">Please enter an email</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="status-info">Testing upgrade to ' + planCode + '...</div>';
+            
+            fetch('api/customer/upgrade-subscription.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Tutorial-Email': email
+                },
+                body: JSON.stringify({
+                    email: email,
+                    plan_code: planCode
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    resultsDiv.innerHTML = '<div class="status-success">Upgrade successful!</div><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    resultsDiv.innerHTML = '<div class="status-warning">Upgrade response:</div><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                }
+            })
+            .catch(error => {
+                resultsDiv.innerHTML = '<div class="status-error">Error testing upgrade: ' + error.message + '</div>';
+            });
+        }
+        
+        function verifyFix() {
+            const resultsDiv = document.getElementById('verifyResults');
+            const email = document.getElementById('testEmail').value;
+            
+            if (!email) {
+                resultsDiv.innerHTML = '<div class="status-error">Please enter an email</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="status-info">Verifying fix...</div>';
+            
+            // Test the complete flow
+            Promise.all([
+                fetch('api/customer/subscription-status-fixed.php?email=' + encodeURIComponent(email)).then(r => r.json()),
+                fetch('api/customer/unified-subscription-check.php?email=' + encodeURIComponent(email)).then(r => r.json())
+            ])
+            .then(([statusData, unifiedData]) => {
+                let html = '<div class="status-success">Verification complete!</div>';
+                html += '<h4>Subscription Status API:</h4><pre>' + JSON.stringify(statusData, null, 2) + '</pre>';
+                html += '<h4>Unified Check API:</h4><pre>' + JSON.stringify(unifiedData, null, 2) + '</pre>';
+                
+                // Check for consistency
+                if (statusData.subscription && unifiedData.subscription) {
+                    const statusPlan = statusData.subscription.plan_code;
+                    const unifiedPlan = unifiedData.subscription.plan_code;
+                    
+                    if (statusPlan === unifiedPlan) {
+                        html += '<div class="status-success">✅ APIs are consistent! Both show plan: ' + statusPlan + '</div>';
+                    } else {
+                        html += '<div class="status-warning">⚠️ API inconsistency: Status shows ' + statusPlan + ', Unified shows ' + unifiedPlan + '</div>';
+                    }
+                }
+                
+                resultsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                resultsDiv.innerHTML = '<div class="status-error">Error verifying fix: ' + error.message + '</div>';
+            });
+        }
+    </script>
+</body>
+</html>

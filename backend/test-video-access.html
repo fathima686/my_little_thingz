@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Video Access - My Little Thingz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .video-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .access-granted { border-left: 4px solid #28a745; }
+        .access-denied { border-left: 4px solid #dc3545; }
+        .access-free { border-left: 4px solid #17a2b8; }
+        .video-thumbnail {
+            width: 120px;
+            height: 68px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>🎥 Video Access Test</h1>
+        <p class="text-muted">Test video tutorials access and visibility</p>
+        
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <label class="form-label">Test User Email:</label>
+                <input type="email" class="form-control" id="testEmail" value="soudhame52@gmail.com">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary d-block" onclick="testVideoAccess()">🧪 Test Video Access</button>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-success d-block" onclick="setupSystem()">🚀 Setup System</button>
+            </div>
+        </div>
+        
+        <div id="results"></div>
+        
+        <div class="mt-4">
+            <h3>🎯 Expected Results</h3>
+            <div class="alert alert-info">
+                <p><strong>After setup, you should see:</strong></p>
+                <ul>
+                    <li>✅ <strong>Beginner Earring Tutorial</strong> - FREE access (visible to everyone)</li>
+                    <li>✅ <strong>Ring Making, Clock Resin Art, etc.</strong> - SUBSCRIPTION access (visible to Pro users)</li>
+                    <li>📊 <strong>User subscription status</strong> - Pro Plan active</li>
+                    <li>🎥 <strong>Video thumbnails and descriptions</strong> - All loaded properly</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h3>🔧 Quick Actions</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <button class="btn btn-outline-primary w-100" onclick="testAPI('tutorials')">Test Tutorials API</button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-success w-100" onclick="testAPI('subscription')">Test Subscription API</button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-info w-100" onclick="testAPI('profile')">Test Profile API</button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-warning w-100" onclick="viewInReact()">View in React App</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function setupSystem() {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '<div class="alert alert-info">🚀 Setting up complete system...</div>';
+        
+        try {
+            const response = await fetch('/my_little_thingz/backend/complete-system-setup.php');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h5>✅ System Setup Complete!</h5>
+                        <div class="mt-3">
+                            ${data.results.map(result => `<div>${result}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                // Automatically test video access after setup
+                setTimeout(() => testVideoAccess(), 1000);
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>❌ Setup Failed:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    async function testVideoAccess() {
+        const email = document.getElementById('testEmail').value;
+        const resultsDiv = document.getElementById('results');
+        
+        resultsDiv.innerHTML = '<div class="alert alert-info">🧪 Testing video access...</div>';
+        
+        try {
+            // Test tutorials API
+            const tutorialsResponse = await fetch('/my_little_thingz/backend/api/customer/tutorials-simple.php', {
+                headers: { 'X-Tutorial-Email': email }
+            });
+            const tutorialsData = await tutorialsResponse.json();
+            
+            // Test subscription API
+            const subscriptionResponse = await fetch(`/my_little_thingz/backend/api/customer/subscription-status-simple.php?email=${email}`);
+            const subscriptionData = await subscriptionResponse.json();
+            
+            if (tutorialsData.status === 'success' && subscriptionData.status === 'success') {
+                displayVideoResults(tutorialsData, subscriptionData, email);
+            } else {
+                throw new Error('API calls failed');
+            }
+            
+        } catch (error) {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>❌ Test Failed:</strong> ${error.message}<br>
+                    <small>Make sure to run "Setup System" first</small>
+                </div>
+            `;
+        }
+    }
+    
+    function displayVideoResults(tutorialsData, subscriptionData, email) {
+        const resultsDiv = document.getElementById('results');
+        
+        const subscriptionInfo = subscriptionData.subscription || {};
+        const tutorials = tutorialsData.tutorials || [];
+        
+        let html = `
+            <div class="alert alert-success">
+                <h5>🎉 Video Access Test Results</h5>
+                <p><strong>User:</strong> ${email}</p>
+                <p><strong>Subscription:</strong> ${subscriptionInfo.plan_name || 'Basic'} (${subscriptionInfo.subscription_status || 'active'})</p>
+                <p><strong>Total Tutorials:</strong> ${tutorials.length}</p>
+            </div>
+            
+            <h4>📹 Available Tutorials</h4>
+        `;
+        
+        tutorials.forEach(tutorial => {
+            const accessClass = tutorial.access_type === 'FREE' ? 'access-free' : 
+                               tutorial.has_access ? 'access-granted' : 'access-denied';
+            
+            const accessBadge = tutorial.access_type === 'FREE' ? 
+                '<span class="badge bg-info">FREE</span>' :
+                tutorial.has_access ? 
+                '<span class="badge bg-success">SUBSCRIPTION ACCESS</span>' :
+                '<span class="badge bg-danger">ACCESS DENIED</span>';
+            
+            html += `
+                <div class="video-card ${accessClass}">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <img src="${tutorial.thumbnail_url || 'https://via.placeholder.com/120x68?text=Video'}" 
+                                 class="video-thumbnail" alt="Thumbnail">
+                        </div>
+                        <div class="col-md-7">
+                            <h6>${tutorial.title}</h6>
+                            <p class="text-muted small mb-1">${tutorial.description || 'No description'}</p>
+                            <small class="text-muted">
+                                ${tutorial.duration_minutes} min • ${tutorial.difficulty_level} • ${tutorial.category}
+                                ${tutorial.price > 0 ? ` • ₹${tutorial.price}` : ''}
+                            </small>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            ${accessBadge}
+                            ${tutorial.has_access ? 
+                                `<br><button class="btn btn-sm btn-primary mt-2" onclick="playVideo('${tutorial.video_url}', '${tutorial.title}')">▶️ Play</button>` :
+                                `<br><button class="btn btn-sm btn-outline-secondary mt-2" disabled>🔒 Locked</button>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        resultsDiv.innerHTML = html;
+    }
+    
+    async function testAPI(type) {
+        const email = document.getElementById('testEmail').value;
+        let url, headers = {};
+        
+        switch(type) {
+            case 'tutorials':
+                url = '/my_little_thingz/backend/api/customer/tutorials-simple.php';
+                headers = { 'X-Tutorial-Email': email };
+                break;
+            case 'subscription':
+                url = `/my_little_thingz/backend/api/customer/subscription-status-simple.php?email=${email}`;
+                break;
+            case 'profile':
+                url = '/my_little_thingz/backend/api/customer/profile-simple.php';
+                headers = { 'X-Tutorial-Email': email };
+                break;
+        }
+        
+        try {
+            const response = await fetch(url, { headers });
+            const data = await response.json();
+            
+            alert(`${type.toUpperCase()} API Test:\n\nStatus: ${data.status}\n\nData: ${JSON.stringify(data, null, 2)}`);
+        } catch (error) {
+            alert(`${type.toUpperCase()} API Test Failed:\n\n${error.message}`);
+        }
+    }
+    
+    function playVideo(videoUrl, title) {
+        // Open video in new window/tab
+        window.open(videoUrl, '_blank');
+    }
+    
+    function viewInReact() {
+        // Open React app tutorials page
+        window.open('http://localhost:5173/tutorials', '_blank');
+    }
+    
+    // Auto-run setup on page load if needed
+    window.addEventListener('load', () => {
+        // You can uncomment this to auto-setup on page load
+        // setupSystem();
+    });
+    </script>
+</body>
+</html>

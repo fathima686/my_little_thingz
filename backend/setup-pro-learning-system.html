@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Setup Pro Learning System</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        button:hover { transform: translateY(-1px); }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Setup Pro Learning System</h1>
+        <p>This will set up the learning progress tracking system for Pro users, showing learning hours instead of purchased tutorials.</p>
+
+        <div class="step">
+            <h3>Step 1: Setup Learning Progress Tables</h3>
+            <p>Create database tables for tracking learning progress and video watch time.</p>
+            <button onclick="setupLearningTables()">Setup Learning Tables</button>
+            <div id="tables-result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Test Updated Profile API</h3>
+            <p>Test the new profile API that shows learning metrics for Pro users.</p>
+            <button onclick="testProfileAPI()">Test Profile API</button>
+            <div id="profile-result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Verify Pro Features</h3>
+            <p>Check that your profile now shows learning hours, completed tutorials, and practice uploads.</p>
+            <div class="info" style="padding: 15px; margin: 10px 0;">
+                <h4>Expected Pro User Stats:</h4>
+                <ul>
+                    <li><strong>Learning Hours:</strong> Total time spent watching tutorials</li>
+                    <li><strong>Completed:</strong> Number of tutorials finished (100% progress)</li>
+                    <li><strong>Uploads:</strong> Practice work submissions</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Final Step: Refresh Your Profile</h3>
+            <p>After running the setup, go back to your tutorial dashboard and refresh the page. Your profile should now show:</p>
+            <ul>
+                <li>Learning hours instead of "Tutorials Purchased"</li>
+                <li>Completed tutorials count</li>
+                <li>Practice uploads (Pro feature)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function setupLearningTables() {
+            const resultDiv = document.getElementById('tables-result');
+            resultDiv.innerHTML = '<div class="info" style="padding: 10px; margin: 10px 0;">Setting up learning progress tables...</div>';
+
+            try {
+                const response = await fetch('setup-learning-progress.php');
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success" style="padding: 15px; margin: 10px 0;">
+                            <h4>✅ Learning Tables Setup Complete!</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error" style="padding: 15px; margin: 10px 0;">
+                            <h4>❌ Setup Failed</h4>
+                            <pre>${text}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error" style="padding: 15px; margin: 10px 0;">
+                        <h4>❌ Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testProfileAPI() {
+            const resultDiv = document.getElementById('profile-result');
+            resultDiv.innerHTML = '<div class="info" style="padding: 10px; margin: 10px 0;">Testing profile API...</div>';
+
+            try {
+                const response = await fetch('api/customer/profile.php', {
+                    headers: {
+                        'X-Tutorial-Email': 'soudhame52@gmail.com'
+                    }
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    const stats = data.stats;
+                    const isPro = stats.is_pro_user;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success" style="padding: 15px; margin: 10px 0;">
+                            <h4>✅ Profile API Working!</h4>
+                            <p><strong>User Type:</strong> ${isPro ? 'Pro User' : 'Basic User'}</p>
+                            <h5>Stats:</h5>
+                            <ul>
+                                ${isPro ? `
+                                    <li><strong>Learning Hours:</strong> ${stats.learning_hours}h</li>
+                                    <li><strong>Completed Tutorials:</strong> ${stats.completed_tutorials}</li>
+                                    <li><strong>In Progress:</strong> ${stats.in_progress_tutorials || 0}</li>
+                                    <li><strong>Practice Uploads:</strong> ${stats.practice_uploads}</li>
+                                ` : `
+                                    <li><strong>Purchased Tutorials:</strong> ${stats.purchased_tutorials}</li>
+                                    <li><strong>Completed Tutorials:</strong> ${stats.completed_tutorials}</li>
+                                `}
+                            </ul>
+                            <p><strong>Subscription:</strong> ${data.subscription.plan_name} (${data.subscription.subscription_status})</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error" style="padding: 15px; margin: 10px 0;">
+                            <h4>❌ API Error</h4>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error" style="padding: 15px; margin: 10px 0;">
+                        <h4>❌ Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

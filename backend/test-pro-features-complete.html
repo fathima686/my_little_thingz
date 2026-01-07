@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Pro Features Complete</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .btn { background: #6b46c1; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #553c9a; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        .result { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        .feature-check { display: flex; align-items: center; margin: 5px 0; }
+        .feature-check .icon { margin-right: 10px; font-size: 18px; }
+        .summary { background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Pro Features Complete Test</h1>
+        <p>Testing all Pro subscription features for <strong>soudhame52@gmail.com</strong></p>
+        
+        <div class="test-section">
+            <h3>🔍 Quick Feature Check</h3>
+            <button class="btn" onclick="runAllTests()">Run All Tests</button>
+            <div id="summary" class="summary" style="display: none;">
+                <h4>📊 Test Summary</h4>
+                <div id="feature-status"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>1. Profile API (Pro Status)</h3>
+            <button class="btn" onclick="testProfileAPI()">Test Profile</button>
+            <div id="profile-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Subscription Status API</h3>
+            <button class="btn" onclick="testSubscriptionStatus()">Test Subscription</button>
+            <div id="subscription-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Tutorial Access Check</h3>
+            <button class="btn" onclick="testTutorialAccess()">Test Tutorial Access</button>
+            <div id="tutorial-access-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Live Workshops Access</h3>
+            <button class="btn" onclick="testLiveWorkshops()">Test Live Workshops</button>
+            <div id="live-workshops-result" class="result"></div>
+        </div>
+        
+        <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const userEmail = 'soudhame52@gmail.com';
+        
+        let testResults = {};
+        
+        async function runAllTests() {
+            document.getElementById('summary').style.display = 'none';
+            testResults = {};
+            
+            await testProfileAPI();
+            await testSubscriptionStatus();
+            await testTutorialAccess();
+            await testLiveWorkshops();
+            
+            showSummary();
+        }
+        
+        function showSummary() {
+            const summaryDiv = document.getElementById('summary');
+            const statusDiv = document.getElementById('feature-status');
+            
+            const features = [
+                { name: 'Pro Plan Active', key: 'pro_plan', required: true },
+                { name: 'Unlimited Tutorials', key: 'unlimited_tutorials', required: true },
+                { name: 'Video Downloads', key: 'video_downloads', required: true },
+                { name: 'Live Workshops', key: 'live_workshops', required: true },
+                { name: 'HD Video Access', key: 'hd_video', required: true },
+                { name: 'Practice Uploads', key: 'practice_uploads', required: true },
+                { name: 'Certificates', key: 'certificates', required: true },
+                { name: 'Mentorship', key: 'mentorship', required: true }
+            ];
+            
+            let html = '';
+            let allPassed = true;
+            
+            features.forEach(feature => {
+                const status = testResults[feature.key];
+                const icon = status ? '✅' : '❌';
+                const statusText = status ? 'WORKING' : 'FAILED';
+                
+                if (!status && feature.required) allPassed = false;
+                
+                html += `<div class="feature-check">
+                    <span class="icon">${icon}</span>
+                    <span>${feature.name}: <strong>${statusText}</strong></span>
+                </div>`;
+            });
+            
+            html += `<div style="margin-top: 15px; padding: 10px; background: ${allPassed ? '#d1fae5' : '#fee2e2'}; border-radius: 5px;">
+                <strong>${allPassed ? '🎉 ALL PRO FEATURES WORKING!' : '⚠️ SOME FEATURES NEED FIXING'}</strong>
+            </div>`;
+            
+            statusDiv.innerHTML = html;
+            summaryDiv.style.display = 'block';
+        }
+        
+        async function testProfileAPI() {
+            const resultDiv = document.getElementById('profile-result');
+            resultDiv.innerHTML = 'Testing profile API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/profile.php`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': userEmail
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    const isPro = data.subscription?.plan_code === 'pro';
+                    const isActive = data.subscription?.is_active;
+                    const hasFeatures = data.feature_access?.access_levels;
+                    
+                    testResults.pro_plan = isPro && isActive;
+                    testResults.unlimited_tutorials = hasFeatures?.can_access_unlimited_tutorials;
+                    testResults.video_downloads = hasFeatures?.can_download_videos;
+                    testResults.live_workshops = hasFeatures?.can_access_live_workshops;
+                    testResults.hd_video = hasFeatures?.can_access_hd_video;
+                    testResults.practice_uploads = hasFeatures?.can_upload_practice_work;
+                    testResults.certificates = hasFeatures?.can_access_certificates;
+                    testResults.mentorship = hasFeatures?.can_access_mentorship;
+                    
+                    resultDiv.innerHTML = `✅ SUCCESS: Profile API working
+                    
+Plan: ${data.subscription?.plan_code} (${isPro ? 'PRO ✅' : 'NOT PRO ❌'})
+Status: ${data.subscription?.subscription_status} (${isActive ? 'ACTIVE ✅' : 'INACTIVE ❌'})
+Is Pro User: ${data.stats?.is_pro_user} ${data.stats?.is_pro_user ? '✅' : '❌'}
+
+Pro Features Status:
+• Unlimited Tutorials: ${hasFeatures?.can_access_unlimited_tutorials ? '✅' : '❌'}
+• Video Downloads: ${hasFeatures?.can_download_videos ? '✅' : '❌'}
+• Live Workshops: ${hasFeatures?.can_access_live_workshops ? '✅' : '❌'}
+• HD Video: ${hasFeatures?.can_access_hd_video ? '✅' : '❌'}
+• Practice Uploads: ${hasFeatures?.can_upload_practice_work ? '✅' : '❌'}
+• Certificates: ${hasFeatures?.can_access_certificates ? '✅' : '❌'}
+• Mentorship: ${hasFeatures?.can_access_mentorship ? '✅' : '❌'}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testSubscriptionStatus() {
+            const resultDiv = document.getElementById('subscription-result');
+            resultDiv.innerHTML = 'Testing subscription status API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/subscription-status.php`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': userEmail
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    const isPro = data.plan_code === 'pro';
+                    const isActive = data.is_active;
+                    const hasFeatures = data.feature_access?.access_levels;
+                    
+                    resultDiv.innerHTML = `✅ SUCCESS: Subscription Status API working
+                    
+Plan: ${data.plan_code} (${isPro ? 'PRO ✅' : 'NOT PRO ❌'})
+Status: ${data.subscription_status} (${isActive ? 'ACTIVE ✅' : 'INACTIVE ❌'})
+Price: ₹${data.price}
+
+Pro Features Status:
+• Unlimited Tutorials: ${hasFeatures?.can_access_unlimited_tutorials ? '✅' : '❌'}
+• Video Downloads: ${hasFeatures?.can_download_videos ? '✅' : '❌'}
+• Live Workshops: ${hasFeatures?.can_access_live_workshops ? '✅' : '❌'}
+• HD Video: ${hasFeatures?.can_access_hd_video ? '✅' : '❌'}
+• Practice Uploads: ${hasFeatures?.can_upload_practice_work ? '✅' : '❌'}
+• Certificates: ${hasFeatures?.can_access_certificates ? '✅' : '❌'}
+• Mentorship: ${hasFeatures?.can_access_mentorship ? '✅' : '❌'}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testTutorialAccess() {
+            const resultDiv = document.getElementById('tutorial-access-result');
+            resultDiv.innerHTML = 'Testing tutorial access check...';
+            
+            try {
+                // Test with multiple tutorial IDs
+                const testTutorials = [1, 2, 3];
+                let results = [];
+                
+                for (const tutorialId of testTutorials) {
+                    const response = await fetch(`${API_BASE}/customer/check-tutorial-access.php?tutorial_id=${tutorialId}&email=${userEmail}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Tutorials-Email': userEmail
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    results.push({
+                        tutorial_id: tutorialId,
+                        has_access: data.has_access,
+                        reason: data.reason || data.access_type,
+                        plan_code: data.plan_code,
+                        response: data
+                    });
+                }
+                
+                const allHaveAccess = results.every(r => r.has_access);
+                
+                resultDiv.innerHTML = `${allHaveAccess ? '✅' : '❌'} Tutorial Access Check Results:
+
+${results.map(r => `Tutorial ${r.tutorial_id}: ${r.has_access ? '✅ ACCESS GRANTED' : '❌ ACCESS DENIED'} (${r.reason})`).join('\n')}
+
+${allHaveAccess ? 'All tutorials accessible with Pro subscription!' : 'Some tutorials are not accessible - check subscription status.'}
+
+Detailed Results:
+${JSON.stringify(results, null, 2)}`;
+                resultDiv.className = allHaveAccess ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testLiveWorkshops() {
+            const resultDiv = document.getElementById('live-workshops-result');
+            resultDiv.innerHTML = 'Testing live workshops access...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/live-workshops-corrected.php`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Tutorial-Email': userEmail
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    const hasAccess = data.has_access;
+                    const isPro = data.subscription_info?.plan_code === 'pro';
+                    
+                    resultDiv.innerHTML = `${hasAccess ? '✅' : '❌'} Live Workshops Access:
+
+Has Access: ${hasAccess ? 'YES ✅' : 'NO ❌'}
+Plan: ${data.subscription_info?.plan_code} (${isPro ? 'PRO ✅' : 'NOT PRO ❌'})
+Sessions Available: ${data.sessions?.length || 0}
+
+${hasAccess ? 'Live workshops are accessible with Pro subscription!' : 'Live workshops access denied - check subscription.'}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = hasAccess ? 'result success' : 'result error';
+                } else {
+                    resultDiv.innerHTML = `❌ ERROR: ${response.status} ${response.statusText}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ NETWORK ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        </script>
+    </div>
+</body>
+</html>

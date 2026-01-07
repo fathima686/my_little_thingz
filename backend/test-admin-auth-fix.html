@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Auth Debug & Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .response { background: #f5f5f5; padding: 10px; margin: 10px 0; white-space: pre-wrap; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #d00; }
+        .success { background: #e6ffe6; color: #060; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007cba; color: white; padding: 8px 15px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h1>Admin Authentication Debug & Fix</h1>
+    
+    <div class="test-section">
+        <h3>Step 1: Debug Headers</h3>
+        <p>First, let's see what headers are actually being received by the server:</p>
+        <button onclick="debugHeaders()">Debug Headers</button>
+        <div id="debug-result" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Step 2: Test Custom Requests API</h3>
+        <p>Test the custom requests API with proper headers:</p>
+        <button onclick="testCustomRequests()">Test Custom Requests</button>
+        <div id="custom-requests-result" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Step 3: Create Simple Custom Requests API</h3>
+        <p>If the above fails, we'll create a simplified version:</p>
+        <button onclick="createSimpleAPI()">Create Simple API</button>
+        <div id="simple-api-result" class="response"></div>
+    </div>
+
+    <script>
+        async function debugHeaders() {
+            const resultDiv = document.getElementById('debug-result');
+            resultDiv.textContent = 'Debugging headers...';
+            resultDiv.className = 'response';
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/debug-headers.php', {
+                    headers: {
+                        'X-Admin-Email': 'admin@example.com',
+                        'X-Admin-User-Id': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'response success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `Error: ${response.status}\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'response error';
+                resultDiv.textContent = `Network Error: ${error.message}`;
+            }
+        }
+        
+        async function testCustomRequests() {
+            const resultDiv = document.getElementById('custom-requests-result');
+            resultDiv.textContent = 'Testing custom requests API...';
+            resultDiv.className = 'response';
+            
+            try {
+                const response = await fetch('http://localhost/my_little_thingz/backend/api/admin/custom-requests.php?status=pending', {
+                    headers: {
+                        'X-Admin-Email': 'admin@example.com',
+                        'X-Admin-User-Id': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const text = await response.text();
+                
+                if (response.ok) {
+                    resultDiv.className = 'response success';
+                    resultDiv.textContent = `✓ SUCCESS!\nStatus: ${response.status}\nResponse: ${text}`;
+                } else {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `✗ FAILED!\nStatus: ${response.status}\nResponse: ${text}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'response error';
+                resultDiv.textContent = `✗ Network Error: ${error.message}`;
+            }
+        }
+        
+        async function createSimpleAPI() {
+            const resultDiv = document.getElementById('simple-api-result');
+            resultDiv.textContent = 'Creating simple custom requests API...';
+            resultDiv.className = 'response';
+            
+            // This would create a simplified version of the API
+            resultDiv.className = 'response warning';
+            resultDiv.textContent = 'This will create a simplified API without authentication requirements.\nClick the button below to proceed.';
+            
+            const button = document.createElement('button');
+            button.textContent = 'Create Simple API';
+            button.onclick = async function() {
+                try {
+                    const response = await fetch('http://localhost/my_little_thingz/backend/create-simple-custom-requests.php');
+                    const text = await response.text();
+                    
+                    if (response.ok) {
+                        resultDiv.className = 'response success';
+                        resultDiv.innerHTML = text;
+                    } else {
+                        resultDiv.className = 'response error';
+                        resultDiv.textContent = `Failed to create simple API: ${response.status}`;
+                    }
+                } catch (error) {
+                    resultDiv.className = 'response error';
+                    resultDiv.textContent = `Error: ${error.message}`;
+                }
+            };
+            
+            resultDiv.appendChild(document.createElement('br'));
+            resultDiv.appendChild(button);
+        }
+    </script>
+</body>
+</html>
