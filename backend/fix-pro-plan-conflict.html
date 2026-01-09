@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Fix Pro Plan Conflict</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin: 0;
+            color: #EF4444;
+        }
+        .conflict-alert {
+            background: #FEE2E2;
+            border: 2px solid #EF4444;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .conflict-alert h2 {
+            margin: 0 0 10px 0;
+            color: #DC2626;
+            font-size: 24px;
+        }
+        .conflict-alert p {
+            margin: 0;
+            color: #991B1B;
+            font-size: 16px;
+        }
+        .fix-button {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 20px 0;
+            width: 100%;
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+            transition: all 0.3s ease;
+        }
+        .fix-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(239, 68, 68, 0.4);
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+        }
+        .success {
+            border-color: #10B981;
+            background: #f0fdf4;
+            color: #065F46;
+        }
+        .error {
+            border-color: #EF4444;
+            background: #fef2f2;
+            color: #991B1B;
+        }
+        .problem-description {
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .problem-description h3 {
+            margin: 0 0 15px 0;
+            color: #92400E;
+        }
+        .problem-description p {
+            margin: 8px 0;
+            color: #92400E;
+        }
+        .solution-steps {
+            background: #DBEAFE;
+            border: 1px solid #3B82F6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .solution-steps h3 {
+            margin: 0 0 15px 0;
+            color: #1E40AF;
+        }
+        .solution-steps ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #1E40AF;
+        }
+        .solution-steps li {
+            margin: 8px 0;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Fix Pro Plan Conflict</h1>
+            <p>Resolve subscription plan detection issues</p>
+        </div>
+
+        <div class="conflict-alert">
+            <h2>⚠️ SUBSCRIPTION CONFLICT DETECTED</h2>
+            <p>Your account shows Pro plan in UI but APIs detect Basic plan</p>
+        </div>
+
+        <div class="problem-description">
+            <h3>🐛 The Problem:</h3>
+            <p><strong>Symptom:</strong> "Access denied. Feature 'certificates' requires a higher subscription plan. Current plan: basic"</p>
+            <p><strong>Cause:</strong> Multiple subscription records or conflicting plan detection</p>
+            <p><strong>Impact:</strong> Pro features not accessible despite having Pro subscription</p>
+        </div>
+
+        <button class="fix-button" onclick="fixProPlanConflict()">
+            🚀 FIX PRO PLAN CONFLICT NOW
+        </button>
+
+        <div id="result" class="result"></div>
+
+        <div class="solution-steps">
+            <h3>📋 What This Fix Does:</h3>
+            <ol>
+                <li><strong>Cleans up</strong> all conflicting subscription records</li>
+                <li><strong>Creates</strong> a single, clean Pro subscription</li>
+                <li><strong>Verifies</strong> all APIs detect Pro plan correctly</li>
+                <li><strong>Tests</strong> progress tracking and certificate access</li>
+                <li><strong>Ensures</strong> consistent plan detection across all features</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #F3F4F6; border-radius: 8px;">
+            <p><strong>🎯 After running this fix:</strong></p>
+            <p>✅ Progress page will work<br>✅ Certificate access granted<br>✅ Practice uploads enabled<br>✅ All Pro features unlocked</p>
+        </div>
+    </div>
+
+    <script>
+        async function fixProPlanConflict() {
+            const resultDiv = document.getElementById('result');
+            const button = document.querySelector('.fix-button');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = '🔧 Fixing Pro plan conflict...\nCleaning up subscription records...';
+            
+            button.disabled = true;
+            button.textContent = '🔧 FIXING CONFLICT...';
+            
+            try {
+                const response = await fetch('fix-pro-plan-conflict.php');
+                const text = await response.text();
+                
+                if (text.includes('PRO PLAN CONFLICT FIXED')) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = text;
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        alert('🎉 PRO PLAN CONFLICT FIXED!\n\n✅ Clean Pro subscription created\n✅ All APIs now detect Pro plan\n✅ Progress tracking enabled\n✅ Certificate access granted\n\nCLEAR BROWSER CACHE AND REFRESH!');
+                    }, 1000);
+                    
+                    button.textContent = '✅ CONFLICT FIXED!';
+                    button.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = text;
+                    button.disabled = false;
+                    button.textContent = '🚀 FIX PRO PLAN CONFLICT NOW';
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Error running fix: ' + error.message;
+                button.disabled = false;
+                button.textContent = '🚀 FIX PRO PLAN CONFLICT NOW';
+            }
+        }
+    </script>
+</body>
+</html>

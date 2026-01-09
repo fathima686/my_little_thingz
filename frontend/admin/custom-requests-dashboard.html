@@ -179,6 +179,63 @@
             height: 100%;
             border: none;
         }
+        
+        /* Image Display Styles */
+        .image-preview {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .request-image-thumb {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            border: 2px solid #e9ecef;
+        }
+        
+        .request-image-thumb:hover {
+            transform: scale(1.1);
+            border-color: #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        
+        .image-preview .badge {
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        .no-images {
+            color: #6c757d;
+            font-size: 0.85em;
+            font-style: italic;
+        }
+        
+        /* Image Modal Styles */
+        #imageModal .modal-dialog {
+            max-width: 90%;
+        }
+        
+        #imageModal .card-img-top {
+            transition: transform 0.3s ease;
+        }
+        
+        #imageModal .card:hover .card-img-top {
+            transform: scale(1.02);
+        }
+        
+        #imageModal .card {
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        #imageModal .card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
     </style>
 </head>
 <body>
@@ -278,6 +335,7 @@
                                 <th>Request ID</th>
                                 <th>Customer</th>
                                 <th>Title & Occasion</th>
+                                <th>Images</th>
                                 <th>Deadline</th>
                                 <th>Status</th>
                                 <th>Priority</th>

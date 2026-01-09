@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐛 Debug Image URLs</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: #f8f9fa;
+        }
+        
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-left: 5px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            color: #155724;
+        }
+        
+        .info {
+            background: #e8f4fd;
+            border-left: 5px solid #007bff;
+            color: #0c5460;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+        }
+        
+        .image-test {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .image-test img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 Debug Custom Request Image URLs</h1>
+    
+    <div class="debug-section info">
+        <h2>🔍 Testing API Response</h2>
+        <p>This will test the backend API and show the exact structure of image data.</p>
+        <button class="test-button" onclick="testAPI()">Test API Response</button>
+        <button class="test-button" onclick="testImageUrls()">Test Image URLs</button>
+        <a href="test-api-direct.php" target="_blank" class="test-button" style="background: linear-gradient(45deg, #28a745, #20c997);">
+            🔗 Test API Directly (No JS)
+        </a>
+        <a href="backend/api/admin/custom-requests-database-only.php" target="_blank" class="test-button" style="background: linear-gradient(45deg, #fd7e14, #e63946);">
+            📊 Open API in Browser
+        </a>
+    </div>
+    
+    <div class="debug-section" id="apiResponse" style="display: none;">
+        <h3>📊 API Response Structure</h3>
+        <pre id="responseData"></pre>
+    </div>
+    
+    <div class="debug-section" id="imageAnalysis" style="display: none;">
+        <h3>🖼️ Image URL Analysis</h3>
+        <div id="imageResults"></div>
+    </div>
+    
+    <div class="debug-section" id="imageTests" style="display: none;">
+        <h3>🧪 Image Loading Tests</h3>
+        <div id="imageTestResults"></div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const responseDiv = document.getElementById('apiResponse');
+            const dataDiv = document.getElementById('responseData');
+            
+            try {
+                console.log('🔍 Testing API...');
+                
+                // Try different possible API paths
+                const possiblePaths = [
+                    'backend/api/admin/custom-requests-database-only.php',
+                    './backend/api/admin/custom-requests-database-only.php',
+                    '/backend/api/admin/custom-requests-database-only.php'
+                ];
+                
+                let response = null;
+                let workingPath = '';
+                
+                for (const path of possiblePaths) {
+                    try {
+                        console.log(`Trying path: ${path}`);
+                        response = await fetch(path, {
+                            method: 'GET',
+                            headers: {
+                                'X-Admin-Email': 'admin@mylittlethingz.com',
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            workingPath = path;
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`Path ${path} failed:`, e.message);
+                        continue;
+                    }
+                }
+                
+                if (!response || !response.ok) {
+                    throw new Error(`All API paths failed. Try opening test-api-direct.php instead.`);
+                }
+                
+                const data = await response.json();
+                
+                console.log('✅ API Response:', data);
+                console.log('✅ Working path:', workingPath);
+                
+                // Show the response
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'debug-section success';
+                dataDiv.innerHTML = `<strong>✅ API Working! Path: ${workingPath}</strong><br><br>` + JSON.stringify(data, null, 2);
+                
+                // Analyze images
+                analyzeImages(data.requests || []);
+                
+            } catch (error) {
+                console.error('❌ API Error:', error);
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'debug-section error';
+                dataDiv.innerHTML = `
+                    <strong>❌ API Test Failed</strong><br><br>
+                    <strong>Error:</strong> ${error.message}<br><br>
+                    <strong>Possible Solutions:</strong><br>
+                    1. Open <a href="test-api-direct.php" target="_blank" style="color: #007bff; font-weight: bold;">test-api-direct.php</a> to test API directly<br>
+                    2. Make sure you're running a local server (XAMPP, WAMP, etc.)<br>
+                    3. Check if the backend/api/admin/custom-requests-database-only.php file exists<br>
+                    4. Verify database connection in backend/config/database.php<br><br>
+                    <strong>Debug Info:</strong><br>
+                    Current URL: ${window.location.href}<br>
+                    Attempted paths: backend/api/admin/custom-requests-database-only.php
+                `;
+            }
+        }
+        
+        function analyzeImages(requests) {
+            const analysisDiv = document.getElementById('imageAnalysis');
+            const resultsDiv = document.getElementById('imageResults');
+            
+            analysisDiv.style.display = 'block';
+            
+            let html = '<h4>📊 Image Data Analysis:</h4>';
+            
+            requests.forEach((request, index) => {
+                html += `<div style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px;">`;
+                html += `<h5>Request ${index + 1}: ${request.order_id}</h5>`;
+                html += `<p><strong>Title:</strong> ${request.title}</p>`;
+                
+                if (request.images && request.images.length > 0) {
+                    html += `<p><strong>Images found:</strong> ${request.images.length}</p>`;
+                    
+                    request.images.forEach((img, imgIndex) => {
+                        html += `<div style="background: white; padding: 10px; margin: 5px 0; border-radius: 3px;">`;
+                        html += `<p><strong>Image ${imgIndex + 1}:</strong></p>`;
+                        html += `<p><strong>Type:</strong> ${typeof img}</p>`;
+                        
+                        if (typeof img === 'object') {
+                            html += `<p><strong>URL:</strong> ${img.url || 'NOT FOUND'}</p>`;
+                            html += `<p><strong>Filename:</strong> ${img.filename || 'NOT FOUND'}</p>`;
+                            html += `<p><strong>Original Name:</strong> ${img.original_name || 'NOT FOUND'}</p>`;
+                            html += `<p><strong>All Properties:</strong></p>`;
+                            html += `<pre style="font-size: 12px;">${JSON.stringify(img, null, 2)}</pre>`;
+                        } else {
+                            html += `<p><strong>Value:</strong> ${img}</p>`;
+                        }
+                        
+                        html += `</div>`;
+                    });
+                } else {
+                    html += `<p style="color: #dc3545;"><strong>No images found</strong></p>`;
+                }
+                
+                html += `</div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        async function testImageUrls() {
+            console.log('🧪 Testing image URLs...');
+            
+            try {
+                const response = await fetch('backend/api/admin/custom-requests-database-only.php', {
+                    method: 'GET',
+                    headers: {
+                        'X-Admin-Email': 'admin@mylittlethingz.com',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                const requests = data.requests || [];
+                
+                const testsDiv = document.getElementById('imageTests');
+                const resultsDiv = document.getElementById('imageTestResults');
+                
+                testsDiv.style.display = 'block';
+                
+                let html = '<h4>🖼️ Image Loading Tests:</h4>';
+                
+                let totalImages = 0;
+                let workingImages = 0;
+                
+                for (const request of requests) {
+                    if (request.images && request.images.length > 0) {
+                        html += `<div style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px;">`;
+                        html += `<h5>${request.order_id} - ${request.title}</h5>`;
+                        
+                        for (const img of request.images) {
+                            totalImages++;
+                            
+                            let imageUrl = '';
+                            if (typeof img === 'object') {
+                                imageUrl = img.url || img.image_url || '';
+                            } else if (typeof img === 'string') {
+                                imageUrl = img;
+                            }
+                            
+                            if (imageUrl && imageUrl !== '[object Object]') {
+                                html += `<div class="image-test">`;
+                                html += `<img src="${imageUrl}" alt="Test" onload="imageLoaded(this)" onerror="imageFailed(this)">`;
+                                html += `<br><small>${img.original_name || 'Unknown'}</small>`;
+                                html += `<br><small style="color: #666;">${imageUrl.substring(0, 50)}...</small>`;
+                                html += `</div>`;
+                            } else {
+                                html += `<div class="image-test" style="border-color: #dc3545;">`;
+                                html += `<div style="width: 60px; height: 60px; background: #f8d7da; display: flex; align-items: center; justify-content: center; border-radius: 5px;">`;
+                                html += `<i style="color: #dc3545;">❌</i>`;
+                                html += `</div>`;
+                                html += `<br><small style="color: #dc3545;">Invalid URL</small>`;
+                                html += `</div>`;
+                            }
+                        }
+                        
+                        html += `</div>`;
+                    }
+                }
+                
+                html += `<div style="background: #e8f4fd; padding: 15px; margin: 20px 0; border-radius: 5px;">`;
+                html += `<h4>📊 Summary:</h4>`;
+                html += `<p><strong>Total Images:</strong> ${totalImages}</p>`;
+                html += `<p><strong>Working Images:</strong> <span id="workingCount">Testing...</span></p>`;
+                html += `<p><strong>Failed Images:</strong> <span id="failedCount">Testing...</span></p>`;
+                html += `</div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+                // Reset counters
+                window.workingImages = 0;
+                window.failedImages = 0;
+                
+            } catch (error) {
+                console.error('❌ Error testing images:', error);
+            }
+        }
+        
+        window.imageLoaded = function(img) {
+            window.workingImages = (window.workingImages || 0) + 1;
+            img.parentElement.style.borderColor = '#28a745';
+            updateCounts();
+        };
+        
+        window.imageFailed = function(img) {
+            window.failedImages = (window.failedImages || 0) + 1;
+            img.parentElement.style.borderColor = '#dc3545';
+            img.innerHTML = '❌';
+            updateCounts();
+        };
+        
+        function updateCounts() {
+            const workingSpan = document.getElementById('workingCount');
+            const failedSpan = document.getElementById('failedCount');
+            
+            if (workingSpan) workingSpan.textContent = window.workingImages || 0;
+            if (failedSpan) failedSpan.textContent = window.failedImages || 0;
+        }
+        
+        // Auto-test on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Debug page loaded');
+        });
+    </script>
+</body>
+</html>

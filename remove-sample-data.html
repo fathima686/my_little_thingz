@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remove Sample Data - Custom Requests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007cba 0%, #005a8b 100%);
+        }
+        
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #ffc107;
+            margin: 20px 0;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #17a2b8;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+            margin: 20px 0;
+        }
+        
+        .sample-data {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .sample-data h4 {
+            color: #dc3545;
+            margin-top: 0;
+        }
+        
+        .sample-data ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .sample-data li {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .steps {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .steps h3 {
+            color: #007cba;
+            margin-top: 0;
+        }
+        
+        .steps ol {
+            padding-left: 20px;
+        }
+        
+        .steps li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗑️ Remove Sample Data from Custom Requests</h1>
+            <p>Clean your database by removing all test/sample data</p>
+        </div>
+
+        <div class="warning">
+            <h4>⚠️ Important Notice</h4>
+            <p>This will permanently delete all sample/test data from your custom requests table. Real customer data will be preserved.</p>
+        </div>
+
+        <div class="sample-data">
+            <h4>🎯 Sample Data to be Removed:</h4>
+            <ul>
+                <li><strong>Sample Customers:</strong> Alice Johnson, Michael Chen, Sarah Williams, Robert Davis</li>
+                <li><strong>Test Emails:</strong> *@email.com, *test*, Unknown Customer</li>
+                <li><strong>Test Titles:</strong> Any title containing "Test"</li>
+                <li><strong>Sample Order IDs:</strong> CR-*-001, CR-*-002, CR-*-003, CR-*-004</li>
+                <li><strong>Generic Names:</strong> Any customer name containing "Customer"</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <h4>✅ What Will Be Preserved:</h4>
+            <p>All legitimate customer requests with real names, emails, and genuine request details will be kept safe.</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="backend/remove-sample-data-now.php" class="btn" target="_blank">
+                🗑️ Remove Sample Data Now
+            </a>
+        </div>
+
+        <div class="steps">
+            <h3>📋 Step-by-Step Process:</h3>
+            <ol>
+                <li><strong>Click the button above</strong> to open the cleanup script</li>
+                <li><strong>Review the data</strong> that will be deleted (shown in red)</li>
+                <li><strong>Confirm real data</strong> that will be preserved (shown in green)</li>
+                <li><strong>Automatic deletion</strong> will execute immediately</li>
+                <li><strong>View final results</strong> and confirmation</li>
+            </ol>
+        </div>
+
+        <div class="info">
+            <h4>🔗 After Cleanup:</h4>
+            <p>Once sample data is removed, you can:</p>
+            <ul>
+                <li>Test the admin dashboard to see clean data</li>
+                <li>Submit real customer requests</li>
+                <li>Verify the customer-to-admin flow works correctly</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="backend/api/admin/custom-requests-database-only.php" class="btn btn-success" target="_blank">
+                📊 View Admin API
+            </a>
+            <a href="frontend/admin/custom-requests-dashboard.html" class="btn btn-primary" target="_blank">
+                👨‍💼 Open Admin Dashboard
+            </a>
+        </div>
+
+        <div class="success">
+            <h4>🎉 Expected Result:</h4>
+            <p>After running the cleanup:</p>
+            <ul>
+                <li>✅ All sample/test data removed</li>
+                <li>✅ Real customer requests preserved</li>
+                <li>✅ Admin dashboard shows clean data</li>
+                <li>✅ Database ready for production use</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import CustomizationRequests from "../components/admin/CustomizationRequests";
 import CreateLiveSessionModal from "../components/live-teaching/CreateLiveSessionModal";
-import { LuVideo, LuPlus, LuPencil, LuTrash2, LuCalendar, LuClock, LuUsers, LuExternalLink } from "react-icons/lu";
+import DesignEditorModal from "../components/admin/DesignEditorModal";
+import { LuVideo, LuPlus, LuPencil, LuTrash2, LuCalendar, LuClock, LuUsers, LuExternalLink, LuImage, LuX } from "react-icons/lu";
 import "../styles/admin.css";
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
@@ -32,6 +33,8 @@ export default function AdminDashboard() {
   // Custom Requests state
   const [requests, setRequests] = useState([]);
   const [reqFilter, setReqFilter] = useState("pending");
+  const [editingRequestId, setEditingRequestId] = useState(null);
+  const [designEditorRequest, setDesignEditorRequest] = useState(null);
 
   // Artworks management state
   const [artworks, setArtworks] = useState([]);
@@ -57,7 +60,7 @@ export default function AdminDashboard() {
   const [reviewsReplyDraft, setReviewsReplyDraft] = useState({});
   const [reviewsSentiments, setReviewsSentiments] = useState({});
 
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | artworks | requirements | orders | tutorials | live-sessions | settings
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | design-editor | artworks | requirements | orders | tutorials | live-sessions | settings
 
   // Live Sessions management state
   const [liveSessions, setLiveSessions] = useState([]);
@@ -173,6 +176,9 @@ export default function AdminDashboard() {
         case 'custom-requests':
           await fetchRequests(reqFilter);
           break;
+        case 'design-editor':
+          // Design editor section - no additional data to fetch here
+          break;
         case 'artworks':
           await Promise.all([fetchCategories(), fetchArtworks()]);
           break;
@@ -202,6 +208,11 @@ export default function AdminDashboard() {
     }
   };
   const [lightboxAlt, setLightboxAlt] = useState("");
+  
+  // Reference images viewer
+  const [showReferenceImagesModal, setShowReferenceImagesModal] = useState(false);
+  const [referenceImagesData, setReferenceImagesData] = useState([]);
+  const [viewingRequestId, setViewingRequestId] = useState(null);
   // Message thread modal state (shows history + send box)
   const [messageModal, setMessageModal] = useState({ open: false, requirement: null, text: '' });
 
@@ -352,12 +363,26 @@ export default function AdminDashboard() {
       const res = await fetch(url, { headers: { ...adminHeader } });
       const data = await res.json();
       if (res.ok && data.status === "success") {
+        console.log('Fetched requests:', data.requests?.length || 0);
+        // Debug: Log images for each request
+        data.requests?.forEach((req, idx) => {
+          if (req.images && req.images.length > 0) {
+            console.log(`Request #${req.id} has ${req.images.length} images:`, req.images);
+          } else {
+            console.log(`Request #${req.id} has NO images`);
+          }
+        });
         setRequests(data.requests || []);
+      } else {
+        console.error('Failed to fetch requests:', data);
       }
-    } catch {}
+    } catch (err) {
+      console.error('Error fetching requests:', err);
+    }
   };
 
   const updateRequestStatus = async (requestId, status) => {
+    console.log('updateRequestStatus called:', { requestId, status });
     try {
       const res = await fetch(`${API_BASE}/admin/custom-requests-database-only.php`, {
         method: 'POST',
@@ -365,14 +390,62 @@ export default function AdminDashboard() {
         body: JSON.stringify({ request_id: requestId, status })
       });
       const data = await res.json();
+      console.log('Status update response:', data);
+      
       if (res.ok && data.status === 'success') {
-        fetchRequests(reqFilter);
+        // If status is 'in_progress', check if design editor is required
+        if (status === 'in_progress') {
+          console.log('Checking if design editor required for request:', requestId);
+          // Check if design editor is required
+          try {
+            const checkRes = await fetch(`${API_BASE}/admin/check-design-required.php?request_id=${requestId}`, {
+              headers: { ...adminHeader }
+            });
+            const checkData = await checkRes.json();
+            console.log('Design requirement check:', checkData);
+            
+            if (checkRes.ok && checkData.status === 'success') {
+              if (checkData.requires_editor) {
+                console.log('Design editor required, navigating to editor...');
+                // Navigate to design editor section with this request
+                setEditingRequestId(requestId);
+                setDesignEditorRequest({ id: requestId, title: checkData.title || `Request #${requestId}` });
+                setActiveSection('design-editor');
+                // Refresh requests list
+                await fetchRequests(reqFilter);
+                alert('Opening design editor...');
+                return;
+              } else {
+                console.log('No design editor required, continuing with normal flow');
+                alert('Request started. No design editing required for this product.');
+              }
+            } else {
+              console.error('Error in design requirement check:', checkData);
+              alert('Warning: Could not check design requirements. Continuing anyway.');
+            }
+          } catch (err) {
+            console.error('Error checking design requirements:', err);
+            alert('Error checking design requirements: ' + err.message);
+          }
+        }
+        // Refresh requests if no editor needed
+        await fetchRequests(reqFilter);
+        alert('Request status updated successfully!');
       } else {
+        console.error('Status update failed:', data);
         alert(data.message || 'Failed to update request');
       }
-    } catch {
-      alert('Network error updating request');
+    } catch (err) {
+      console.error('Error updating request status:', err);
+      alert('Network error updating request: ' + err.message);
     }
+  };
+  
+  const handleDesignComplete = () => {
+    setEditingRequestId(null);
+    setDesignEditorRequest(null);
+    fetchRequests(reqFilter);
+    setActiveSection('custom-requests');
   };
 
   // Upload an image for a custom request (admin)
@@ -396,6 +469,25 @@ export default function AdminDashboard() {
       return data;
     } catch (err) {
       alert(err.message || 'Network error uploading image');
+    }
+  };
+
+  // View reference images for a request
+  const viewReferenceImages = async (requestId, requestTitle) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/get-request-images.php?request_id=${requestId}`, {
+        headers: { ...adminHeader }
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setReferenceImagesData(data.images || []);
+        setViewingRequestId({ id: requestId, title: requestTitle });
+        setShowReferenceImagesModal(true);
+      } else {
+        alert('No reference images found for this request');
+      }
+    } catch (err) {
+      alert('Error loading reference images: ' + err.message);
     }
   };
 
@@ -1245,6 +1337,7 @@ export default function AdminDashboard() {
           <button className={activeSection === 'supplier-products' ? 'active' : ''} onClick={() => { setActiveSection('supplier-products'); fetchSupplierProducts(); }} title="Supplier Trending Products">Supplier Trending Products</button>
           <button className={activeSection === 'supplier-inventory' ? 'active' : ''} onClick={() => { setActiveSection('supplier-inventory'); fetchSupplierInventory(); }} title="Supplier Inventory">Supplier Inventory</button>
           <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }} title="Custom Requests">Custom Requests</button>
+          <button className={activeSection === 'design-editor' ? 'active' : ''} onClick={() => { setActiveSection('design-editor'); }} title="Design Editor">Design Editor</button>
           <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }} title="Artwork Gallery">Artworks</button>
           <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }} title="Order Requirements">Order Requirements</button>
           <button className={activeSection === 'reviews' ? 'active' : ''} onClick={() => { setActiveSection('reviews'); fetchReviews(); }} title="Customer Reviews">Customer Reviews</button>
@@ -1821,6 +1914,49 @@ export default function AdminDashboard() {
             </section>
             )}
 
+            {activeSection === 'design-editor' && (
+            <section id="design-editor" className="widget" style={{ marginTop: 12 }}>
+              <div className="widget-head">
+                <h4>Design Editor</h4>
+                <div className="controls">
+                  <button className="btn" onClick={() => { setActiveSection('custom-requests'); setEditingRequestId(null); setDesignEditorRequest(null); }}>
+                    ← Back to Requests
+                  </button>
+                </div>
+              </div>
+              <div className="widget-body" style={{ padding: 0 }}>
+                {editingRequestId ? (() => {
+                  // Find the request to get its images
+                  const currentRequest = requests.find(r => r.id === editingRequestId);
+                  const requestImages = currentRequest?.images || [];
+                  
+                  console.log('Opening design editor for request:', editingRequestId);
+                  console.log('Request found:', currentRequest);
+                  console.log('Images to pass to editor:', requestImages);
+                  
+                  return (
+                    <DesignEditorModal
+                      requestId={editingRequestId}
+                      isOpen={true}
+                      onClose={() => { setActiveSection('custom-requests'); setEditingRequestId(null); setDesignEditorRequest(null); }}
+                      onComplete={handleDesignComplete}
+                      inline={true}
+                      customerImages={requestImages}
+                    />
+                  );
+                })() : (
+                  <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>
+                    <h4 style={{ marginBottom: 16 }}>No Active Design Request</h4>
+                    <p style={{ marginBottom: 24 }}>Click "Start" on a custom request that requires design editing to open the design editor.</p>
+                    <button className="btn btn-primary" onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }}>
+                      Go to Custom Requests
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+            )}
+
             {activeSection === 'custom-requests' && (
             <section id="custom-requests" className="widget" style={{ marginTop: 12 }}>
               <div className="widget-head">
@@ -1840,10 +1976,10 @@ export default function AdminDashboard() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th>Sl. No.</th>
                       <th>Image</th>
-                      <th>Customer</th>
                       <th>Title</th>
+                      <th>Description</th>
                       <th>Occasion</th>
                       <th>Category</th>
                       <th>Budget</th>
@@ -1856,31 +1992,142 @@ export default function AdminDashboard() {
                     {requests.length === 0 ? (
                       <tr><td colSpan={10} className="muted">No records</td></tr>
                     ) : (
-                      requests.map((r) => (
+                      requests.map((r, index) => (
                         <tr key={r.id}>
-                          <td>{r.id}</td>
+                          <td>{index + 1}</td>
                           <td>
-                            {Array.isArray(r.images) && r.images.length ? (
-                              <img
-                                src={r.images[0]}
-                                alt={r.title || 'Reference'}
-                                style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, cursor: 'zoom-in' }}
-                                onClick={() => { setLightboxUrl(r.images[0]); setLightboxAlt(r.title || 'Reference'); }}
-                              />
-                            ) : (
-                              <span className="muted">-</span>
-                            )}
+                            {(() => {
+                              console.log(`Rendering images for request #${r.id}:`, r.images);
+                              if (Array.isArray(r.images) && r.images.length > 0) {
+                                // Extract image URL - handle both object and string formats
+                                const firstImage = r.images[0];
+                                const imageUrl = typeof firstImage === 'string' 
+                                  ? firstImage 
+                                  : (firstImage?.url || firstImage?.image_url || firstImage?.image_path || firstImage?.full_url || '');
+                                
+                                console.log(`Request #${r.id} - First image URL:`, imageUrl);
+                                
+                                return imageUrl ? (
+                                  <img
+                                    src={imageUrl}
+                                    alt={r.title || 'Reference'}
+                                    style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, cursor: 'zoom-in' }}
+                                    onClick={() => { setLightboxUrl(imageUrl); setLightboxAlt(r.title || 'Reference'); }}
+                                    onError={(e) => {
+                                      console.error(`Failed to load image for request #${r.id}:`, imageUrl);
+                                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yNCAzNkMyOCA0IDMyIDggMzIgMTJDMzIgMTYgMjggMjAgMjQgMjBDMjAgMjAgMTYgMTYgMTYgMTJDMTYgOCAyMCA0IDI0IDRaIiBmaWxsPSIjQ0NDIi8+CjxjaXJjbGUgY3g9IjI0IiBjeT0iMTIiIHI9IjMiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=';
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="muted" title="No valid image URL">-</span>
+                                );
+                              } else {
+                                return <span className="muted" title="No images">-</span>;
+                              }
+                            })()}
                           </td>
-                          <td>{r.first_name} {r.last_name}<div className="muted" style={{fontSize:12}}>{r.email}</div></td>
                           <td>{r.title}</td>
+                          <td>
+                            <div style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.description || ''}>
+                              {r.description || '-'}
+                            </div>
+                          </td>
                           <td>{r.occasion || '-'}</td>
                           <td>{r.category_name || '-'}</td>
-                          <td>{(r.budget_min ?? '') || (r.budget_max ?? '') ? `${r.budget_min ?? ''}${r.budget_min && r.budget_max ? ' - ' : ''}${r.budget_max ?? ''}` : '-'}</td>
+                          <td>
+                            {(() => {
+                              // Handle budget values - check for null, undefined, empty string, or 0
+                              // Convert to number if it's a string or object
+                              let minVal = r.budget_min;
+                              let maxVal = r.budget_max;
+                              
+                              // Handle if values are objects (convert to primitive)
+                              if (minVal && typeof minVal === 'object') {
+                                minVal = minVal.value !== undefined ? minVal.value : null;
+                              }
+                              if (maxVal && typeof maxVal === 'object') {
+                                maxVal = maxVal.value !== undefined ? maxVal.value : null;
+                              }
+                              
+                              // Convert to number
+                              const minNum = minVal != null && minVal !== '' && minVal !== undefined 
+                                ? (typeof minVal === 'string' ? parseFloat(minVal) : Number(minVal))
+                                : null;
+                              const maxNum = maxVal != null && maxVal !== '' && maxVal !== undefined 
+                                ? (typeof maxVal === 'string' ? parseFloat(maxVal) : Number(maxVal))
+                                : null;
+                              
+                              const min = (minNum != null && !isNaN(minNum) && minNum > 0) 
+                                ? minNum.toFixed(2) 
+                                : null;
+                              const max = (maxNum != null && !isNaN(maxNum) && maxNum > 0) 
+                                ? maxNum.toFixed(2) 
+                                : null;
+                              
+                              if (min && max) {
+                                return `${min} - ${max}`;
+                              } else if (min) {
+                                return `From ${min}`;
+                              } else if (max) {
+                                return `Up to ${max}`;
+                              }
+                              return <span className="muted">Not specified</span>;
+                            })()}
+                          </td>
                           <td>{r.deadline || '-'}</td>
                           <td style={{ textTransform: 'capitalize' }}>{r.status}</td>
                           <td>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <button className="btn btn-soft tiny" onClick={() => updateRequestStatus(r.id, 'in_progress')} disabled={r.status==='in_progress'}>Start</button>
+                              <button 
+                                className="btn btn-soft tiny" 
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('Start button clicked for request:', r.id, 'Current status:', r.status);
+                                  
+                                  // If already in_progress, check if design editor is needed and open it
+                                  if (r.status === 'in_progress') {
+                                    console.log('Request already in progress, checking design requirements...');
+                                    try {
+                                      const checkRes = await fetch(`${API_BASE}/admin/check-design-required.php?request_id=${r.id}`, {
+                                        headers: { ...adminHeader }
+                                      });
+                                      const checkData = await checkRes.json();
+                                      console.log('Design requirement check:', checkData);
+                                      
+                                      if (checkRes.ok && checkData.status === 'success' && checkData.requires_editor) {
+                                        console.log('Opening design editor...');
+                                        setEditingRequestId(r.id);
+                                        setDesignEditorRequest({ id: r.id, title: checkData.title || r.title || `Request #${r.id}` });
+                                        setActiveSection('design-editor');
+                                        alert('Opening design editor...');
+                                      } else {
+                                        alert('This request does not require design editing or could not be determined.');
+                                      }
+                                    } catch (err) {
+                                      console.error('Error checking design requirements:', err);
+                                      alert('Error: ' + err.message);
+                                    }
+                                    return;
+                                  }
+                                  
+                                  // Otherwise, update status first
+                                  await updateRequestStatus(r.id, 'in_progress');
+                                }} 
+                              >
+                                {r.status === 'in_progress' ? 'Open Editor' : 'Start'}
+                              </button>
+                              <button 
+                                className="btn btn-outline tiny" 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  viewReferenceImages(r.id, r.title || `Request #${r.id}`);
+                                }}
+                                title="View Reference Images"
+                              >
+                                <LuImage /> View Images
+                              </button>
                               <button className="btn btn-soft tiny" onClick={() => updateRequestStatus(r.id, 'completed')} disabled={r.status==='completed'}>Complete</button>
                               <button className="btn btn-danger tiny" onClick={() => updateRequestStatus(r.id, 'cancelled')} disabled={r.status==='cancelled'}>Cancel</button>
                               <label className="btn btn-outline tiny">
@@ -2917,6 +3164,256 @@ export default function AdminDashboard() {
       {/* Customization Requests Modal */}
       {showCustomizationRequests && (
         <CustomizationRequests onClose={() => setShowCustomizationRequests(false)} />
+      )}
+
+      {/* Reference Images Viewer Modal */}
+      {showReferenceImagesModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 20
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: 8,
+            maxWidth: 1000,
+            maxHeight: '90%',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #eee',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, marginBottom: 4 }}>Reference Images</h3>
+                {viewingRequestId && (
+                  <div style={{ fontSize: 14, color: '#666' }}>
+                    Request: {viewingRequestId.title} (ID: #{viewingRequestId.id})
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                  {referenceImagesData.length} image{referenceImagesData.length !== 1 ? 's' : ''} uploaded by customer
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowReferenceImagesModal(false);
+                  setReferenceImagesData([]);
+                  setViewingRequestId(null);
+                }}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: 24,
+                  padding: 4
+                }}
+              >
+                <LuX />
+              </button>
+            </div>
+
+            {/* Images Grid */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: 20
+            }}>
+              {referenceImagesData.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: 40,
+                  color: '#999'
+                }}>
+                  <LuImage style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }} />
+                  <div>No reference images found for this request</div>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: 20
+                }}>
+                  {referenceImagesData.map((img, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        border: '1px solid #ddd',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        background: '#f9f9f9',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      onClick={() => {
+                        setLightboxUrl(img.url);
+                        setLightboxAlt(img.filename || `Image ${index + 1}`);
+                      }}
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.filename || `Reference ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: 200,
+                          objectFit: 'cover',
+                          display: 'block'
+                        }}
+                        onError={(e) => {
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xMDAgMTQwQzEyMCA2MCAxNDAgODAgMTQwIDEwMEMxNDAgMTIwIDEyMCAxNDAgMTAwIDE0MEM4MCAxNDAgNjAgMTIwIDYwIDEwMEM2MCA4MCA4MCA2MCAxMDAgNjBaIiBmaWxsPSIjQ0NDIi8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iMTIiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=';
+                        }}
+                      />
+                      <div style={{
+                        padding: '12px',
+                        fontSize: 12,
+                        color: '#666',
+                        background: 'white'
+                      }}>
+                        <div style={{
+                          fontWeight: 'bold',
+                          marginBottom: 4,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {img.original_filename || img.filename || `Image ${index + 1}`}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#999' }}>
+                          Click to view full size
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            {referenceImagesData.length > 0 && viewingRequestId && (
+              <div style={{
+                padding: '16px 20px',
+                borderTop: '1px solid #eee',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8,
+                background: '#f9f9f9'
+              }}>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setShowReferenceImagesModal(false);
+                    setReferenceImagesData([]);
+                    setViewingRequestId(null);
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    // Check if design editor is needed and open it
+                    try {
+                      const checkRes = await fetch(`${API_BASE}/admin/check-design-required.php?request_id=${viewingRequestId.id}`, {
+                        headers: { ...adminHeader }
+                      });
+                      const checkData = await checkRes.json();
+                      
+                      if (checkRes.ok && checkData.status === 'success' && checkData.requires_editor) {
+                        setShowReferenceImagesModal(false);
+                        setEditingRequestId(viewingRequestId.id);
+                        setDesignEditorRequest({ id: viewingRequestId.id, title: viewingRequestId.title });
+                        setActiveSection('design-editor');
+                      } else {
+                        alert('This request does not require design editing. Images are ready for use.');
+                      }
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                >
+                  Use in Design Editor
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox */}
+      {lightboxUrl && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.95)',
+            zIndex: 10001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20
+          }}
+          onClick={() => {
+            setLightboxUrl(null);
+            setLightboxAlt('');
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
+            <img
+              src={lightboxUrl}
+              alt={lightboxAlt}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '90vh',
+                objectFit: 'contain',
+                borderRadius: 4
+              }}
+            />
+            <button
+              onClick={() => {
+                setLightboxUrl(null);
+                setLightboxAlt('');
+              }}
+              style={{
+                position: 'absolute',
+                top: -40,
+                right: 0,
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                color: 'white',
+                fontSize: 24,
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <LuX />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -55,6 +55,12 @@ try {
             if (trim($description) === '') { echo json_encode(['status'=>'error','message'=>'Description is required']); exit; }
             if (trim($occasion) === '') { echo json_encode(['status'=>'error','message'=>'Occasion is required']); exit; }
             if (trim($deadline) === '') { echo json_encode(['status'=>'error','message'=>'Date is required']); exit; }
+            
+            // Set title before building SQL
+            $title = $_POST['title'] ?? '';
+            if (trim($title) === '') {
+                $title = 'Cart customization - ' . $occasion . ' - ' . $deadline;
+            }
 
             $hasImage = !empty($_FILES['reference_images']) && (
               (is_array($_FILES['reference_images']['error']) && count(array_filter($_FILES['reference_images']['error'], function ($e) { return (int)$e === UPLOAD_ERR_OK; })) > 0)
@@ -62,34 +68,124 @@ try {
             );
             if (!$hasImage) { echo json_encode(['status'=>'error','message'=>'At least one reference image is required']); exit; }
 
-            // Ensure columns exist (best effort)
-            $hasOccasion = false; $hasSource = false;
-            try { $rs = $db->query("SHOW COLUMNS FROM custom_requests LIKE 'occasion'"); $hasOccasion = $rs && $rs->rowCount() > 0; } catch (Throwable $e) {}
-            try { $rs2 = $db->query("SHOW COLUMNS FROM custom_requests LIKE 'source'"); $hasSource = $rs2 && $rs2->rowCount() > 0; } catch (Throwable $e) {}
-
-            // Insert request (minimal fields)
-            if ($hasOccasion && $hasSource) {
-                $st = $db->prepare("INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, source, status, created_at) VALUES (?, ?, ?, NULL, ?, NULL, NULL, ?, '', 'cart', 'pending', NOW())");
-                $title = 'Cart customization - ' . $occasion . ' - ' . $deadline;
-                $st->execute([$user_id, $title, $description, $occasion, $deadline]);
-            } elseif ($hasOccasion && !$hasSource) {
-                $st = $db->prepare("INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, status, created_at) VALUES (?, ?, ?, NULL, ?, NULL, NULL, ?, '', 'pending', NOW())");
-                $title = 'Cart customization - ' . $occasion . ' - ' . $deadline;
-                $st->execute([$user_id, $title, $description, $occasion, $deadline]);
-            } elseif (!$hasOccasion && $hasSource) {
-                $st = $db->prepare("INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, source, status, created_at) VALUES (?, ?, ?, NULL, NULL, NULL, ?, '', 'cart', 'pending', NOW())");
-                $title = 'Cart customization - ' . $deadline;
-                $st->execute([$user_id, $title, $description, $deadline]);
-            } else {
-                $st = $db->prepare("INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, status, created_at) VALUES (?, ?, ?, NULL, NULL, NULL, ?, '', 'pending', NOW())");
-                $title = 'Cart customization - ' . $deadline;
-                $st->execute([$user_id, $title, $description, $deadline]);
+            // Dynamically build INSERT statement based on existing columns
+            function hasColumnPDO($db, $table, $column) {
+                try {
+                    $rs = $db->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+                    return $rs && $rs->rowCount() > 0;
+                } catch (Throwable $e) {
+                    return false;
+                }
             }
+            
+            // Check which user ID column exists (user_id or customer_id) - prefer customer_id
+            $hasUserId = hasColumnPDO($db, 'custom_requests', 'user_id');
+            $hasCustomerId = hasColumnPDO($db, 'custom_requests', 'customer_id');
+            
+            // Prioritize customer_id if it exists, otherwise use user_id
+            if ($hasCustomerId) {
+                $userIdColumn = 'customer_id';
+            } elseif ($hasUserId) {
+                $userIdColumn = 'user_id';
+            } else {
+                // Neither exists - default to customer_id and try to add it
+                $userIdColumn = 'customer_id';
+                try {
+                    $db->exec("ALTER TABLE custom_requests ADD COLUMN customer_id INT NULL DEFAULT 0 AFTER id");
+                } catch (Throwable $e) {
+                    // Ignore if it fails
+                }
+            }
+            
+            // Check all optional columns
+            $colChecks = [
+                'category_id' => hasColumnPDO($db, 'custom_requests', 'category_id'),
+                'occasion' => hasColumnPDO($db, 'custom_requests', 'occasion'),
+                'budget_min' => hasColumnPDO($db, 'custom_requests', 'budget_min'),
+                'budget_max' => hasColumnPDO($db, 'custom_requests', 'budget_max'),
+                'deadline' => hasColumnPDO($db, 'custom_requests', 'deadline'),
+                'special_instructions' => hasColumnPDO($db, 'custom_requests', 'special_instructions'),
+                'source' => hasColumnPDO($db, 'custom_requests', 'source'),
+                'status' => hasColumnPDO($db, 'custom_requests', 'status'),
+                'created_at' => hasColumnPDO($db, 'custom_requests', 'created_at')
+            ];
+            
+            // Build columns and values arrays dynamically
+            $columns = [$userIdColumn, 'title', 'description']; // Required columns
+            $placeholders = ['?', '?', '?']; // For userId, title, description
+            $executeValues = [$user_id, $title, $description];
+            
+            // Add optional columns if they exist
+            if ($colChecks['category_id']) {
+                $columns[] = 'category_id';
+                $placeholders[] = 'NULL';
+            }
+            
+            if ($colChecks['occasion']) {
+                $columns[] = 'occasion';
+                $placeholders[] = '?';
+                $executeValues[] = $occasion;
+            }
+            
+            if ($colChecks['budget_min']) {
+                $columns[] = 'budget_min';
+                $placeholders[] = 'NULL';
+            }
+            
+            if ($colChecks['budget_max']) {
+                $columns[] = 'budget_max';
+                $placeholders[] = 'NULL';
+            }
+            
+            if ($colChecks['deadline']) {
+                $columns[] = 'deadline';
+                $placeholders[] = '?';
+                $executeValues[] = $deadline;
+            }
+            
+            if ($colChecks['special_instructions']) {
+                $columns[] = 'special_instructions';
+                $placeholders[] = "''";
+            }
+            
+            if ($colChecks['source']) {
+                $columns[] = 'source';
+                $placeholders[] = "'cart'";
+            }
+            
+            if ($colChecks['status']) {
+                $columns[] = 'status';
+                $placeholders[] = "'pending'";
+            }
+            
+            if ($colChecks['created_at']) {
+                $columns[] = 'created_at';
+                $placeholders[] = 'NOW()';
+            }
+            
+            // Build and execute SQL
+            $columnList = implode(', ', $columns);
+            $placeholderList = implode(', ', $placeholders);
+            $sql = "INSERT INTO custom_requests ($columnList) VALUES ($placeholderList)";
+            
+            $st = $db->prepare($sql);
+            if (!$st) {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to prepare statement']);
+                exit;
+            }
+            
+            $st->execute($executeValues);
             $requestId = (int)$db->lastInsertId();
 
             // Save images
             $uploadDir = __DIR__ . '/../../uploads/custom-requests/';
             if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0755, true); }
+            
+            // Check which image columns exist
+            $hasImagePath = hasColumnPDO($db, 'custom_request_images', 'image_path');
+            $hasImageUrl = hasColumnPDO($db, 'custom_request_images', 'image_url');
+            $hasFilename = hasColumnPDO($db, 'custom_request_images', 'filename');
+            
             $files = $_FILES['reference_images'];
             $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
             $names    = is_array($files['name']) ? $files['name'] : [$files['name']];
@@ -101,8 +197,36 @@ try {
                     $filePath = $uploadDir . $fileName;
                     if (move_uploaded_file($tmpNames[$i], $filePath)) {
                         $relPath = 'uploads/custom-requests/' . $fileName;
-                        $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_path, uploaded_at) VALUES (?, ?, NOW())");
-                        $sti->execute([$requestId, $relPath]);
+                        
+                        // Build INSERT dynamically based on available columns
+                        if ($hasImageUrl) {
+                            // Use image_url column
+                            if ($hasFilename) {
+                                $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_url, filename, uploaded_at) VALUES (?, ?, ?, NOW())");
+                                $sti->execute([$requestId, $relPath, $names[$i]]);
+                            } else {
+                                $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_url, uploaded_at) VALUES (?, ?, NOW())");
+                                $sti->execute([$requestId, $relPath]);
+                            }
+                        } elseif ($hasImagePath) {
+                            // Use image_path column
+                            if ($hasFilename) {
+                                $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_path, filename, uploaded_at) VALUES (?, ?, ?, NOW())");
+                                $sti->execute([$requestId, $relPath, $names[$i]]);
+                            } else {
+                                $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_path, uploaded_at) VALUES (?, ?, NOW())");
+                                $sti->execute([$requestId, $relPath]);
+                            }
+                        } else {
+                            // Fallback: try image_url
+                            if ($hasFilename) {
+                                $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_url, filename, uploaded_at) VALUES (?, ?, ?, NOW())");
+                                $sti->execute([$requestId, $relPath, $names[$i]]);
+                            } else {
+                                $sti = $db->prepare("INSERT INTO custom_request_images (request_id, image_url, uploaded_at) VALUES (?, ?, NOW())");
+                                $sti->execute([$requestId, $relPath]);
+                            }
+                        }
                     }
                 }
             }

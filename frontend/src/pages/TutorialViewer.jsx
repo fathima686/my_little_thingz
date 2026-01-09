@@ -36,7 +36,7 @@ export default function TutorialViewer() {
     if (!canUploadPractice()) return;
     
     try {
-      const res = await fetch(`${API_BASE}/pro/practice-upload.php?tutorial_id=${id}`, {
+      const res = await fetch(`${API_BASE}/pro/practice-upload-simple.php?tutorial_id=${id}`, {
         headers: {
           'X-Tutorial-Email': tutorialAuth?.email || ''
         }
@@ -172,31 +172,40 @@ export default function TutorialViewer() {
 
   // Handle practice work upload
   const handlePracticeUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/avi', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Invalid file type. Please upload JPG, PNG, GIF, MP4, AVI, or PDF files.');
-      return;
-    }
-
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size too large. Please upload files smaller than 10MB.');
-      return;
+    // Validate files
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/avi', 'application/pdf'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type: ${file.name}. Please upload JPG, PNG, GIF, WebP, MP4, AVI, or PDF files.`);
+        return;
+      }
+      
+      if (file.size > maxSize) {
+        alert(`File too large: ${file.name}. Please upload files smaller than 10MB.`);
+        return;
+      }
     }
 
     setUploading(true);
     setUploadStatus(null);
 
     const formData = new FormData();
-    formData.append('practice_file', file);
     formData.append('tutorial_id', id);
+    formData.append('email', tutorialAuth?.email || '');
+    formData.append('description', `Practice work for tutorial: ${tutorial.title}`);
+
+    // Add all files
+    files.forEach((file, index) => {
+      formData.append('practice_images[]', file);
+    });
 
     try {
-      const res = await fetch(`${API_BASE}/pro/practice-upload.php`, {
+      const res = await fetch(`${API_BASE}/pro/practice-upload-direct.php`, {
         method: 'POST',
         headers: {
           'X-Tutorial-Email': tutorialAuth?.email || ''
@@ -208,17 +217,41 @@ export default function TutorialViewer() {
       
       if (data.status === 'success') {
         setUploadStatus('success');
+        
+        // Enhanced success message with progress information
+        const successMessage = data.auto_approved ? 
+          `🎉 Upload Successful & Auto-Approved!\n\n` +
+          `✅ ${data.files_uploaded} file(s) uploaded\n` +
+          `✅ Upload ID: ${data.upload_id}\n` +
+          `✅ Status: Approved\n` +
+          `✅ Progress Bonus: +${data.practice_bonus}%\n\n` +
+          `📈 Your tutorial progress has been updated!\n` +
+          `Files uploaded:\n${data.files.map(f => `• ${f.original_name}`).join('\n')}\n\n` +
+          `${data.message_detail}` :
+          `✅ Upload Successful!\n\n` +
+          `${data.files_uploaded} file(s) uploaded\n` +
+          `Upload ID: ${data.upload_id}\n` +
+          `Status: Pending Review\n\n` +
+          `Files uploaded:\n${data.files.map(f => `• ${f.original_name}`).join('\n')}\n\n` +
+          `You'll receive feedback within 24-48 hours.`;
+        
+        alert(successMessage);
         fetchPracticeUpload(); // Refresh upload status
       } else {
         setUploadStatus('error');
-        alert(data.message || 'Upload failed');
+        console.error('Upload error:', data);
+        const errorMsg = data.message || 'Upload failed';
+        const debugInfo = data.debug ? '\n\nDebug info: ' + JSON.stringify(data.debug, null, 2) : '';
+        alert(`❌ Upload Failed\n\n${errorMsg}${debugInfo}`);
       }
     } catch (error) {
       console.error('Error uploading practice work:', error);
       setUploadStatus('error');
-      alert('Upload failed. Please try again.');
+      alert(`❌ Network Error\n\n${error.message}\n\nPlease check that your local server is running.`);
     } finally {
       setUploading(false);
+      // Reset the file input
+      event.target.value = '';
     }
   };
 
@@ -344,10 +377,11 @@ export default function TutorialViewer() {
                       
                       <label className="upload-btn secondary">
                         <LuUpload size={18} />
-                        {practiceUpload.status === 'rejected' ? 'Resubmit Work' : 'Update Submission'}
+                        {uploading ? 'Uploading...' : (practiceUpload.status === 'rejected' ? 'Resubmit Work' : 'Update Submission')}
                         <input
                           type="file"
                           accept="image/*,video/*,.pdf"
+                          multiple
                           onChange={handlePracticeUpload}
                           disabled={uploading}
                           style={{ display: 'none' }}
@@ -363,13 +397,14 @@ export default function TutorialViewer() {
                         <input
                           type="file"
                           accept="image/*,video/*,.pdf"
+                          multiple
                           onChange={handlePracticeUpload}
                           disabled={uploading}
                           style={{ display: 'none' }}
                         />
                       </label>
                       <p className="upload-hint">
-                        Accepted formats: JPG, PNG, GIF, MP4, AVI, PDF (Max 10MB)
+                        Accepted formats: JPG, PNG, GIF, WebP, MP4, AVI, PDF (Max 10MB each)
                       </p>
                     </div>
                   )}

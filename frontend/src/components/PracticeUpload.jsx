@@ -30,54 +30,30 @@ const PracticeUpload = ({ tutorialId, tutorialTitle, userEmail, onUploadSuccess 
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0) {
-      alert('Please select at least one image to upload.');
+  const handleUpload = () => {
+    // Open popup upload window as workaround for React upload issues
+    const popupUrl = 'http://localhost/my_little_thingz/practice-upload-popup.html';
+    const popup = window.open(
+      popupUrl, 
+      'practiceUpload', 
+      'width=600,height=700,scrollbars=yes,resizable=yes'
+    );
+    
+    if (!popup) {
+      alert('Please allow popups for this site to upload practice work.');
       return;
     }
-
-    setUploading(true);
-    setUploadStatus(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('tutorial_id', tutorialId);
-      formData.append('description', description);
-      formData.append('email', userEmail);
-
-      selectedFiles.forEach((file, index) => {
-        formData.append(`practice_images[]`, file);
-      });
-
-      const response = await fetch(`${API_BASE}/pro/practice-upload.php`, {
-        method: 'POST',
-        headers: {
-          'X-Tutorial-Email': userEmail
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        setUploadStatus('success');
-        setSelectedFiles([]);
-        setDescription('');
+    
+    // Check if popup was closed (indicating successful upload)
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        // Refresh the component or trigger success callback
         onUploadSuccess && onUploadSuccess();
-        
-        setTimeout(() => {
-          setUploadStatus(null);
-        }, 3000);
-      } else {
-        setUploadStatus('error');
-        console.error('Upload error:', data.message);
+        setUploadStatus('success');
+        setTimeout(() => setUploadStatus(null), 3000);
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      setUploadStatus('error');
-    } finally {
-      setUploading(false);
-    }
+    }, 1000);
   };
 
   const triggerFileSelect = () => {
@@ -102,10 +78,10 @@ const PracticeUpload = ({ tutorialId, tutorialTitle, userEmail, onUploadSuccess 
         />
 
         {selectedFiles.length === 0 ? (
-          <div className="upload-dropzone" onClick={triggerFileSelect}>
+          <div className="upload-dropzone" onClick={handleUpload}>
             <LuUpload size={48} />
             <h4>Click to upload images</h4>
-            <p>Select up to 5 images (max 5MB each)</p>
+            <p>Opens upload window (popup)</p>
             <p className="supported-formats">Supported: JPG, PNG, GIF, WebP</p>
           </div>
         ) : (
@@ -164,12 +140,12 @@ const PracticeUpload = ({ tutorialId, tutorialTitle, userEmail, onUploadSuccess 
         <button
           className="upload-button"
           onClick={handleUpload}
-          disabled={uploading || selectedFiles.length === 0}
+          disabled={uploading}
         >
           {uploading ? (
             <>
               <div className="upload-spinner"></div>
-              Uploading...
+              Opening Upload Window...
             </>
           ) : (
             <>

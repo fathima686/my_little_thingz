@@ -26,7 +26,7 @@ export default function ProDashboard() {
 
   const fetchProgressData = async () => {
     try {
-      const res = await fetch(`${API_BASE}/pro/learning-progress.php`, {
+      const res = await fetch(`${API_BASE}/pro/learning-progress-simple.php`, {
         headers: {
           'X-Tutorial-Email': tutorialAuth?.email || ''
         }

@@ -3,7 +3,7 @@
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Email, X-Admin-User-ID");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Email, X-Admin-User-Id");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     http_response_code(204);
@@ -43,6 +43,22 @@ try {
         INDEX idx_status (status),
         INDEX idx_customer_email (customer_email),
         INDEX idx_created_at (created_at)
+    )");
+    
+    // Create custom request images table
+    $pdo->exec("CREATE TABLE IF NOT EXISTS custom_request_images (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        request_id INT UNSIGNED NOT NULL,
+        image_url VARCHAR(500) NOT NULL,
+        filename VARCHAR(255) NOT NULL,
+        original_filename VARCHAR(255) DEFAULT '',
+        file_size INT UNSIGNED DEFAULT 0,
+        mime_type VARCHAR(100) DEFAULT '',
+        uploaded_by ENUM('customer', 'admin') DEFAULT 'customer',
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_request_id (request_id),
+        INDEX idx_uploaded_at (uploaded_at),
+        FOREIGN KEY (request_id) REFERENCES custom_requests(id) ON DELETE CASCADE
     )");
     
     // Check if table has any data, if not add comprehensive sample data
@@ -174,37 +190,190 @@ try {
             $request["description"] = $request["description"] ?: "";
             $request["requirements"] = $request["requirements"] ?: "";
             
-            // Images
-            $baseUrl = "http://localhost/my_little_thingz/backend/uploads/custom-requests/";
+            // Ensure budget values are properly formatted as numbers
+            $request["budget_min"] = (isset($request["budget_min"]) && $request["budget_min"] !== null && $request["budget_min"] !== '' && $request["budget_min"] !== '0') 
+                ? (float)floatval($request["budget_min"]) 
+                : null;
+            $request["budget_max"] = (isset($request["budget_max"]) && $request["budget_max"] !== null && $request["budget_max"] !== '' && $request["budget_max"] !== '0') 
+                ? (float)floatval($request["budget_max"]) 
+                : null;
+            
+            // Images - Get from custom_request_images table
+            // Base URL should point to backend folder
+            // Script is at: /my_little_thingz/backend/api/admin/custom-requests-database-only.php
+            // dirname(dirname(dirname())) gives: /my_little_thingz/backend
+            // So base URL is: http://host/my_little_thingz/backend/
+            $scriptPath = dirname(dirname(dirname($_SERVER["SCRIPT_NAME"]))); // /my_little_thingz/backend
+            $baseUrl = "http://" . $_SERVER["HTTP_HOST"] . $scriptPath . "/";
             $request["images"] = [];
             
-            // Check for real images
-            $uploadDir = __DIR__ . "/../../uploads/custom-requests/";
-            if (is_dir($uploadDir)) {
-                $patterns = [
-                    $uploadDir . "cr_" . $request["id"] . "_*",
-                    $uploadDir . "request_" . $request["id"] . "_*"
-                ];
+            // Get images from database
+            try {
+                // Check which columns exist
+                $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'image_url'");
+                $hasImageUrl = $checkCol->rowCount() > 0;
                 
-                foreach ($patterns as $pattern) {
-                    $files = glob($pattern);
-                    foreach ($files as $file) {
-                        if (is_file($file)) {
-                            $filename = basename($file);
-                            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-                            if (in_array($ext, ["jpg", "jpeg", "png", "gif", "webp", "svg"])) {
-                                $request["images"][] = $baseUrl . $filename;
+                if (!$hasImageUrl) {
+                    $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'image_path'");
+                    $hasImagePath = $checkCol->rowCount() > 0;
+                } else {
+                    $hasImagePath = false;
+                }
+                
+                $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'filename'");
+                $hasFilename = $checkCol->rowCount() > 0;
+                
+                $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'original_filename'");
+                $hasOriginalFilename = $checkCol->rowCount() > 0;
+                
+                $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'uploaded_at'");
+                $hasUploadedAt = $checkCol->rowCount() > 0;
+                
+                if (!$hasUploadedAt) {
+                    $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'upload_time'");
+                    $hasUploadTime = $checkCol->rowCount() > 0;
+                } else {
+                    $hasUploadTime = false;
+                }
+                
+                $imageColumn = $hasImageUrl ? 'image_url' : ($hasImagePath ? 'image_path' : 'image_url');
+                $timeColumn = $hasUploadedAt ? 'uploaded_at' : ($hasUploadTime ? 'upload_time' : 'uploaded_at');
+                
+                // Build query based on available columns
+                $selectCols = [$imageColumn];
+                if ($hasFilename) {
+                    $selectCols[] = 'filename';
+                }
+                if ($hasOriginalFilename) {
+                    $selectCols[] = 'original_filename';
+                }
+                if ($hasUploadedAt || $hasUploadTime) {
+                    $selectCols[] = $timeColumn;
+                }
+                
+                $selectColsStr = implode(', ', $selectCols);
+                
+                $imageStmt = $pdo->prepare("
+                    SELECT $selectColsStr
+                    FROM custom_request_images 
+                    WHERE request_id = ? 
+                    ORDER BY $timeColumn ASC
+                ");
+                $imageStmt->execute([$request["id"]]);
+                $dbImages = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Debug: Log image retrieval
+                error_log("Request #{$request['id']}: Found " . count($dbImages) . " images in database. Image column: $imageColumn");
+                
+                foreach ($dbImages as $img) {
+                    $imagePathOrUrl = $img[$imageColumn] ?? null;
+                    if (empty($imagePathOrUrl)) {
+                        error_log("Request #{$request['id']}: Skipping image with empty path/url. Row data: " . json_encode($img));
+                        continue;
+                    }
+                    
+                    error_log("Request #{$request['id']}: Processing image - Path/URL: $imagePathOrUrl");
+                    
+                    $filename = ($hasFilename && isset($img["filename"])) ? $img["filename"] : basename($imagePathOrUrl);
+                    $originalName = ($hasOriginalFilename && isset($img["original_filename"]) && !empty($img["original_filename"])) 
+                        ? $img["original_filename"] 
+                        : $filename;
+                    $uploadTime = ($hasUploadedAt || $hasUploadTime) ? ($img[$timeColumn] ?? null) : null;
+                    
+                    // If image_path/image_url is a relative path, make it absolute
+                    // Check if it's already a full URL
+                    if (!preg_match('/^https?:\/\//', $imagePathOrUrl)) {
+                        // It's a relative path, make it absolute
+                        $imageUrl = $baseUrl . ltrim($imagePathOrUrl, '/');
+                    } else {
+                        $imageUrl = $imagePathOrUrl;
+                    }
+                    
+                    // Check if file exists (for relative paths only)
+                    $fileExists = true;
+                    if (!preg_match('/^https?:\/\//', $imagePathOrUrl)) {
+                        $relativePath = ltrim($imagePathOrUrl, '/');
+                        $possiblePaths = [
+                            __DIR__ . "/../../" . $relativePath,
+                            __DIR__ . "/../" . $relativePath,
+                            __DIR__ . "/" . $relativePath
+                        ];
+                        
+                        $fileExists = false;
+                        foreach ($possiblePaths as $path) {
+                            if (file_exists($path)) {
+                                $fileExists = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    $imageData = [
+                        "url" => $imageUrl,
+                        "filename" => $filename,
+                        "original_name" => $originalName,
+                        "file_exists" => $fileExists
+                    ];
+                    
+                    if ($uploadTime) {
+                        $imageData["uploaded_at"] = $uploadTime;
+                    }
+                    
+                    error_log("Request #{$request['id']}: Adding image to request - URL: {$imageData['url']}, File exists: " . ($imageData['file_exists'] ? 'yes' : 'no'));
+                    $request["images"][] = $imageData;
+                }
+                
+                error_log("Request #{$request['id']}: Total images added: " . count($request["images"]));
+                
+                // If no images found, log a warning
+                if (count($request["images"]) === 0) {
+                    error_log("Request #{$request['id']}: WARNING - No images found in custom_request_images table for this request");
+                }
+            } catch (Exception $e) {
+                // Continue if image query fails
+                error_log("Request #{$request['id']}: Error loading images: " . $e->getMessage());
+                $request["images"] = [];
+            }
+            
+            // Fallback: Check for files in upload directory (legacy support)
+            if (empty($request["images"])) {
+                $uploadDir = __DIR__ . "/../../uploads/custom-requests/";
+                if (is_dir($uploadDir)) {
+                    $patterns = [
+                        $uploadDir . "cr_" . $request["id"] . "_*",
+                        $uploadDir . "request_" . $request["id"] . "_*"
+                    ];
+                    
+                    foreach ($patterns as $pattern) {
+                        $files = glob($pattern);
+                        foreach ($files as $file) {
+                            if (is_file($file)) {
+                                $filename = basename($file);
+                                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                                if (in_array($ext, ["jpg", "jpeg", "png", "gif", "webp", "svg"])) {
+                                    $request["images"][] = [
+                                        "url" => $baseUrl . "uploads/custom-requests/" . $filename,
+                                        "filename" => $filename,
+                                        "original_name" => $filename,
+                                        "uploaded_at" => date("Y-m-d H:i:s", filemtime($file))
+                                    ];
+                                }
                             }
                         }
                     }
                 }
             }
             
-            // Default images if none found
+            // Default placeholder if no images found
             if (empty($request["images"])) {
                 $request["images"] = [
-                    $baseUrl . "sample1.svg",
-                    $baseUrl . "sample2.svg"
+                    [
+                        "url" => $baseUrl . "uploads/custom-requests/placeholder.svg",
+                        "filename" => "placeholder.svg",
+                        "original_name" => "No image uploaded",
+                        "uploaded_at" => null,
+                        "is_placeholder" => true
+                    ]
                 ];
             }
             
@@ -257,9 +426,54 @@ try {
             $stmt = $pdo->prepare("UPDATE custom_requests SET status = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([$input["status"], $input["request_id"]]);
             
+            // If status is 'in_progress', check if design editor is required
+            $requiresEditor = false;
+            if ($input["status"] === "in_progress") {
+                // Check if design editor is required
+                try {
+                    $checkStmt = $pdo->prepare("
+                        SELECT cr.*, 
+                               pc.requires_editor, 
+                               pc.type as product_type
+                        FROM custom_requests cr
+                        LEFT JOIN product_categories pc ON LOWER(TRIM(cr.occasion)) = LOWER(TRIM(pc.name))
+                           OR LOWER(TRIM(cr.title)) LIKE CONCAT('%', LOWER(TRIM(pc.name)), '%')
+                           OR (cr.category IS NOT NULL AND cr.category != '' AND LOWER(TRIM(cr.category)) = LOWER(TRIM(pc.name)))
+                        WHERE cr.id = ?
+                    ");
+                    $checkStmt->execute([$input["request_id"]]);
+                    $requestData = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($requestData) {
+                        if ($requestData["requires_editor"] === 1 || $requestData["requires_editor"] === true) {
+                            $requiresEditor = true;
+                        } else {
+                            // Check by keywords
+                            $title = strtolower($requestData["title"] ?? "");
+                            $category = strtolower($requestData["category"] ?? "");
+                            $occasion = strtolower($requestData["occasion"] ?? "");
+                            
+                            $designKeywords = ['frame', 'polaroid', 'wedding card', 'card', 'poster', 'name board', 'print', 'photo'];
+                            foreach ($designKeywords as $keyword) {
+                                if (strpos($title, $keyword) !== false || 
+                                    strpos($category, $keyword) !== false || 
+                                    strpos($occasion, $keyword) !== false) {
+                                    $requiresEditor = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Ignore errors in checking
+                }
+            }
+            
             echo json_encode([
                 "status" => "success",
-                "message" => "Request status updated successfully"
+                "message" => "Request status updated successfully",
+                "requires_editor" => $requiresEditor,
+                "next_action" => $requiresEditor ? "open_design_editor" : "continue"
             ]);
         } else {
             // Create new request

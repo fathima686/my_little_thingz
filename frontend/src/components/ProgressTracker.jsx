@@ -20,7 +20,7 @@ const ProgressTracker = ({ userEmail, subscriptionPlan }) => {
   const fetchProgressData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/pro/learning-progress.php`, {
+      const response = await fetch(`${API_BASE}/pro/learning-progress-standardized.php`, {
         headers: {
           'X-Tutorial-Email': userEmail
         }
@@ -41,31 +41,18 @@ const ProgressTracker = ({ userEmail, subscriptionPlan }) => {
   };
 
   const calculateOverallProgress = () => {
-    if (!progressData || !progressData.tutorial_progress) return 0;
-    
-    const tutorials = progressData.tutorial_progress;
-    if (tutorials.length === 0) return 0;
-    
-    const totalProgress = tutorials.reduce((sum, tutorial) => {
-      return sum + (tutorial.completion_percentage || 0);
-    }, 0);
-    
-    return Math.round(totalProgress / tutorials.length);
+    if (!progressData || !progressData.overall_progress) return 0;
+    return progressData.overall_progress.completion_percentage || 0;
   };
 
   const getProgressStats = () => {
-    if (!progressData) return { completed: 0, inProgress: 0, total: 0, practiceUploads: 0 };
-    
-    const tutorials = progressData.tutorial_progress || [];
-    const completed = tutorials.filter(t => (t.completion_percentage || 0) >= 80).length;
-    const inProgress = tutorials.filter(t => (t.completion_percentage || 0) > 0 && (t.completion_percentage || 0) < 80).length;
-    const practiceUploads = tutorials.filter(t => t.practice_status === 'approved').length;
+    if (!progressData || !progressData.overall_progress) return { completed: 0, inProgress: 0, total: 0, practiceUploads: 0 };
     
     return {
-      completed,
-      inProgress,
-      total: tutorials.length,
-      practiceUploads
+      completed: progressData.overall_progress.completed_tutorials || 0,
+      inProgress: (progressData.overall_progress.total_tutorials || 0) - (progressData.overall_progress.completed_tutorials || 0),
+      total: progressData.overall_progress.total_tutorials || 0,
+      practiceUploads: progressData.tutorial_progress?.filter(t => t.practice_approved).length || 0
     };
   };
 
@@ -103,7 +90,7 @@ const ProgressTracker = ({ userEmail, subscriptionPlan }) => {
 
   const overallProgress = calculateOverallProgress();
   const stats = getProgressStats();
-  const canGenerateCertificate = overallProgress >= 100 && subscriptionPlan === 'pro';
+  const canGenerateCertificate = progressData?.certificate_rules?.eligible || false;
 
   return (
     <div className="progress-tracker">
@@ -191,7 +178,7 @@ const ProgressTracker = ({ userEmail, subscriptionPlan }) => {
               <p>
                 {canGenerateCertificate 
                   ? 'Congratulations! You can now generate your certificate.'
-                  : `Complete all tutorials to unlock your certificate. (${overallProgress}% complete)`
+                  : progressData?.certificate_rules?.message || `Complete 80% of the course to unlock your certificate. (${Math.round(overallProgress)}% complete)`
                 }
               </p>
               <button 
@@ -199,7 +186,7 @@ const ProgressTracker = ({ userEmail, subscriptionPlan }) => {
                 disabled={!canGenerateCertificate}
                 onClick={() => {
                   if (canGenerateCertificate) {
-                    window.open(`${API_BASE}/pro/certificate.php?email=${userEmail}`, '_blank');
+                    window.open(`${API_BASE}/pro/certificate-standardized.php?email=${userEmail}&format=pdf`, '_blank');
                   }
                 }}
               >
@@ -227,15 +214,27 @@ const ProgressTracker = ({ userEmail, subscriptionPlan }) => {
                   <div className="progress-bar-bg">
                     <div 
                       className="progress-bar-fill"
-                      style={{ width: `${tutorial.completion_percentage || 0}%` }}
+                      style={{ width: `${tutorial.progress_percentage || 0}%` }}
                     ></div>
                   </div>
-                  <span className="progress-percentage">{tutorial.completion_percentage || 0}%</span>
+                  <span className="progress-percentage">{tutorial.progress_percentage || 0}%</span>
                 </div>
-                {subscriptionPlan === 'pro' && tutorial.practice_status && (
-                  <div className={`practice-status ${tutorial.practice_status}`}>
-                    <LuUpload size={16} />
-                    <span>{tutorial.practice_status}</span>
+                <div className="tutorial-components">
+                  <div className={`component-status ${tutorial.video_completed ? 'completed' : 'incomplete'}`}>
+                    📹 Video: {tutorial.video_completed ? 'Complete' : 'Incomplete'}
+                  </div>
+                  <div className={`component-status ${tutorial.practice_approved ? 'completed' : (tutorial.practice_uploaded ? 'pending' : 'incomplete')}`}>
+                    📤 Practice: {tutorial.practice_approved ? 'Approved' : (tutorial.practice_uploaded ? 'Pending' : 'Not Uploaded')}
+                  </div>
+                  {subscriptionPlan === 'pro' && (
+                    <div className={`component-status ${tutorial.live_session_completed ? 'completed' : 'incomplete'}`}>
+                      👥 Live: {tutorial.live_session_completed ? 'Complete' : 'Not Attended'}
+                    </div>
+                  )}
+                </div>
+                {tutorial.admin_feedback && (
+                  <div className="admin-feedback">
+                    <strong>Feedback:</strong> {tutorial.admin_feedback}
                   </div>
                 )}
               </div>

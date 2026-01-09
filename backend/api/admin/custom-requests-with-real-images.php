@@ -106,12 +106,42 @@ function handleGetRequests($pdo) {
         
         // Get images for each request
         foreach ($requests as &$request) {
+            // Check which columns exist
+            $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'image_url'");
+            $hasImageUrl = $checkCol->rowCount() > 0;
+            
+            if (!$hasImageUrl) {
+                $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'image_path'");
+                $hasImagePath = $checkCol->rowCount() > 0;
+            } else {
+                $hasImagePath = false;
+            }
+            
+            $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'uploaded_at'");
+            $hasUploadedAt = $checkCol->rowCount() > 0;
+            
+            if (!$hasUploadedAt) {
+                $checkCol = $pdo->query("SHOW COLUMNS FROM custom_request_images LIKE 'upload_time'");
+                $hasUploadTime = $checkCol->rowCount() > 0;
+            } else {
+                $hasUploadTime = false;
+            }
+            
+            $imageColumn = $hasImageUrl ? 'image_url' : ($hasImagePath ? 'image_path' : 'image_url');
+            $timeColumn = $hasUploadedAt ? 'uploaded_at' : ($hasUploadTime ? 'upload_time' : 'uploaded_at');
+            
             // Get uploaded images for this request
+            $selectCols = [$imageColumn];
+            if ($hasUploadedAt || $hasUploadTime) {
+                $selectCols[] = $timeColumn;
+            }
+            $selectColsStr = implode(', ', $selectCols);
+            
             $imageStmt = $pdo->prepare("
-                SELECT image_url, filename, upload_time 
+                SELECT $selectColsStr
                 FROM custom_request_images 
                 WHERE request_id = ? 
-                ORDER BY upload_time DESC
+                ORDER BY $timeColumn DESC
             ");
             $imageStmt->execute([$request['id']]);
             $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -119,8 +149,17 @@ function handleGetRequests($pdo) {
             // Format images array
             $request['images'] = [];
             foreach ($images as $img) {
-                $fullUrl = 'http://localhost/my_little_thingz/backend/' . $img['image_url'];
-                $request['images'][] = $fullUrl;
+                $imagePathOrUrl = $img[$imageColumn] ?? null;
+                if (!empty($imagePathOrUrl)) {
+                    // If it's already a full URL, use it as is
+                    if (preg_match('/^https?:\/\//', $imagePathOrUrl)) {
+                        $fullUrl = $imagePathOrUrl;
+                    } else {
+                        // It's a relative path, make it absolute
+                        $fullUrl = 'http://localhost/my_little_thingz/backend/' . ltrim($imagePathOrUrl, '/');
+                    }
+                    $request['images'][] = $fullUrl;
+                }
             }
             
             // If no images, check if there are any files in the upload directory for this request

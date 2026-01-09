@@ -45,23 +45,55 @@ function ensure_schema(mysqli $db) {
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB");
 
-  // Ensure custom_requests table exists (minimal columns used by this endpoint)
-  $db->query("CREATE TABLE IF NOT EXISTS custom_requests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    category_id INT NULL,
-    occasion VARCHAR(100) NULL,
-    budget_min DECIMAL(10,2) NULL,
-    budget_max DECIMAL(10,2) NULL,
-    deadline DATE NULL,
-    special_instructions TEXT NULL,
-    gift_tier ENUM('budget','premium') NULL DEFAULT 'budget',
-    source ENUM('form','cart') NOT NULL DEFAULT 'form',
-    status ENUM('pending','in_progress','completed','cancelled') DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB");
+  // Check if custom_requests table exists
+  $tableExists = false;
+  try {
+    $result = $db->query("SHOW TABLES LIKE 'custom_requests'");
+    $tableExists = $result && $result->num_rows > 0;
+  } catch (Exception $e) {
+    $tableExists = false;
+  }
+
+  if (!$tableExists) {
+    // Table doesn't exist, create it with customer_id (preferred column name)
+    $db->query("CREATE TABLE custom_requests (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      customer_id INT NOT NULL DEFAULT 0,
+      user_id INT NULL,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      category_id INT NULL,
+      occasion VARCHAR(100) NULL,
+      budget_min DECIMAL(10,2) NULL,
+      budget_max DECIMAL(10,2) NULL,
+      deadline DATE NULL,
+      special_instructions TEXT NULL,
+      gift_tier ENUM('budget','premium') NULL DEFAULT 'budget',
+      source ENUM('form','cart') NOT NULL DEFAULT 'form',
+      status ENUM('pending','in_progress','completed','cancelled') DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_customer_id (customer_id),
+      INDEX idx_user_id (user_id)
+    ) ENGINE=InnoDB");
+  } else {
+    // Table exists - add missing columns if needed
+    // Check and add customer_id if missing
+    if (!hasColumn($db, 'custom_requests', 'customer_id')) {
+      try {
+        $db->query("ALTER TABLE custom_requests ADD COLUMN customer_id INT NULL DEFAULT 0 AFTER id");
+      } catch (Exception $e) {
+        // Column might already exist, ignore
+      }
+    }
+    // Check and add user_id if missing (for backward compatibility)
+    if (!hasColumn($db, 'custom_requests', 'user_id')) {
+      try {
+        $db->query("ALTER TABLE custom_requests ADD COLUMN user_id INT NULL AFTER id");
+      } catch (Exception $e) {
+        // Column might already exist, ignore
+      }
+    }
+  }
 
   // Ensure images table exists
   $db->query("CREATE TABLE IF NOT EXISTS custom_request_images (
@@ -122,12 +154,27 @@ try {
     // List this user's requests (works even if 'occasion' or 'gift_tier' column doesn't exist)
     $hasOccasion = hasColumn($mysqli, 'custom_requests', 'occasion');
     $hasGiftTier = hasColumn($mysqli, 'custom_requests', 'gift_tier');
+    
+    // Check which user ID column exists (user_id or customer_id)
+    $hasUserId = hasColumn($mysqli, 'custom_requests', 'user_id');
+    $hasCustomerId = hasColumn($mysqli, 'custom_requests', 'customer_id');
+    
+    // Prioritize customer_id if it exists, otherwise use user_id
+    if ($hasCustomerId) {
+      $userIdColumn = 'cr.customer_id';
+    } elseif ($hasUserId) {
+      $userIdColumn = 'cr.user_id';
+    } else {
+      // Neither exists - default to customer_id (shouldn't happen if ensure_schema ran)
+      $userIdColumn = 'cr.customer_id';
+    }
+    
     $occasionSelect = $hasOccasion ? 'cr.occasion,' : "'' AS occasion,";
     $giftTierSelect = $hasGiftTier ? 'cr.gift_tier,' : "'' AS gift_tier,";
     $sql = "SELECT cr.id, cr.title, cr.description, $occasionSelect cr.budget_min, cr.budget_max, $giftTierSelect cr.deadline, cr.status, cr.created_at, cr.category_id, c.name AS category_name
             FROM custom_requests cr
             LEFT JOIN categories c ON c.id = cr.category_id
-            WHERE cr.user_id = ?
+            WHERE $userIdColumn = ?
             ORDER BY cr.created_at DESC";
     $st = $mysqli->prepare($sql);
     $st->bind_param('i', $userId);
@@ -138,6 +185,80 @@ try {
       // format
       if ($r['budget_min'] !== null) { $r['budget_min'] = number_format((float)$r['budget_min'], 2); }
       if ($r['budget_max'] !== null) { $r['budget_max'] = number_format((float)$r['budget_max'], 2); }
+      
+      // Get design status and information for this request
+      // Check if custom_request_designs table exists
+      $hasDesignTable = false;
+      try {
+        $checkTable = $mysqli->query("SHOW TABLES LIKE 'custom_request_designs'");
+        $hasDesignTable = $checkTable && $checkTable->num_rows > 0;
+      } catch (Exception $e) {
+        $hasDesignTable = false;
+      }
+      
+      if ($hasDesignTable) {
+        $designStmt = $mysqli->prepare("
+          SELECT id, status, design_image_url, design_pdf_url, created_at, updated_at, version
+          FROM custom_request_designs
+          WHERE request_id = ?
+          ORDER BY version DESC
+          LIMIT 1
+        ");
+        if ($designStmt) {
+          $designStmt->bind_param('i', $r['id']);
+          $designStmt->execute();
+          $designResult = $designStmt->get_result();
+          $design = $designResult->fetch_assoc();
+          
+          if ($design) {
+            // Add design information to request
+            $r['design_status'] = $design['status'];
+            
+            // Construct full URLs for design images
+            if ($design['design_image_url']) {
+              $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+              $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+              if (!preg_match('/^https?:\/\//', $design['design_image_url'])) {
+                $r['design_image_url'] = $scheme . '://' . $host . '/my_little_thingz/backend/' . ltrim($design['design_image_url'], '/');
+              } else {
+                $r['design_image_url'] = $design['design_image_url'];
+              }
+            } else {
+              $r['design_image_url'] = null;
+            }
+            
+            if ($design['design_pdf_url']) {
+              $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+              $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+              if (!preg_match('/^https?:\/\//', $design['design_pdf_url'])) {
+                $r['design_pdf_url'] = $scheme . '://' . $host . '/my_little_thingz/backend/' . ltrim($design['design_pdf_url'], '/');
+              } else {
+                $r['design_pdf_url'] = $design['design_pdf_url'];
+              }
+            } else {
+              $r['design_pdf_url'] = null;
+            }
+            
+            $r['design_updated_at'] = $design['updated_at'];
+            $r['design_version'] = $design['version'];
+            
+            // Update request status based on design status for better customer visibility
+            if ($design['status'] === 'design_completed' && $r['status'] === 'in_progress') {
+              // Don't change main status, but design_status will show it's completed
+            }
+          } else {
+            $r['design_status'] = null;
+            $r['design_image_url'] = null;
+            $r['design_pdf_url'] = null;
+          }
+          $designStmt->close();
+        }
+      } else {
+        $r['design_status'] = null;
+        $r['design_image_url'] = null;
+        $r['design_pdf_url'] = null;
+      }
+      
       $rows[] = $r;
     }
     $st->close();
@@ -145,10 +266,15 @@ try {
     // Attach images for each request so the frontend can render them
     $ids = array_column($rows, 'id');
     if (!empty($ids)) {
+      // Check which image column exists (image_path or image_url)
+      $hasImagePath = hasColumn($mysqli, 'custom_request_images', 'image_path');
+      $hasImageUrl = hasColumn($mysqli, 'custom_request_images', 'image_url');
+      $imageColumn = $hasImageUrl ? 'image_url' : ($hasImagePath ? 'image_path' : 'image_url'); // Default to image_url
+      
       // Build a dynamic IN clause safely with prepared statement
       $in = implode(',', array_fill(0, count($ids), '?'));
       $types = str_repeat('i', count($ids));
-      $sqlImgs = "SELECT request_id, image_path FROM custom_request_images WHERE request_id IN ($in) ORDER BY uploaded_at ASC";
+      $sqlImgs = "SELECT request_id, $imageColumn FROM custom_request_images WHERE request_id IN ($in) ORDER BY uploaded_at ASC";
       $stImgs = $mysqli->prepare($sqlImgs);
       // Spread IDs as params
       $stImgs->bind_param($types, ...$ids);
@@ -162,7 +288,7 @@ try {
         // Construct full URL for image (similar to profile images)
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $imagePath = $im['image_path'];
+        $imagePath = $im[$imageColumn];
         $fullImageUrl = $scheme . '://' . $host . '/my_little_thingz/backend/' . $imagePath;
 
         // Add cache busting parameter
@@ -227,76 +353,126 @@ try {
       }
     }
 
-    // Insert minimal record, handle absence of columns gracefully
-    $hasOccasionIns = hasColumn($mysqli, 'custom_requests', 'occasion');
-    $hasSourceIns = hasColumn($mysqli, 'custom_requests', 'source');
-    $hasGiftTierIns = hasColumn($mysqli, 'custom_requests', 'gift_tier');
+    // Dynamically build INSERT statement based on existing columns
+    // Check which user ID column exists (user_id or customer_id) - prefer customer_id
+    $hasUserId = hasColumn($mysqli, 'custom_requests', 'user_id');
+    $hasCustomerId = hasColumn($mysqli, 'custom_requests', 'customer_id');
     
-    if ($hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, gift_tier, source, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, ?, 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-    } elseif ($hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, source, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-    } elseif ($hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, gift_tier, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', ?, 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-    } elseif ($hasOccasionIns && !$hasSourceIns && !$hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, occasion, budget_min, budget_max, deadline, special_instructions, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, '', 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-    } elseif (!$hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, gift_tier, source, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, ?, 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-      $occasion = null;
-    } elseif (!$hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, source, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-      $occasion = null;
-    } elseif (!$hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, gift_tier, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', ?, 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-      $occasion = null;
+    // Prioritize customer_id if it exists, otherwise use user_id
+    if ($hasCustomerId) {
+      $userIdColumn = 'customer_id';
+    } elseif ($hasUserId) {
+      $userIdColumn = 'user_id';
     } else {
-      $sql = "INSERT INTO custom_requests (user_id, title, description, category_id, budget_min, budget_max, deadline, special_instructions, status, created_at)
-              VALUES (?, ?, ?, NULL, ?, NULL, ?, '', 'pending', NOW())";
-      $st = $mysqli->prepare($sql);
-      $occasion = null;
+      // Neither exists - default to customer_id and try to add it
+      $userIdColumn = 'customer_id';
+      try {
+        $mysqli->query("ALTER TABLE custom_requests ADD COLUMN customer_id INT NULL DEFAULT 0 AFTER id");
+      } catch (Exception $e) {
+        // Ignore if it fails
+      }
     }
-
-    // normalize values
-    $budgetVal = null;
-    if ($budget !== null && $budget !== '') {
-      $budgetVal = (float)$budget;
-    }
-    $deadlineVal = ($deadline && $deadline !== '') ? $deadline : null;
-
-    // Bind using strings for nullable values to avoid type errors when NULL is passed
-    $budgetStr = $budgetVal !== null ? (string)$budgetVal : null;
     
-    if ($hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
-      $st->bind_param('isssssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $gift_tier, $source);
-    } elseif ($hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
-      $st->bind_param('issssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $source);
-    } elseif ($hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
-      $st->bind_param('issssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal, $gift_tier);
-    } elseif ($hasOccasionIns && !$hasSourceIns && !$hasGiftTierIns) {
-      $st->bind_param('isssss', $userId, $title, $description, $occasion, $budgetStr, $deadlineVal);
-    } elseif (!$hasOccasionIns && $hasSourceIns && $hasGiftTierIns) {
-      $st->bind_param('issssss', $userId, $title, $description, $budgetStr, $deadlineVal, $gift_tier, $source);
-    } elseif (!$hasOccasionIns && $hasSourceIns && !$hasGiftTierIns) {
-      $st->bind_param('isssss', $userId, $title, $description, $budgetStr, $deadlineVal, $source);
-    } elseif (!$hasOccasionIns && !$hasSourceIns && $hasGiftTierIns) {
-      $st->bind_param('issss', $userId, $title, $description, $budgetStr, $deadlineVal, $gift_tier);
-    } else {
-      $st->bind_param('issss', $userId, $title, $description, $budgetStr, $deadlineVal);
+    // Check all optional columns
+    $colChecks = [
+      'category_id' => hasColumn($mysqli, 'custom_requests', 'category_id'),
+      'occasion' => hasColumn($mysqli, 'custom_requests', 'occasion'),
+      'budget_min' => hasColumn($mysqli, 'custom_requests', 'budget_min'),
+      'budget_max' => hasColumn($mysqli, 'custom_requests', 'budget_max'),
+      'deadline' => hasColumn($mysqli, 'custom_requests', 'deadline'),
+      'special_instructions' => hasColumn($mysqli, 'custom_requests', 'special_instructions'),
+      'gift_tier' => hasColumn($mysqli, 'custom_requests', 'gift_tier'),
+      'source' => hasColumn($mysqli, 'custom_requests', 'source'),
+      'status' => hasColumn($mysqli, 'custom_requests', 'status'),
+      'created_at' => hasColumn($mysqli, 'custom_requests', 'created_at')
+    ];
+    
+    // Build columns and values arrays dynamically
+    $columns = [$userIdColumn, 'title', 'description']; // Required columns
+    $placeholders = ['?', '?', '?']; // For userId, title, description
+    $bindTypes = 'iss'; // int, string, string
+    $bindValues = [&$userId, &$title, &$description];
+    
+    // Add optional columns if they exist
+    if ($colChecks['category_id']) {
+      $columns[] = 'category_id';
+      $placeholders[] = 'NULL';
     }
+    
+    if ($colChecks['occasion']) {
+      $columns[] = 'occasion';
+      $placeholders[] = '?';
+      $bindTypes .= 's';
+      $bindValues[] = &$occasion;
+    }
+    
+    if ($colChecks['budget_min']) {
+      $columns[] = 'budget_min';
+      $placeholders[] = '?';
+      $bindTypes .= 's';
+      $budgetStr = null;
+      if ($budget !== null && $budget !== '') {
+        $budgetStr = (string)(float)$budget;
+      }
+      $bindValues[] = &$budgetStr;
+    }
+    
+    if ($colChecks['budget_max']) {
+      $columns[] = 'budget_max';
+      $placeholders[] = 'NULL';
+    }
+    
+    if ($colChecks['deadline']) {
+      $columns[] = 'deadline';
+      $placeholders[] = '?';
+      $bindTypes .= 's';
+      $deadlineVal = ($deadline && $deadline !== '') ? $deadline : null;
+      $bindValues[] = &$deadlineVal;
+    }
+    
+    if ($colChecks['special_instructions']) {
+      $columns[] = 'special_instructions';
+      $placeholders[] = "''";
+    }
+    
+    if ($colChecks['gift_tier']) {
+      $columns[] = 'gift_tier';
+      $placeholders[] = '?';
+      $bindTypes .= 's';
+      $bindValues[] = &$gift_tier;
+    }
+    
+    if ($colChecks['source']) {
+      $columns[] = 'source';
+      $placeholders[] = '?';
+      $bindTypes .= 's';
+      $bindValues[] = &$source;
+    }
+    
+    if ($colChecks['status']) {
+      $columns[] = 'status';
+      $placeholders[] = "'pending'";
+    }
+    
+    if ($colChecks['created_at']) {
+      $columns[] = 'created_at';
+      $placeholders[] = 'NOW()';
+    }
+    
+    // Build and execute SQL
+    $columnList = implode(', ', $columns);
+    $placeholderList = implode(', ', $placeholders);
+    $sql = "INSERT INTO custom_requests ($columnList) VALUES ($placeholderList)";
+    
+    $st = $mysqli->prepare($sql);
+    if (!$st) {
+      http_response_code(500);
+      echo json_encode(['status' => 'error', 'message' => 'Failed to prepare statement: ' . $mysqli->error]);
+      exit;
+    }
+    
+    // Bind parameters dynamically
+    $st->bind_param($bindTypes, ...$bindValues);
     try {
       $st->execute();
     } catch (Throwable $ex) {
@@ -326,8 +502,40 @@ try {
           $filePath = $uploadDir . $fileName;
           if (move_uploaded_file($tmpNames[$i], $filePath)) {
             $relPath = 'uploads/custom-requests/' . $fileName;
-            $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_path, uploaded_at) VALUES (?, ?, NOW())");
-            $sti->bind_param('is', $requestId, $relPath);
+            // Check which image columns exist
+            $hasImagePath = hasColumn($mysqli, 'custom_request_images', 'image_path');
+            $hasImageUrl = hasColumn($mysqli, 'custom_request_images', 'image_url');
+            $hasFilename = hasColumn($mysqli, 'custom_request_images', 'filename');
+            
+            // Build INSERT dynamically based on available columns
+            if ($hasImageUrl) {
+              // Use image_url column
+              if ($hasFilename) {
+                $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_url, filename, uploaded_at) VALUES (?, ?, ?, NOW())");
+                $sti->bind_param('iss', $requestId, $relPath, $names[$i]);
+              } else {
+                $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_url, uploaded_at) VALUES (?, ?, NOW())");
+                $sti->bind_param('is', $requestId, $relPath);
+              }
+            } elseif ($hasImagePath) {
+              // Use image_path column
+              if ($hasFilename) {
+                $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_path, filename, uploaded_at) VALUES (?, ?, ?, NOW())");
+                $sti->bind_param('iss', $requestId, $relPath, $names[$i]);
+              } else {
+                $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_path, uploaded_at) VALUES (?, ?, NOW())");
+                $sti->bind_param('is', $requestId, $relPath);
+              }
+            } else {
+              // Fallback: try image_url
+              if ($hasFilename) {
+                $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_url, filename, uploaded_at) VALUES (?, ?, ?, NOW())");
+                $sti->bind_param('iss', $requestId, $relPath, $names[$i]);
+              } else {
+                $sti = $mysqli->prepare("INSERT INTO custom_request_images (request_id, image_url, uploaded_at) VALUES (?, ?, NOW())");
+                $sti->bind_param('is', $requestId, $relPath);
+              }
+            }
             $sti->execute();
             $sti->close();
           }

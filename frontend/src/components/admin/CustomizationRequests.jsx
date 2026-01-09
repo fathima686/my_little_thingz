@@ -172,9 +172,23 @@ const CustomizationRequests = ({ onClose }) => {
                     <div className="request-images">
                       <h4>Reference Images:</h4>
                       <div className="image-grid">
-                        {request.images.map((image, index) => (
-                          <img key={index} src={image} alt={`Reference ${index + 1}`} />
-                        ))}
+                        {request.images.map((image, index) => {
+                          // Extract image URL - handle both object and string formats
+                          const imageUrl = typeof image === 'string' 
+                            ? image 
+                            : (image?.url || image?.image_url || image?.full_url || '');
+                          
+                          return imageUrl ? (
+                            <img 
+                              key={index} 
+                              src={imageUrl} 
+                              alt={`Reference ${index + 1}`}
+                              onError={(e) => {
+                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik01MCA3MEM2MCAyMCA3MCA0MCA3MCA2MEM3MCA4MCA2MCAxMDAgNTAgMTAwQzQwIDEwMCAzMCA4MCAzMCA2MEMzMCA0MCA0MCAyMCA1MCAyMFoiIGZpbGw9IiNDQ0MiLz4KPGNpcmNsZSBjeD0iNTAiIGN5PSI2MCIgcj0iNy41IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K';
+                              }}
+                            />
+                          ) : null;
+                        })}
                       </div>
                     </div>
                   )}

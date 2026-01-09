@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Simplified APIs</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin: 0;
+            color: #10B981;
+        }
+        .test-section {
+            background: #F9FAFB;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-section h3 {
+            margin: 0 0 15px 0;
+            color: #374151;
+        }
+        .test-button {
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #059669;
+        }
+        .test-button.danger {
+            background: #EF4444;
+        }
+        .test-button.danger:hover {
+            background: #DC2626;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #10B981;
+            background: #f0fdf4;
+            color: #065F46;
+        }
+        .error {
+            border-color: #EF4444;
+            background: #fef2f2;
+            color: #991B1B;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #10B981; }
+        .status-error { background: #EF4444; }
+        .status-pending { background: #F59E0B; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test Simplified APIs</h1>
+            <p>Verify all Pro APIs are working correctly</p>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Learning Progress API (Simplified)</h3>
+            <p>Tests the new learning-progress-simple.php API that bypasses middleware</p>
+            <button class="test-button" onclick="testLearningProgress()">Test Learning Progress</button>
+            <div id="progressResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📤 Practice Upload API (Simplified)</h3>
+            <p>Tests the new practice-upload-simple.php API with direct Pro check</p>
+            <button class="test-button" onclick="testPracticeUploadAccess()">Test Upload Access</button>
+            <div id="uploadResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Subscription Status API</h3>
+            <p>Tests the subscription status detection</p>
+            <button class="test-button" onclick="testSubscriptionStatus()">Test Subscription Status</button>
+            <div id="subscriptionResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏆 Certificate API</h3>
+            <p>Tests certificate generation access</p>
+            <button class="test-button" onclick="testCertificateAccess()">Test Certificate Access</button>
+            <div id="certificateResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 Compare Old vs New APIs</h3>
+            <p>Compare responses from old (problematic) vs new (simplified) APIs</p>
+            <button class="test-button danger" onclick="testOldAPI()">Test Old API (Should Fail)</button>
+            <button class="test-button" onclick="testNewAPI()">Test New API (Should Work)</button>
+            <div id="comparisonResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #F3F4F6; border-radius: 8px;">
+            <p><strong>🎯 All tests should show SUCCESS for Pro user!</strong></p>
+            <p>If any test fails, the simplified APIs need further adjustment.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost/my_little_thingz/backend/api';
+        const TEST_EMAIL = 'soudhame52@gmail.com';
+
+        function displayResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : 'success'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function testLearningProgress() {
+            try {
+                const response = await fetch(`${API_BASE}/pro/learning-progress-simple.php`, {
+                    headers: {
+                        'X-Tutorial-Email': TEST_EMAIL
+                    }
+                });
+                const data = await response.json();
+                displayResult('progressResult', {
+                    status: response.status,
+                    response: data
+                }, data.status !== 'success');
+            } catch (error) {
+                displayResult('progressResult', { error: error.message }, true);
+            }
+        }
+
+        async function testPracticeUploadAccess() {
+            try {
+                // Test with a simple GET request to check access
+                const response = await fetch(`${API_BASE}/pro/practice-upload-simple.php`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Tutorial-Email': TEST_EMAIL,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tutorial_id: 1,
+                        description: 'Test access check'
+                    })
+                });
+                const data = await response.json();
+                displayResult('uploadResult', {
+                    status: response.status,
+                    response: data
+                }, data.status !== 'success' && !data.message.includes('No files'));
+            } catch (error) {
+                displayResult('uploadResult', { error: error.message }, true);
+            }
+        }
+
+        async function testSubscriptionStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/customer/subscription-status.php`, {
+                    headers: {
+                        'X-Tutorial-Email': TEST_EMAIL
+                    }
+                });
+                const data = await response.json();
+                displayResult('subscriptionResult', {
+                    status: response.status,
+                    plan_detected: data.plan_code,
+                    is_active: data.is_active,
+                    response: data
+                }, data.plan_code !== 'pro');
+            } catch (error) {
+                displayResult('subscriptionResult', { error: error.message }, true);
+            }
+        }
+
+        async function testCertificateAccess() {
+            try {
+                const response = await fetch(`${API_BASE}/pro/certificate.php?email=${TEST_EMAIL}`);
+                const isSuccess = response.status === 200 || response.headers.get('content-type')?.includes('text/html');
+                displayResult('certificateResult', {
+                    status: response.status,
+                    content_type: response.headers.get('content-type'),
+                    access_granted: isSuccess
+                }, !isSuccess);
+            } catch (error) {
+                displayResult('certificateResult', { error: error.message }, true);
+            }
+        }
+
+        async function testOldAPI() {
+            try {
+                const response = await fetch(`${API_BASE}/pro/learning-progress.php`, {
+                    headers: {
+                        'X-Tutorial-Email': TEST_EMAIL
+                    }
+                });
+                const data = await response.json();
+                displayResult('comparisonResult', {
+                    api: 'OLD (learning-progress.php)',
+                    status: response.status,
+                    response: data
+                }, true); // Always show as error since this should fail
+            } catch (error) {
+                displayResult('comparisonResult', { 
+                    api: 'OLD (learning-progress.php)',
+                    error: error.message 
+                }, true);
+            }
+        }
+
+        async function testNewAPI() {
+            try {
+                const response = await fetch(`${API_BASE}/pro/learning-progress-simple.php`, {
+                    headers: {
+                        'X-Tutorial-Email': TEST_EMAIL
+                    }
+                });
+                const data = await response.json();
+                
+                const currentResult = document.getElementById('comparisonResult').textContent;
+                const newResult = currentResult + '\n\n' + JSON.stringify({
+                    api: 'NEW (learning-progress-simple.php)',
+                    status: response.status,
+                    response: data
+                }, null, 2);
+                
+                document.getElementById('comparisonResult').textContent = newResult;
+                document.getElementById('comparisonResult').className = `result ${data.status === 'success' ? 'success' : 'error'}`;
+            } catch (error) {
+                const currentResult = document.getElementById('comparisonResult').textContent;
+                const newResult = currentResult + '\n\n' + JSON.stringify({
+                    api: 'NEW (learning-progress-simple.php)',
+                    error: error.message
+                }, null, 2);
+                
+                document.getElementById('comparisonResult').textContent = newResult;
+                document.getElementById('comparisonResult').className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html>

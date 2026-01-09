@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Real Customer Request Flow</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #007cba;
+        }
+        
+        .step h3 {
+            margin-top: 0;
+            color: #007cba;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007cba;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #007cba 0%, #005a8b 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: #333;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .flow-step {
+            text-align: center;
+            flex: 1;
+            padding: 10px;
+        }
+        
+        .flow-arrow {
+            font-size: 24px;
+            color: #007cba;
+        }
+        
+        .flow-step-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .flow-step-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .flow-step-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Test Real Customer Request Flow</h1>
+            <p>Complete end-to-end testing of customer request submission to admin dashboard</p>
+        </div>
+
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="flow-step-icon">👤</div>
+                <div class="flow-step-title">Customer</div>
+                <div class="flow-step-desc">Submits Request</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-icon">💾</div>
+                <div class="flow-step-title">Database</div>
+                <div class="flow-step-desc">Stores Request</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-icon">🔌</div>
+                <div class="flow-step-title">API</div>
+                <div class="flow-step-desc">Fetches Data</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-icon">👨‍💼</div>
+                <div class="flow-step-title">Admin</div>
+                <div class="flow-step-desc">Views Request</div>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Clean Database</h3>
+            <p>Remove all sample/duplicate data and prepare for real requests:</p>
+            <button class="btn btn-danger" onclick="cleanDatabase()">Clean Sample Data</button>
+            <div id="clean-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Submit Real Customer Request</h3>
+            <p>Submit a real customer request to test the complete flow:</p>
+            
+            <form id="customer-request-form">
+                <div class="form-group">
+                    <label for="customer-name">Customer Name *</label>
+                    <input type="text" id="customer-name" name="customer_name" value="John Smith" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="customer-email">Email Address *</label>
+                    <input type="email" id="customer-email" name="customer_email" value="john.smith@gmail.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="customer-phone">Phone Number</label>
+                    <input type="tel" id="customer-phone" name="customer_phone" value="+1-555-0123">
+                </div>
+
+                <div class="form-group">
+                    <label for="title">Request Title *</label>
+                    <input type="text" id="title" name="title" value="Custom Wedding Photo Frame" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="occasion">Occasion</label>
+                    <select id="occasion" name="occasion">
+                        <option value="">Select Occasion</option>
+                        <option value="Wedding" selected>Wedding</option>
+                        <option value="Anniversary">Anniversary</option>
+                        <option value="Birthday">Birthday</option>
+                        <option value="Baby Shower">Baby Shower</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea id="description" name="description" required>I need a custom photo frame for our wedding photos. We want something elegant and timeless that will look beautiful in our home for years to come.</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="requirements">Specific Requirements</label>
+                    <textarea id="requirements" name="requirements">Gold or silver finish, size 8x10 inches, space for 2-3 photos, elegant design suitable for living room display, engraving with wedding date "June 15, 2024"</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="budget-min">Budget Range (Min)</label>
+                    <input type="number" id="budget-min" name="budget_min" value="200" min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="budget-max">Budget Range (Max)</label>
+                    <input type="number" id="budget-max" name="budget_max" value="400" min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="reference-image">Reference Image (Optional)</label>
+                    <input type="file" id="reference-image" name="reference_images[]" accept="image/*" multiple>
+                </div>
+
+                <button type="submit" class="btn">Submit Customer Request</button>
+            </form>
+
+            <div id="submit-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Verify Database Storage</h3>
+            <p>Check if the request was properly stored in the database:</p>
+            <button class="btn btn-warning" onclick="checkDatabase()">Check Database</button>
+            <div id="database-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Test Admin API</h3>
+            <p>Verify the admin API can fetch the submitted request:</p>
+            <button class="btn btn-success" onclick="testAdminAPI()">Test Admin API</button>
+            <div id="admin-api-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 5: Open Admin Dashboard</h3>
+            <p>Open the admin dashboard and verify the request appears:</p>
+            <button class="btn btn-success" onclick="openAdminDashboard()">Open Admin Dashboard</button>
+            <button class="btn" onclick="openNetworkDebug()">Debug Network Calls</button>
+            <div id="dashboard-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        let lastSubmittedRequestId = null;
+
+        async function cleanDatabase() {
+            const resultDiv = document.getElementById('clean-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result warning';
+            resultDiv.innerHTML = 'Cleaning database...';
+            
+            try {
+                const response = await fetch('backend/clean-and-fix-custom-requests.php');
+                const text = await response.text();
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = '<h4>✅ Database Cleaned</h4><div style="max-height: 300px; overflow-y: auto;">' + text + '</div>';
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Error cleaning database: ' + error.message;
+            }
+        }
+
+        document.getElementById('customer-request-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('submit-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result warning';
+            resultDiv.innerHTML = 'Submitting customer request...';
+            
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch('backend/api/customer/custom-request-upload.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    lastSubmittedRequestId = data.request_id;
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Request Submitted Successfully!</h4>
+                        <p><strong>Request ID:</strong> ${data.request_id}</p>
+                        <p><strong>Order ID:</strong> ${data.order_id}</p>
+                        <p><strong>Created:</strong> ${data.created_at}</p>
+                        <p>Now check if it appears in the admin dashboard...</p>
+                    `;
+                    
+                    // Auto-run next steps
+                    setTimeout(() => {
+                        checkDatabase();
+                        testAdminAPI();
+                    }, 2000);
+                    
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Submission Failed: ${data.message}`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+            }
+        });
+
+        async function checkDatabase() {
+            const resultDiv = document.getElementById('database-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result warning';
+            resultDiv.innerHTML = 'Checking database...';
+            
+            try {
+                const response = await fetch('backend/debug-custom-requests-visibility.php');
+                const text = await response.text();
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = '<h4>✅ Database Check</h4><div style="max-height: 300px; overflow-y: auto;">' + text + '</div>';
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Error checking database: ' + error.message;
+            }
+        }
+
+        async function testAdminAPI() {
+            const resultDiv = document.getElementById('admin-api-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result warning';
+            resultDiv.innerHTML = 'Testing admin API...';
+            
+            try {
+                const response = await fetch('backend/api/admin/custom-requests-database-only.php');
+                const data = await response.json();
+                
+                let html = '<h4>✅ Admin API Response</h4>';
+                html += '<p><strong>Status:</strong> ' + data.status + '</p>';
+                html += '<p><strong>Requests Found:</strong> ' + (data.requests ? data.requests.length : 0) + '</p>';
+                
+                if (data.requests && data.requests.length > 0) {
+                    html += '<h5>Recent Requests:</h5><ul>';
+                    data.requests.slice(0, 5).forEach(req => {
+                        const isNew = lastSubmittedRequestId && req.id == lastSubmittedRequestId;
+                        const style = isNew ? 'color: green; font-weight: bold;' : '';
+                        html += `<li style="${style}">ID ${req.id}: ${req.title} by ${req.customer_name} ${isNew ? '(NEW!)' : ''}</li>`;
+                    });
+                    html += '</ul>';
+                    
+                    if (lastSubmittedRequestId) {
+                        const foundRequest = data.requests.find(r => r.id == lastSubmittedRequestId);
+                        if (foundRequest) {
+                            html += '<div style="background: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;">';
+                            html += '<strong>✅ SUCCESS:</strong> Your submitted request was found in the admin API!';
+                            html += '</div>';
+                        } else {
+                            html += '<div style="background: #f8d7da; padding: 10px; border-radius: 5px; margin: 10px 0;">';
+                            html += '<strong>❌ WARNING:</strong> Your submitted request was not found in the admin API.';
+                            html += '</div>';
+                        }
+                    }
+                } else {
+                    html += '<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">';
+                    html += '<strong>⚠️ No requests found.</strong> Submit a request first.';
+                    html += '</div>';
+                }
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Admin API Error: ' + error.message;
+            }
+        }
+
+        function openAdminDashboard() {
+            window.open('frontend/admin/custom-requests-dashboard.html', '_blank');
+            
+            const resultDiv = document.getElementById('dashboard-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                <h4>📋 Admin Dashboard Opened</h4>
+                <p>The admin dashboard has been opened in a new tab.</p>
+                <p><strong>What to check:</strong></p>
+                <ul>
+                    <li>Your submitted request should appear in the table</li>
+                    <li>Statistics should show correct numbers</li>
+                    <li>Open Developer Tools (F12) → Network tab to see API calls</li>
+                </ul>
+            `;
+        }
+
+        function openNetworkDebug() {
+            const resultDiv = document.getElementById('dashboard-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result warning';
+            resultDiv.innerHTML = `
+                <h4>🔍 Network Debug Instructions</h4>
+                <ol>
+                    <li>Open the admin dashboard</li>
+                    <li>Press F12 to open Developer Tools</li>
+                    <li>Go to the Network tab</li>
+                    <li>Refresh the dashboard page</li>
+                    <li>Look for requests to "custom-requests-database-only.php"</li>
+                </ol>
+                <p><strong>Expected:</strong> You should see a GET request with status 200 and JSON response containing your request data.</p>
+            `;
+        }
+
+        // Auto-clean database on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (confirm('Would you like to clean the database and remove sample data before testing?')) {
+                    cleanDatabase();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

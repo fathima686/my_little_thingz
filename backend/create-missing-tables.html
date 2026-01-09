@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗄️ Create Missing Tables</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin: 0;
+            color: #3B82F6;
+        }
+        .error-alert {
+            background: #FEE2E2;
+            border: 2px solid #EF4444;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .error-alert h2 {
+            margin: 0 0 10px 0;
+            color: #DC2626;
+            font-size: 24px;
+        }
+        .error-alert p {
+            margin: 0;
+            color: #991B1B;
+            font-size: 16px;
+            font-family: monospace;
+        }
+        .create-button {
+            background: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 20px 0;
+            width: 100%;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        .create-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4);
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+        }
+        .success {
+            border-color: #10B981;
+            background: #f0fdf4;
+            color: #065F46;
+        }
+        .error {
+            border-color: #EF4444;
+            background: #fef2f2;
+            color: #991B1B;
+        }
+        .tables-info {
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .tables-info h3 {
+            margin: 0 0 15px 0;
+            color: #92400E;
+        }
+        .tables-info ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #92400E;
+        }
+        .tables-info li {
+            margin: 8px 0;
+            font-weight: 500;
+        }
+        .next-steps {
+            background: #DBEAFE;
+            border: 1px solid #3B82F6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .next-steps h3 {
+            margin: 0 0 15px 0;
+            color: #1E40AF;
+        }
+        .next-steps ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #1E40AF;
+        }
+        .next-steps li {
+            margin: 8px 0;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ Create Missing Tables</h1>
+            <p>Fix database table missing error</p>
+        </div>
+
+        <div class="error-alert">
+            <h2>❌ DATABASE ERROR DETECTED</h2>
+            <p>Table 'my_little_thingz.learning_progress' doesn't exist</p>
+        </div>
+
+        <div class="tables-info">
+            <h3>📋 Tables to be Created:</h3>
+            <ul>
+                <li><strong>learning_progress</strong> - Track tutorial completion and progress</li>
+                <li><strong>practice_uploads</strong> - Store practice work submissions</li>
+                <li><strong>certificates</strong> - Track issued certificates</li>
+            </ul>
+        </div>
+
+        <button class="create-button" onclick="createMissingTables()">
+            🚀 CREATE MISSING TABLES NOW
+        </button>
+
+        <div id="result" class="result"></div>
+
+        <div class="next-steps">
+            <h3>📋 After Creating Tables:</h3>
+            <ol>
+                <li><strong>Refresh your progress page</strong></li>
+                <li><strong>Test progress tracking</strong></li>
+                <li><strong>Try practice uploads</strong></li>
+                <li><strong>Check certificate generation</strong></li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #F3F4F6; border-radius: 8px;">
+            <p><strong>🎯 This will create all required database tables!</strong></p>
+            <p>Progress tracking, practice uploads, and certificates will work after this fix.</p>
+        </div>
+    </div>
+
+    <script>
+        async function createMissingTables() {
+            const resultDiv = document.getElementById('result');
+            const button = document.querySelector('.create-button');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = '🗄️ Creating missing database tables...\nThis may take a few moments...';
+            
+            button.disabled = true;
+            button.textContent = '🗄️ CREATING TABLES...';
+            
+            try {
+                const response = await fetch('create-missing-tables.php');
+                const text = await response.text();
+                
+                if (text.includes('ALL MISSING TABLES CREATED')) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = text;
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        alert('🎉 ALL TABLES CREATED!\n\n✅ learning_progress table ready\n✅ practice_uploads table ready\n✅ certificates table ready\n✅ Sample progress data added\n\nREFRESH YOUR PROGRESS PAGE!');
+                    }, 1000);
+                    
+                    button.textContent = '✅ TABLES CREATED!';
+                    button.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = text;
+                    button.disabled = false;
+                    button.textContent = '🚀 CREATE MISSING TABLES NOW';
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Error creating tables: ' + error.message;
+                button.disabled = false;
+                button.textContent = '🚀 CREATE MISSING TABLES NOW';
+            }
+        }
+    </script>
+</body>
+</html>

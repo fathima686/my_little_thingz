@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { LuX, LuClock, LuWrench, LuCheck, LuBan, LuEye } from 'react-icons/lu';
+import { LuX, LuClock, LuWrench, LuCheck, LuBan, LuEye, LuImage, LuDownload } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
+import CustomRequestDesignView from './CustomRequestDesignView';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
 
@@ -8,16 +9,24 @@ const API_BASE = 'http://localhost/my_little_thingz/backend/api';
 const statusMeta = {
   pending: { icon: <LuClock />, color: '#f39c12', label: 'Pending' },
   in_progress: { icon: <LuWrench />, color: '#3498db', label: 'In Progress' },
+  designing: { icon: <LuWrench />, color: '#9b59b6', label: 'Designing' },
+  design_completed: { icon: <LuCheck />, color: '#27ae60', label: 'Design Completed' },
   completed: { icon: <LuCheck />, color: '#27ae60', label: 'Completed' },
   cancelled: { icon: <LuBan />, color: '#e74c3c', label: 'Cancelled' }
 };
 
 // Small utility to compute a 0-100% progress for statuses
-export function getRequestProgress(status) {
+export function getRequestProgress(status, designStatus = null) {
   const s = (status || '').toLowerCase();
+  const ds = designStatus ? (designStatus || '').toLowerCase() : null;
+  
+  // If design is completed, show higher progress
+  if (ds === 'design_completed' || ds === 'design_completed') return 90;
+  if (ds === 'designing') return 70;
+  
   if (s === 'pending') return 10;
-  if (s === 'in_progress') return 60;
-  if (s === 'completed') return 100;
+  if (s === 'in_progress' || s === 'designing') return 60;
+  if (s === 'completed' || s === 'design_completed') return 100;
   if (s === 'cancelled') return 0;
   return 0;
 }
@@ -28,27 +37,49 @@ export default function CustomRequestStatus({ onClose }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
+  const [viewingDesign, setViewingDesign] = useState(null); // request ID for design view
+
+  const loadRequests = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/customer/custom-requests.php`, {
+        headers: { 'X-User-ID': auth?.user_id }
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setRequests(data.requests || []);
+      }
+    } catch (e) {
+      console.error('Failed to load custom requests', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/customer/custom-requests.php`, {
-          headers: { 'X-User-ID': auth?.user_id }
-        });
-        const data = await res.json();
-        if (res.ok && data.status === 'success') {
-          setRequests(data.requests || []);
-        }
-      } catch (e) {
-        console.error('Failed to load custom requests', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadRequests();
+    
+    // Auto-refresh every 30 seconds to see design updates
+    const interval = setInterval(() => {
+      loadRequests();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [auth?.user_id]);
 
-  const filtered = requests.filter(r => filter === 'all' ? true : (r.status || '').toLowerCase() === filter);
+  const filtered = requests.filter(r => {
+    if (filter === 'all') return true;
+    // Check both status and design_status for filtering
+    const statusMatch = (r.status || '').toLowerCase() === filter;
+    const designStatusMatch = r.design_status && (r.design_status.toLowerCase() === filter || 
+      (filter === 'in_progress' && r.design_status.toLowerCase() === 'designing'));
+    
+    // For 'completed' filter, include both completed requests and design_completed designs
+    if (filter === 'completed') {
+      return statusMatch || (r.design_status === 'design_completed');
+    }
+    
+    return statusMatch || designStatusMatch;
+  });
 
   const handlePayment = (request) => {
     // Navigate to cart/checkout with customization data
@@ -94,11 +125,32 @@ export default function CustomRequestStatus({ onClose }) {
         </div>
 
         <div className="filter-tabs">
-          {['all','pending','in_progress','completed','cancelled'].map(f => (
-            <button key={f} className={`filter-tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-              {f === 'all' ? `All (${requests.length})` : `${f.replace('_',' ').replace(/^./,c=>c.toUpperCase())} (${requests.filter(r => (r.status||'').toLowerCase()===f).length})`}
-            </button>
-          ))}
+          {['all','pending','in_progress','completed','cancelled'].map(f => {
+            const count = f === 'all' 
+              ? requests.length 
+              : requests.filter(r => {
+                  const statusMatch = (r.status || '').toLowerCase() === f;
+                  if (f === 'completed') {
+                    return statusMatch || (r.design_status === 'design_completed');
+                  }
+                  if (f === 'in_progress') {
+                    return statusMatch || (r.design_status && ['designing', 'design_completed'].includes(r.design_status));
+                  }
+                  return statusMatch;
+                }).length;
+            
+            return (
+              <button 
+                key={f} 
+                className={`filter-tab ${filter === f ? 'active' : ''}`} 
+                onClick={() => setFilter(f)}
+              >
+                {f === 'all' 
+                  ? `All (${count})` 
+                  : `${f.replace('_',' ').replace(/^./,c=>c.toUpperCase())} (${count})`}
+              </button>
+            );
+          })}
         </div>
 
         {loading ? (
@@ -106,7 +158,11 @@ export default function CustomRequestStatus({ onClose }) {
         ) : (
           <div className="requests-list">
             {filtered.map(req => {
-              const meta = statusMeta[(req.status || 'pending').toLowerCase()] || statusMeta.pending;
+              // Determine display status - prioritize design_status if available
+              const displayStatus = req.design_status || req.status || 'pending';
+              const meta = statusMeta[displayStatus.toLowerCase()] || statusMeta.pending;
+              const progress = getRequestProgress(req.status, req.design_status);
+              
               return (
                 <div key={req.id} className="request-card">
                   <div className="req-head">
@@ -114,7 +170,14 @@ export default function CustomRequestStatus({ onClose }) {
                       <span className="status-icon" style={{color: meta.color}}>{meta.icon}</span>
                       <h3>{req.title}</h3>
                     </div>
-                    <span className="req-status" style={{color: meta.color}}>{meta.label}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      <span className="req-status" style={{color: meta.color}}>{meta.label}</span>
+                      {req.design_status && req.design_status !== req.status && (
+                        <span style={{fontSize: 11, color: '#666'}}>
+                          Design: {req.design_status === 'design_completed' ? '✅ Completed' : req.design_status === 'designing' ? '🎨 In Progress' : req.design_status}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="req-desc">{req.description}</p>
                   <div className="req-meta">
@@ -128,14 +191,73 @@ export default function CustomRequestStatus({ onClose }) {
                     )}
                     {req.category_name && <span><strong>Category:</strong> {req.category_name}</span>}
                   </div>
+                  
+                  {/* Show design preview if available */}
+                  {req.design_image_url && (
+                    <div style={{ marginTop: 12, marginBottom: 8 }}>
+                      <div style={{ 
+                        border: '2px solid #ddd', 
+                        borderRadius: 8, 
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}>
+                        <img 
+                          src={req.design_image_url} 
+                          alt="Design Preview" 
+                          style={{ 
+                            width: '100%', 
+                            height: 200, 
+                            objectFit: 'contain', 
+                            background: '#f5f5f5' 
+                          }} 
+                        />
+                        <div style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          background: 'rgba(33, 150, 243, 0.9)',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 'bold'
+                        }}>
+                          Design Ready
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="req-progress">
                     <div className="bar">
-                      <div className="fill" style={{width: `${getRequestProgress(req.status)}%`, background: meta.color}} />
+                      <div className="fill" style={{width: `${progress}%`, background: meta.color}} />
                     </div>
-                    <span className="pct">{getRequestProgress(req.status)}%</span>
+                    <span className="pct">{progress}%</span>
                   </div>
                   <div className="req-actions">
-                    <button className="btn btn-outline" onClick={() => setSelected(req)}><LuEye /> View</button>
+                    <button className="btn btn-outline" onClick={() => setSelected(req)}>
+                      <LuEye /> View Details
+                    </button>
+                    {(req.design_status === 'design_completed' || req.design_image_url) && (
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ background: '#e3f2fd', borderColor: '#2196f3', color: '#1976d2' }}
+                        onClick={() => setViewingDesign(req.id)}
+                      >
+                        <LuImage /> View Design
+                      </button>
+                    )}
+                    {req.design_pdf_url && (
+                      <a 
+                        href={req.design_pdf_url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="btn btn-outline"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <LuDownload /> Download PDF
+                      </a>
+                    )}
                     {req.status === 'completed' && (
                       <button 
                         className="btn" 
@@ -179,21 +301,73 @@ export default function CustomRequestStatus({ onClose }) {
                 <button className="btn-close" onClick={() => setSelected(null)}><LuX /></button>
               </div>
               <div className="req-detail">
-                <p><strong>Status:</strong> {selected.status}</p>
+                <p><strong>Status:</strong> <span style={{textTransform: 'capitalize', color: statusMeta[(selected.status || 'pending').toLowerCase()]?.color}}>
+                  {statusMeta[(selected.status || 'pending').toLowerCase()]?.label || selected.status}
+                </span></p>
+                {selected.design_status && (
+                  <p><strong>Design Status:</strong> <span style={{textTransform: 'capitalize', color: statusMeta[selected.design_status.toLowerCase()]?.color || '#666'}}>
+                    {statusMeta[selected.design_status.toLowerCase()]?.label || selected.design_status}
+                  </span></p>
+                )}
                 <p><strong>Description:</strong> {selected.description}</p>
                 {selected.occasion && <p><strong>Occasion:</strong> {selected.occasion}</p>}
                 {selected.deadline && <p><strong>Deadline:</strong> {new Date(selected.deadline).toLocaleDateString()}</p>}
                 {(selected.budget_min || selected.budget_max) && (
-                  <p><strong>Budget:</strong> {selected.budget_min || selected.budget_max}</p>
+                  <p><strong>Budget:</strong> ₹{selected.budget_min || selected.budget_max}</p>
                 )}
                 {selected.gift_tier && (
                   <p><strong>Gift Tier:</strong> <span style={{textTransform: 'capitalize'}}>{selected.gift_tier === 'premium' ? '✨ Premium' : '🎁 Budget-Friendly'}</span></p>
                 )}
                 <p><small>Requested on {new Date(selected.created_at).toLocaleString()}</small></p>
+                {selected.design_updated_at && (
+                  <p><small>Design updated on {new Date(selected.design_updated_at).toLocaleString()}</small></p>
+                )}
+
+                {/* Show completed design if available */}
+                {selected.design_image_url && (
+                  <div style={{ marginTop: 16, padding: 12, background: '#f9f9f9', borderRadius: 8 }}>
+                    <p><strong style={{fontSize: 16}}>✨ Completed Design:</strong></p>
+                    <img 
+                      src={selected.design_image_url} 
+                      alt="Completed Design" 
+                      style={{ 
+                        width: '100%', 
+                        maxHeight: 400, 
+                        objectFit: 'contain', 
+                        borderRadius: 8,
+                        border: '2px solid #ddd',
+                        marginTop: 8,
+                        background: 'white'
+                      }} 
+                    />
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                      <a 
+                        href={selected.design_image_url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="btn btn-outline"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <LuImage /> View Full Size
+                      </a>
+                      {selected.design_pdf_url && (
+                        <a 
+                          href={selected.design_pdf_url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="btn btn-outline"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <LuDownload /> Download PDF
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {Array.isArray(selected.images) && selected.images.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <p><strong>Images:</strong></p>
+                  <div style={{ marginTop: 16 }}>
+                    <p><strong>Your Reference Images:</strong></p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {selected.images.map((url, i) => {
                         return (
@@ -208,6 +382,15 @@ export default function CustomRequestStatus({ onClose }) {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Design View Modal */}
+        {viewingDesign && (
+          <CustomRequestDesignView
+            requestId={viewingDesign}
+            isOpen={true}
+            onClose={() => setViewingDesign(null)}
+          />
         )}
 
         <style>{`

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Database Fix - Custom Requests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #007cba;
+        }
+        
+        .step h3 {
+            margin-top: 0;
+            color: #007cba;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #007cba 0%, #005a8b 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: #333;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-left: 4px solid #007cba;
+            margin: 15px 0;
+        }
+        
+        .file-link {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 3px solid #6c757d;
+        }
+        
+        .file-link a {
+            color: #007cba;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .file-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .instructions {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #007cba;
+            margin: 20px 0;
+        }
+        
+        .instructions h4 {
+            margin-top: 0;
+            color: #007cba;
+        }
+        
+        .checklist {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .checklist ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .checklist li:before {
+            content: "☐ ";
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        
+        .checklist li.completed:before {
+            content: "✅ ";
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Direct Database Fix - Custom Requests</h1>
+            <p>Manual fix for custom requests database and flow issues</p>
+        </div>
+
+        <div class="alert alert-warning">
+            <h4>⚠️ Server Connection Issue Detected</h4>
+            <p>The automated tests are failing because the server is not responding. Let's fix this manually using direct file access.</p>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Clean Database Manually</h3>
+            <p>Since the automated script isn't working, open this file directly in your browser:</p>
+            
+            <div class="file-link">
+                <a href="backend/clean-and-fix-custom-requests.php" target="_blank">
+                    📁 backend/clean-and-fix-custom-requests.php
+                </a>
+                <p>This will clean all sample data and show the current database state.</p>
+            </div>
+            
+            <div class="instructions">
+                <h4>Manual Database Cleanup (Alternative)</h4>
+                <p>If the PHP file doesn't work, run this SQL directly in phpMyAdmin:</p>
+                <div class="code-block">
+DELETE FROM custom_requests WHERE 
+    customer_name IN ('Alice Johnson', 'Michael Chen', 'Sarah Williams', 'Robert Davis')
+    OR customer_email LIKE '%@email.com'
+    OR customer_email LIKE '%test%'
+    OR customer_name LIKE '%Test%'
+    OR title LIKE '%Test%'
+    OR customer_name = 'Unknown Customer';
+
+DELETE FROM custom_request_images 
+WHERE request_id NOT IN (SELECT id FROM custom_requests);
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Test Customer Upload API</h3>
+            <p>Test the customer upload API directly:</p>
+            
+            <div class="file-link">
+                <a href="backend/api/customer/custom-request-upload.php" target="_blank">
+                    📁 backend/api/customer/custom-request-upload.php
+                </a>
+                <p>This should show an error message (since it expects POST data), but confirms the file exists.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Test Admin API</h3>
+            <p>Test the admin API directly:</p>
+            
+            <div class="file-link">
+                <a href="backend/api/admin/custom-requests-database-only.php" target="_blank">
+                    📁 backend/api/admin/custom-requests-database-only.php
+                </a>
+                <p>This should return JSON data with current custom requests.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Test Admin Dashboard</h3>
+            <p>Open the admin dashboard:</p>
+            
+            <div class="file-link">
+                <a href="frontend/admin/custom-requests-dashboard.html" target="_blank">
+                    📁 frontend/admin/custom-requests-dashboard.html
+                </a>
+                <p>Check if requests appear and if network calls are made (F12 → Network tab).</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 5: Create Test Customer Request</h3>
+            <p>Use this simple form to test customer request submission:</p>
+            
+            <form action="backend/api/customer/custom-request-upload.php" method="post" enctype="multipart/form-data" target="_blank">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Customer Name:</label>
+                        <input type="text" name="customer_name" value="John Smith" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email:</label>
+                        <input type="email" name="customer_email" value="john.smith@gmail.com" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Phone:</label>
+                        <input type="tel" name="customer_phone" value="+1-555-0123" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Title:</label>
+                        <input type="text" name="title" value="Custom Wedding Frame" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Occasion:</label>
+                    <select name="occasion" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="Wedding">Wedding</option>
+                        <option value="Anniversary">Anniversary</option>
+                        <option value="Birthday">Birthday</option>
+                    </select>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Description:</label>
+                    <textarea name="description" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 80px;">I need a custom wedding photo frame with elegant design for our special day photos.</textarea>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Requirements:</label>
+                    <textarea name="requirements" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 60px;">Gold finish, size 8x10 inches, space for 2 photos, elegant design.</textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Budget Min:</label>
+                        <input type="number" name="budget_min" value="200" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Budget Max:</label>
+                        <input type="number" name="budget_max" value="400" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn">Submit Test Request</button>
+            </form>
+        </div>
+
+        <div class="checklist">
+            <h3>✅ Verification Checklist</h3>
+            <ul>
+                <li>Database cleanup script runs successfully</li>
+                <li>Sample data is removed from custom_requests table</li>
+                <li>Customer upload API accepts POST requests</li>
+                <li>Admin API returns JSON with requests</li>
+                <li>Admin dashboard loads without errors</li>
+                <li>Network calls visible in browser DevTools</li>
+                <li>Test customer request submits successfully</li>
+                <li>Test request appears in admin dashboard</li>
+            </ul>
+        </div>
+
+        <div class="instructions">
+            <h4>🔍 Troubleshooting Steps</h4>
+            <ol>
+                <li><strong>If PHP files don't load:</strong> Make sure your web server (XAMPP/WAMP) is running</li>
+                <li><strong>If database errors:</strong> Check MySQL service is running and database exists</li>
+                <li><strong>If 404 errors:</strong> Verify file paths are correct relative to your web root</li>
+                <li><strong>If permission errors:</strong> Check file permissions on PHP files</li>
+                <li><strong>If network errors:</strong> Check browser console for detailed error messages</li>
+            </ol>
+        </div>
+
+        <div class="alert alert-success">
+            <h4>🎯 Expected Final Result</h4>
+            <p>After completing all steps:</p>
+            <ul>
+                <li>✅ Database contains only real customer requests (no sample data)</li>
+                <li>✅ Customer form submissions work and store data correctly</li>
+                <li>✅ Admin dashboard displays submitted requests</li>
+                <li>✅ Network calls are visible in browser DevTools</li>
+                <li>✅ Real-time flow from customer → database → admin works</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

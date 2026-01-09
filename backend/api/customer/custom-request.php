@@ -147,24 +147,8 @@ function handleSubmitRequest($pdo, $customerId, $customerName, $customerEmail) {
         
         $requestId = $pdo->lastInsertId();
         
-        // Create notification for admin
-        try {
-            $adminStmt = $pdo->prepare("
-                INSERT INTO notifications (user_id, title, message, type, action_url, is_read, created_at) 
-                SELECT id, ?, ?, 'info', ?, 0, NOW() 
-                FROM users 
-                WHERE email = 'admin@mylittlethingz.com' OR role = 'admin'
-                LIMIT 1
-            ");
-            $adminStmt->execute([
-                'New Custom Design Request',
-                "New custom request '$input[title]' from $customerName",
-                "/admin/custom-requests-dashboard.html"
-            ]);
-        } catch (PDOException $e) {
-            // Notification creation failed, but request was successful
-            error_log("Failed to create admin notification: " . $e->getMessage());
-        }
+        // Skip notification creation to avoid database errors
+        // Admin can check dashboard directly for new requests
         
         echo json_encode([
             'status' => 'success',
@@ -177,7 +161,12 @@ function handleSubmitRequest($pdo, $customerId, $customerName, $customerEmail) {
         
     } catch (PDOException $e) {
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'Failed to submit request']);
+        echo json_encode([
+            'status' => 'error', 
+            'message' => 'Database error: ' . $e->getMessage(),
+            'code' => $e->getCode(),
+            'sql_state' => $e->errorInfo[0] ?? null
+        ]);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

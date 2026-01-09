@@ -5,7 +5,7 @@
 
 class CustomRequestsDashboard {
     constructor() {
-        this.apiBaseUrl = '/my_little_thingz/backend/api/admin/custom-requests.php';
+        this.apiBaseUrl = '../../backend/api/admin/custom-requests-database-only.php';
         this.adminEmail = 'admin@mylittlethingz.com'; // Should be set from session
         this.currentRequests = [];
         this.filteredRequests = [];
@@ -59,6 +59,12 @@ class CustomRequestsDashboard {
             
             const data = await response.json();
             
+            // Debug logging
+            console.log('🔍 API Response:', data);
+            if (data.requests && data.requests.length > 0) {
+                console.log('🖼️ First request images:', data.requests[0].images);
+            }
+            
             if (data.status === 'success') {
                 this.currentRequests = data.requests;
                 this.updateStats(data.stats);
@@ -100,7 +106,7 @@ class CustomRequestsDashboard {
         if (this.filteredRequests.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center py-4">
+                    <td colspan="8" class="text-center py-4">
                         <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
                         <p class="text-muted mb-0">No custom requests found</p>
                     </td>
@@ -138,6 +144,9 @@ class CustomRequestsDashboard {
                     <div class="fw-bold">${this.escapeHtml(request.title)}</div>
                     ${request.occasion ? `<small class="text-muted">For: ${this.escapeHtml(request.occasion)}</small>` : ''}
                     ${request.description ? `<br><small class="text-muted">${this.truncateText(request.description, 50)}</small>` : ''}
+                </td>
+                <td>
+                    ${this.renderImages(request)}
                 </td>
                 <td>
                     <div class="${deadlineInfo.class}">
@@ -309,10 +318,22 @@ class CustomRequestsDashboard {
     }
     
     updateStats(stats) {
-        document.getElementById('totalRequests').textContent = stats.total_requests || 0;
-        document.getElementById('pendingRequests').textContent = stats.pending_requests || 0;
-        document.getElementById('completedRequests').textContent = stats.completed_requests || 0;
-        document.getElementById('urgentRequests').textContent = stats.urgent_requests || 0;
+        if (stats) {
+            document.getElementById('totalRequests').textContent = stats.total_requests || 0;
+            document.getElementById('pendingRequests').textContent = stats.pending_requests || 0;
+            document.getElementById('completedRequests').textContent = stats.completed_requests || 0;
+            // Calculate urgent requests (high priority + due soon)
+            const urgentCount = this.currentRequests.filter(r => 
+                r.priority === 'high' || (r.days_until_deadline !== undefined && r.days_until_deadline <= 3)
+            ).length;
+            document.getElementById('urgentRequests').textContent = urgentCount;
+        } else {
+            // Fallback if no stats provided
+            document.getElementById('totalRequests').textContent = this.currentRequests.length;
+            document.getElementById('pendingRequests').textContent = this.currentRequests.filter(r => r.status === 'submitted' || r.status === 'pending').length;
+            document.getElementById('completedRequests').textContent = this.currentRequests.filter(r => r.status === 'completed').length;
+            document.getElementById('urgentRequests').textContent = this.currentRequests.filter(r => r.priority === 'high').length;
+        }
     }
     
     updateCounts() {
@@ -360,7 +381,7 @@ class CustomRequestsDashboard {
     showLoadingState() {
         document.getElementById('requestsTableBody').innerHTML = `
             <tr class="loading-row">
-                <td colspan="7">
+                <td colspan="8">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
@@ -442,6 +463,54 @@ class CustomRequestsDashboard {
         return statusMap[status] || status;
     }
     
+    renderImages(request) {
+        if (!request.images || request.images.length === 0) {
+            return `
+                <div class="text-muted small no-images">
+                    <i class="fas fa-image"></i> No images
+                </div>
+            `;
+        }
+        
+        const imageCount = request.images.length;
+        const firstImage = request.images[0];
+        
+        // Ensure we have a valid URL string
+        let imageUrl = '';
+        if (firstImage && typeof firstImage === 'object') {
+            imageUrl = firstImage.url || firstImage.image_url || '';
+        } else if (typeof firstImage === 'string') {
+            imageUrl = firstImage;
+        }
+        
+        // Fallback if no valid URL
+        if (!imageUrl || imageUrl === '[object Object]') {
+            return `
+                <div class="text-muted small no-images">
+                    <i class="fas fa-exclamation-triangle"></i> Image error
+                </div>
+            `;
+        }
+        
+        // Get original name safely
+        const originalName = (firstImage && firstImage.original_name) || 
+                           (firstImage && firstImage.filename) || 
+                           'Reference image';
+        
+        // Show first image as thumbnail with count
+        return `
+            <div class="image-preview">
+                <img src="${this.escapeHtml(imageUrl)}" 
+                     alt="${this.escapeHtml(originalName)}" 
+                     class="img-thumbnail request-image-thumb"
+                     onclick="showImageModal(${request.id}, '${this.escapeHtml(request.order_id)}')"
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yMCAyOEMyNCA0IDI4IDggMjggMTJDMjggMTYgMjQgMjAgMjAgMjBDMTYgMjAgMTIgMTYgMTIgMTJDMTIgOCAxNiA0IDIwIDRaIiBmaWxsPSIjQ0NDIi8+CjxjaXJjbGUgY3g9IjIwIiBjeT0iMTIiIHI9IjMiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo='; this.onerror=null;"
+                     style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;">
+                ${imageCount > 1 ? `<small class="badge bg-primary position-absolute" style="top: -5px; right: -5px;">+${imageCount - 1}</small>` : ''}
+            </div>
+        `;
+    }
+    
     truncateText(text, maxLength) {
         return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
     }
@@ -453,7 +522,122 @@ class CustomRequestsDashboard {
     }
 }
 
+// Global function for showing image modal
+window.showImageModal = function(requestId, orderID) {
+    const dashboard = window.customRequestsDashboard;
+    if (!dashboard) return;
+    
+    const request = dashboard.currentRequests.find(r => r.id == requestId);
+    if (!request || !request.images || request.images.length === 0) return;
+    
+    // Helper function to get safe image URL
+    function getSafeImageUrl(img) {
+        if (!img) return '';
+        if (typeof img === 'string') return img;
+        if (typeof img === 'object') {
+            return img.url || img.image_url || '';
+        }
+        return '';
+    }
+    
+    // Helper function to get safe image name
+    function getSafeImageName(img) {
+        if (!img) return 'Reference Image';
+        if (typeof img === 'object') {
+            return img.original_name || img.filename || 'Reference Image';
+        }
+        return 'Reference Image';
+    }
+    
+    // Helper function to get safe upload date
+    function getSafeUploadDate(img) {
+        if (!img || typeof img !== 'object' || !img.uploaded_at) {
+            return 'Unknown date';
+        }
+        try {
+            return new Date(img.uploaded_at).toLocaleDateString();
+        } catch (e) {
+            return 'Unknown date';
+        }
+    }
+    
+    // Create modal HTML with safe URL handling
+    const modalHtml = `
+        <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="imageModalLabel">Reference Images - ${orderID}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            ${request.images.map((img, index) => {
+                                const imageUrl = getSafeImageUrl(img);
+                                const imageName = getSafeImageName(img);
+                                const uploadDate = getSafeUploadDate(img);
+                                
+                                if (!imageUrl || imageUrl === '[object Object]') {
+                                    return `
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                                                    <h6 class="card-title">Image Error</h6>
+                                                    <p class="text-muted">Unable to load image</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                
+                                return `
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <img src="${imageUrl}" 
+                                                 class="card-img-top" 
+                                                 alt="${imageName}"
+                                                 style="height: 200px; object-fit: cover;"
+                                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xMDAgMTQwQzEyMCAyMCAxNDAgNDAgMTQwIDYwQzE0MCA4MCAxMjAgMTAwIDEwMCAxMDBDODAgMTAwIDYwIDgwIDYwIDYwQzYwIDQwIDgwIDIwIDEwMCAyMFoiIGZpbGw9IiNDQ0MiLz4KPGNpcmNsZSBjeD0iMTAwIiBjeT0iNjAiIHI9IjE1IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'; this.onerror=null;">
+                                            <div class="card-body">
+                                                <h6 class="card-title">${imageName}</h6>
+                                                <small class="text-muted">Uploaded: ${uploadDate}</small>
+                                                <br>
+                                                <a href="${imageUrl}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                                    <i class="fas fa-external-link-alt"></i> View Full Size
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('imageModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+    
+    // Clean up modal after it's hidden
+    document.getElementById('imageModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+};
+
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new CustomRequestsDashboard();
+    window.customRequestsDashboard = new CustomRequestsDashboard();
 });
