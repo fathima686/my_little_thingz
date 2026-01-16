@@ -1,4 +1,9 @@
 <?php
+/**
+ * Corrected Practice Upload API
+ * Uses simplified authenticity system with clear, explainable results
+ */
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -11,11 +16,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     require_once '../../config/database.php';
-    require_once '../../services/BasicImageAuthenticityService.php';
+    require_once '../../services/SimplifiedImageAuthenticityService.php';
     
     $database = new Database();
     $pdo = $database->getConnection();
-    $authenticityService = new BasicImageAuthenticityService($pdo);
+    $authenticityService = new SimplifiedImageAuthenticityService($pdo);
 } catch (Exception $e) {
     echo json_encode([
         'status' => 'error',
@@ -45,16 +50,25 @@ if (empty($userEmail) || empty($tutorialId)) {
 }
 
 try {
-    // Get user ID first
+    // Get user ID and verify Pro subscription
     $userStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $userStmt->execute([$userEmail]);
-    $userForSub = $userStmt->fetch(PDO::FETCH_ASSOC);
-    $userIdForSub = $userForSub['id'] ?? null;
+    $user = $userStmt->fetch(PDO::FETCH_ASSOC);
     
-    // Check if user has Pro subscription
-    $isPro = ($userEmail === 'soudhame52@gmail.com');
+    if (!$user) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'User not found'
+        ]);
+        exit;
+    }
     
-    if (!$isPro && $userIdForSub) {
+    $userId = $user['id'];
+    
+    // Check Pro subscription
+    $isPro = ($userEmail === 'soudhame52@gmail.com'); // Admin override
+    
+    if (!$isPro) {
         $subStmt = $pdo->prepare("
             SELECT s.status, sp.plan_code 
             FROM subscriptions s
@@ -63,7 +77,7 @@ try {
             ORDER BY s.created_at DESC 
             LIMIT 1
         ");
-        $subStmt->execute([$userIdForSub]);
+        $subStmt->execute([$userId]);
         $subscription = $subStmt->fetch(PDO::FETCH_ASSOC);
         
         $isPro = ($subscription && $subscription['plan_code'] === 'pro' && $subscription['status'] === 'active');
@@ -78,19 +92,8 @@ try {
         exit;
     }
     
-    // Use the user ID we already fetched
-    if (!$userIdForSub) {
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'User not found'
-        ]);
-        exit;
-    }
-    
-    $userId = $userIdForSub;
-    
     // Verify tutorial exists
-    $tutorialStmt = $pdo->prepare("SELECT title FROM tutorials WHERE id = ?");
+    $tutorialStmt = $pdo->prepare("SELECT title, category FROM tutorials WHERE id = ?");
     $tutorialStmt->execute([$tutorialId]);
     $tutorial = $tutorialStmt->fetch(PDO::FETCH_ASSOC);
     
@@ -102,7 +105,7 @@ try {
         exit;
     }
     
-    // Create uploads directory if it doesn't exist
+    // Create uploads directory
     $uploadDir = '../../uploads/practice/';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
@@ -111,7 +114,7 @@ try {
     $uploadedFiles = [];
     $errors = [];
     
-    // Process uploaded files with authenticity verification
+    // Process uploaded files
     if (isset($_FILES['practice_images']) && is_array($_FILES['practice_images']['name'])) {
         $fileCount = count($_FILES['practice_images']['name']);
         
@@ -145,13 +148,12 @@ try {
                         'original_name' => $fileName,
                         'stored_name' => $uniqueFileName,
                         'file_path' => 'uploads/practice/' . $uniqueFileName,
-                        'file_size' => $fileSize
+                        'file_size' => $fileSize,
+                        'index' => $i
                     ];
                 } else {
                     $errors[] = "File $fileName: Upload failed";
                 }
-            } else {
-                $errors[] = "File upload error: " . $_FILES['practice_images']['error'][$i];
             }
         }
     }
@@ -165,24 +167,10 @@ try {
         exit;
     }
     
-    // Create practice uploads table if it doesn't exist
-    $pdo->exec("CREATE TABLE IF NOT EXISTS practice_uploads (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        tutorial_id INT NOT NULL,
-        description TEXT,
-        images JSON,
-        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-        admin_feedback TEXT,
-        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_date TIMESTAMP NULL,
-        INDEX idx_user_tutorial (user_id, tutorial_id)
-    )");
-    
-    // Insert practice upload record with authenticity verification
+    // Create practice upload record
     $insertStmt = $pdo->prepare("
-        INSERT INTO practice_uploads (user_id, tutorial_id, description, images, status, upload_date, verification_status)
-        VALUES (?, ?, ?, ?, 'pending', NOW(), 'pending')
+        INSERT INTO practice_uploads (user_id, tutorial_id, description, images, status, authenticity_status, upload_date)
+        VALUES (?, ?, ?, ?, 'pending', 'pending', NOW())
     ");
     
     $imagesJson = json_encode($uploadedFiles);
@@ -194,8 +182,8 @@ try {
     $analysisResults = [];
     $requiresReview = false;
     
-    foreach ($uploadedFiles as $index => $file) {
-        $imageId = $uploadId . '_' . $index;
+    foreach ($uploadedFiles as $file) {
+        $imageId = $uploadId . '_' . $file['index'];
         $fullFilePath = $uploadDir . $file['stored_name'];
         
         try {
@@ -234,7 +222,7 @@ try {
                 'status' => 'needs_admin_review',
                 'explanation' => 'Technical error occurred during analysis',
                 'requires_admin_review' => true,
-                'category' => 'general',
+                'category' => $tutorial['category'] ?? 'general',
                 'images_compared' => 0,
                 'metadata_notes' => 'Error: ' . $e->getMessage(),
                 'flagged_reason' => 'Processing error',
@@ -298,42 +286,15 @@ try {
         'files' => $uploadedFiles,
         'errors' => $errors,
         'tutorial_title' => $tutorial['title'],
+        'tutorial_category' => $tutorial['category'] ?? 'general',
         'user_email' => $userEmail,
         'timestamp' => date('Y-m-d H:i:s'),
-        'ai_analysis' => [
-            'system_version' => 'basic_v1.0',
-            'detection_method' => 'file_hash_similarity',
-            'comparison_scope' => 'same_category_only',
-            'analysis_results' => $analysisResults,
-            'summary' => [
-                'total_images' => count($analysisResults),
-                'unique_images' => $uniqueCount,
-                'reused_images' => $reusedCount,
-                'similar_images' => $similarCount,
-                'requires_admin_review' => $reviewCount,
-                'auto_approved' => !$requiresReview
-            ],
-            'explanation' => [
-                'unique' => 'No similar images found within the same tutorial category on our platform',
-                'reused' => 'Identical image found within the same category - exact file match detected',
-                'highly_similar' => 'Very similar image found within the same category',
-                'needs_admin_review' => 'Flagged for manual review due to similarity or technical issues'
-            ],
-            'important_notes' => [
-                'We only compare images within the same tutorial category',
-                'We do not claim to detect images from Google or the internet',
-                'Our system detects exact file duplicates within our platform only',
-                'Progress credit requires admin approval for flagged images',
-                'Certificate eligibility requires 80% overall course progress'
-            ]
-        ],
         'authenticity_analysis' => [
-            'system_version' => 'basic_v1.0',
-            'detection_method' => 'file_hash_similarity',
+            'system_version' => 'simplified_v1.0',
+            'detection_method' => 'perceptual_hash_similarity',
             'comparison_scope' => 'same_category_only',
-            'threshold_used' => 'exact_file_match',
+            'threshold_used' => 'hamming_distance_≤_5',
             'results' => $analysisResults,
-            'analysis_results' => $analysisResults, // For frontend compatibility
             'summary' => [
                 'total_images' => count($analysisResults),
                 'unique_images' => $uniqueCount,

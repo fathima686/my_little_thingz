@@ -271,32 +271,39 @@
   gap: 16px;
 }
 
-.completion-info {
+.status-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
-.completion-percentage {
-  font-size: 14px;
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: #667eea;
-  min-width: 40px;
+  border-radius: 6px;
+  text-transform: capitalize;
+  white-space: nowrap;
 }
 
-.completion-bar {
-  width: 80px;
-  height: 6px;
-  background: #e2e8f0;
-  border-radius: 3px;
-  overflow: hidden;
+.status-badge.status-completed {
+  background: #d1fae5;
+  color: #059669;
 }
 
-.completion-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  border-radius: 3px;
-  transition: width 0.3s ease;
+.status-badge.status-practice-approved {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-badge.status-in-progress {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-badge.status-not-started {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 .practice-status {

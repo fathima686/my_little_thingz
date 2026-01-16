@@ -60,7 +60,7 @@ export default function AdminDashboard() {
   const [reviewsReplyDraft, setReviewsReplyDraft] = useState({});
   const [reviewsSentiments, setReviewsSentiments] = useState({});
 
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | design-editor | artworks | requirements | orders | tutorials | live-sessions | settings
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | design-editor | ai-image-generator | artworks | requirements | orders | tutorials | live-sessions | settings
 
   // Live Sessions management state
   const [liveSessions, setLiveSessions] = useState([]);
@@ -1338,6 +1338,7 @@ export default function AdminDashboard() {
           <button className={activeSection === 'supplier-inventory' ? 'active' : ''} onClick={() => { setActiveSection('supplier-inventory'); fetchSupplierInventory(); }} title="Supplier Inventory">Supplier Inventory</button>
           <button className={activeSection === 'custom-requests' ? 'active' : ''} onClick={() => { setActiveSection('custom-requests'); fetchRequests(reqFilter); }} title="Custom Requests">Custom Requests</button>
           <button className={activeSection === 'design-editor' ? 'active' : ''} onClick={() => { setActiveSection('design-editor'); }} title="Design Editor">Design Editor</button>
+          <button className={activeSection === 'ai-image-generator' ? 'active' : ''} onClick={() => { setActiveSection('ai-image-generator'); }} title="AI Image Generator">✨ AI Image Generator</button>
           <button className={activeSection === 'artworks' ? 'active' : ''} onClick={() => { setActiveSection('artworks'); fetchCategories(); fetchArtworks(); }} title="Artwork Gallery">Artworks</button>
           <button className={activeSection === 'requirements' ? 'active' : ''} onClick={() => { setActiveSection('requirements'); fetchRequirements(); }} title="Order Requirements">Order Requirements</button>
           <button className={activeSection === 'reviews' ? 'active' : ''} onClick={() => { setActiveSection('reviews'); fetchReviews(); }} title="Customer Reviews">Customer Reviews</button>
@@ -2149,6 +2150,22 @@ export default function AdminDashboard() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </section>
+            )}
+
+
+
+            {activeSection === 'ai-image-generator' && (
+            <section id="ai-image-generator" className="widget" style={{ marginTop: 12 }}>
+              <div className="widget-head">
+                <h4>✨ AI Image Generator</h4>
+                <p style={{ color: '#666', fontSize: '14px', marginTop: '8px' }}>
+                  Generate professional images using AI - Powered by Gemini & Stable Diffusion
+                </p>
+              </div>
+              <div className="widget-body">
+                <AIImageGeneratorSection />
               </div>
             </section>
             )}
@@ -3415,6 +3432,581 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// AI Image Generator Section Component
+function AIImageGeneratorSection() {
+  const [prompt, setPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState(null);
+  const [refinedPrompt, setRefinedPrompt] = useState('');
+  const [generatedImageUrl, setGeneratedImageUrl] = useState('');
+  const [serviceStatus, setServiceStatus] = useState('checking');
+  
+  // New state for Convert to Cartoon feature
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('cartoon');
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertedImageUrl, setConvertedImageUrl] = useState('');
+  const [activeTab, setActiveTab] = useState('generate'); // 'generate' or 'convert'
+  
+  const AI_SERVICE_URL = 'http://localhost:8001';
+  
+  const styles = [
+    { value: 'cartoon', label: 'Cartoon', description: 'Smooth cartoon illustration with flat colors' },
+    { value: 'anime', label: 'Anime', description: 'Japanese anime style with clean line art' },
+    { value: 'watercolor', label: 'Watercolor', description: 'Soft watercolor painting style' },
+    { value: 'pencil_sketch', label: 'Pencil Sketch', description: 'Hand-drawn pencil sketch' }
+  ];
+  
+  // Check service status on mount
+  useEffect(() => {
+    checkServiceStatus();
+  }, []);
+  
+  const checkServiceStatus = async () => {
+    try {
+      const response = await fetch(`${AI_SERVICE_URL}/health`);
+      const data = await response.json();
+      setServiceStatus(data.status === 'healthy' ? 'online' : 'offline');
+    } catch (err) {
+      setServiceStatus('offline');
+    }
+  };
+  
+  const generateImage = async () => {
+    if (!prompt.trim()) {
+      setError('Please enter a prompt');
+      return;
+    }
+    
+    if (prompt.length > 500) {
+      setError('Prompt too long. Maximum 500 characters.');
+      return;
+    }
+    
+    setIsGenerating(true);
+    setError(null);
+    setRefinedPrompt('');
+    setGeneratedImageUrl('');
+    
+    try {
+      const response = await fetch(`${AI_SERVICE_URL}/generate-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim() })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate image');
+      }
+      
+      const data = await response.json();
+      setRefinedPrompt(data.refined_prompt);
+      setGeneratedImageUrl(data.image_url);
+    } catch (err) {
+      setError(err.message || 'Failed to generate image');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  const resetForm = () => {
+    setPrompt('');
+    setError(null);
+    setRefinedPrompt('');
+    setGeneratedImageUrl('');
+  };
+  
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload an image file');
+        return;
+      }
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image too large. Maximum size: 10MB');
+        return;
+      }
+      
+      setUploadedImage(file);
+      setError(null);
+      setConvertedImageUrl('');
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const convertToCartoon = async () => {
+    if (!uploadedImage) {
+      setError('Please upload an image first');
+      return;
+    }
+    
+    setIsConverting(true);
+    setError(null);
+    setConvertedImageUrl('');
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', uploadedImage);
+      formData.append('style', selectedStyle);
+      
+      const response = await fetch(`${AI_SERVICE_URL}/convert-to-cartoon`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to convert image');
+      }
+      
+      const data = await response.json();
+      setConvertedImageUrl(data.image_url);
+    } catch (err) {
+      setError(err.message || 'Failed to convert image');
+    } finally {
+      setIsConverting(false);
+    }
+  };
+  
+  const resetConvertForm = () => {
+    setUploadedImage(null);
+    setUploadedImagePreview('');
+    setConvertedImageUrl('');
+    setError(null);
+    setSelectedStyle('cartoon');
+  };
+  
+  const examplePrompts = [
+    'a golden trophy on a marble pedestal',
+    'professional certificate border with elegant floral design',
+    'abstract geometric pattern in blue and gold',
+    'minimalist mountain landscape silhouette',
+    'elegant vintage frame design',
+    'watercolor floral design'
+  ];
+  
+  return (
+    <div style={{ padding: '20px' }}>
+      {/* Service Status */}
+      <div style={{ 
+        padding: '12px', 
+        borderRadius: '8px', 
+        marginBottom: '20px',
+        background: serviceStatus === 'online' ? '#d4edda' : '#f8d7da',
+        border: `1px solid ${serviceStatus === 'online' ? '#c3e6cb' : '#f5c6cb'}`,
+        color: serviceStatus === 'online' ? '#155724' : '#721c24'
+      }}>
+        <strong>Service Status:</strong> {serviceStatus === 'online' ? '✅ Online & Ready' : '❌ Offline - Please start the AI service'}
+      </div>
+      
+      {/* Error Message (shared) */}
+      {error && (
+        <div style={{
+          padding: '15px',
+          background: '#f8d7da',
+          border: '1px solid #f5c6cb',
+          borderRadius: '8px',
+          color: '#721c24',
+          marginBottom: '20px'
+        }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+      
+      {/* Tabs */}
+      <div style={{ marginBottom: '20px', borderBottom: '2px solid #e0e0e0' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setActiveTab('generate')}
+            style={{
+              padding: '12px 24px',
+              border: 'none',
+              background: activeTab === 'generate' ? '#667eea' : 'transparent',
+              color: activeTab === 'generate' ? 'white' : '#666',
+              borderRadius: '8px 8px 0 0',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'generate' ? 'bold' : 'normal',
+              fontSize: '14px'
+            }}
+          >
+            ✨ Generate from Text
+          </button>
+          <button
+            onClick={() => setActiveTab('convert')}
+            style={{
+              padding: '12px 24px',
+              border: 'none',
+              background: activeTab === 'convert' ? '#667eea' : 'transparent',
+              color: activeTab === 'convert' ? 'white' : '#666',
+              borderRadius: '8px 8px 0 0',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'convert' ? 'bold' : 'normal',
+              fontSize: '14px'
+            }}
+          >
+            🎨 Convert to Cartoon
+          </button>
+        </div>
+      </div>
+      
+      {/* Generate from Text Tab */}
+      {activeTab === 'generate' && (
+        <div>
+          {/* Prompt Input */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>
+              Describe the image you want to generate:
+            </label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Example: a golden trophy on a marble pedestal, professional certificate border..."
+              style={{
+                width: '100%',
+                minHeight: '120px',
+                padding: '12px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                resize: 'vertical'
+              }}
+              disabled={isGenerating}
+            />
+            <div style={{ textAlign: 'right', fontSize: '12px', color: '#999', marginTop: '4px' }}>
+              {prompt.length}/500 characters
+            </div>
+          </div>
+          
+          {/* Example Prompts */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>
+              Quick Examples:
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {examplePrompts.map((example, index) => (
+                <button
+                  key={index}
+                  onClick={() => setPrompt(example)}
+                  className="btn btn-soft"
+                  style={{ fontSize: '13px' }}
+                  disabled={isGenerating}
+                >
+                  {example.substring(0, 30)}...
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Generate Button */}
+          <button
+            onClick={generateImage}
+            className="btn btn-primary"
+            disabled={isGenerating || !prompt.trim() || serviceStatus !== 'online'}
+            style={{ marginBottom: '20px' }}
+          >
+            {isGenerating ? 'Generating...' : '✨ Generate Image'}
+          </button>
+          
+          {/* Loading State */}
+          {isGenerating && (
+            <div style={{
+              padding: '30px',
+              textAlign: 'center',
+              background: '#f8f9fa',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                border: '4px solid #f3f3f3',
+                borderTop: '4px solid #667eea',
+                borderRadius: '50%',
+                width: '50px',
+                height: '50px',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 15px'
+              }} />
+              <h5>Generating your image...</h5>
+              <p style={{ color: '#666', fontSize: '14px' }}>
+                This may take 30-90 seconds. Please wait.
+              </p>
+            </div>
+          )}
+          
+          {/* Error Message */}
+          {error && (
+            <div style={{
+              padding: '15px',
+              background: '#f8d7da',
+              border: '1px solid #f5c6cb',
+              borderRadius: '8px',
+              color: '#721c24',
+              marginBottom: '20px'
+            }}>
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+          
+          {/* Result */}
+          {generatedImageUrl && !isGenerating && (
+            <div style={{
+              padding: '20px',
+              background: '#fff',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px'
+            }}>
+              <h5 style={{ marginBottom: '15px' }}>Generated Image:</h5>
+              <img
+                src={generatedImageUrl}
+                alt="AI Generated"
+                style={{
+                  width: '100%',
+                  maxWidth: '512px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  marginBottom: '15px'
+                }}
+              />
+              
+              <div style={{
+                padding: '15px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                marginBottom: '15px'
+              }}>
+                <strong>Original Prompt:</strong>
+                <p style={{ marginTop: '5px', marginBottom: '10px' }}>{prompt}</p>
+                
+                <strong>AI-Refined Prompt:</strong>
+                <p style={{ marginTop: '5px', marginBottom: '0' }}>{refinedPrompt}</p>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <a
+                  href={generatedImageUrl}
+                  download
+                  className="btn btn-primary"
+                >
+                  Download Image
+                </a>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedImageUrl);
+                    alert('Image URL copied to clipboard!');
+                  }}
+                  className="btn btn-soft"
+                >
+                  Copy URL
+                </button>
+                <button
+                  onClick={resetForm}
+                  className="btn btn-soft"
+                >
+                  Generate Another
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Convert to Cartoon Tab */}
+      {activeTab === 'convert' && (
+        <div>
+          {/* Image Upload */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>
+              Upload Image to Convert:
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={isConverting}
+              style={{
+                padding: '10px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                width: '100%',
+                fontSize: '14px'
+              }}
+            />
+            <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+              Supported: PNG, JPG, JPEG (Max 10MB)
+            </div>
+          </div>
+          
+          {/* Image Preview */}
+          {uploadedImagePreview && (
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>
+                Preview:
+              </label>
+              <img
+                src={uploadedImagePreview}
+                alt="Upload preview"
+                style={{
+                  maxWidth: '300px',
+                  maxHeight: '300px',
+                  borderRadius: '8px',
+                  border: '2px solid #e0e0e0'
+                }}
+              />
+            </div>
+          )}
+          
+          {/* Style Selection */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>
+              Select Style:
+            </label>
+            <select
+              value={selectedStyle}
+              onChange={(e) => setSelectedStyle(e.target.value)}
+              disabled={isConverting}
+              style={{
+                padding: '12px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                width: '100%',
+                maxWidth: '400px'
+              }}
+            >
+              {styles.map((style) => (
+                <option key={style.value} value={style.value}>
+                  {style.label} - {style.description}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Convert Button */}
+          <button
+            onClick={convertToCartoon}
+            className="btn btn-primary"
+            disabled={isConverting || !uploadedImage || serviceStatus !== 'online'}
+            style={{ marginBottom: '20px' }}
+          >
+            {isConverting ? 'Converting...' : '🎨 Convert to Cartoon'}
+          </button>
+          
+          {/* Loading State */}
+          {isConverting && (
+            <div style={{
+              padding: '30px',
+              textAlign: 'center',
+              background: '#f8f9fa',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                border: '4px solid #f3f3f3',
+                borderTop: '4px solid #667eea',
+                borderRadius: '50%',
+                width: '50px',
+                height: '50px',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 15px'
+              }} />
+              <h5>Converting your image...</h5>
+              <p style={{ color: '#666', fontSize: '14px' }}>
+                This may take 30-90 seconds. Please wait.
+              </p>
+            </div>
+          )}
+          
+          {/* Converted Result */}
+          {convertedImageUrl && !isConverting && (
+            <div style={{
+              padding: '20px',
+              background: '#fff',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px'
+            }}>
+              <h5 style={{ marginBottom: '15px' }}>Converted Image ({styles.find(s => s.value === selectedStyle)?.label}):</h5>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
+                <div>
+                  <strong>Original:</strong>
+                  <img
+                    src={uploadedImagePreview}
+                    alt="Original"
+                    style={{
+                      width: '100%',
+                      maxWidth: '300px',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      marginTop: '10px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <strong>Converted:</strong>
+                  <img
+                    src={convertedImageUrl}
+                    alt="Converted"
+                    style={{
+                      width: '100%',
+                      maxWidth: '300px',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      marginTop: '10px'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <a
+                  href={convertedImageUrl}
+                  download
+                  className="btn btn-primary"
+                >
+                  Download Converted Image
+                </a>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(convertedImageUrl);
+                    alert('Image URL copied to clipboard!');
+                  }}
+                  className="btn btn-soft"
+                >
+                  Copy URL
+                </button>
+                <button
+                  onClick={resetConvertForm}
+                  className="btn btn-soft"
+                >
+                  Convert Another
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

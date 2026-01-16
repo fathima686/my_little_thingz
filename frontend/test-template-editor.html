@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Editor Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="src/styles/template-editor.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        .test-container {
+            padding: 20px;
+            background: #f8fafc;
+            min-height: 100vh;
+        }
+        .test-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .editor-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            height: 80vh;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // Mock Lucide React icons
+        const LuX = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'm18 6-12 12' }),
+            React.createElement('path', { d: 'm6 6 12 12' })
+        );
+        
+        const LuSave = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z' }),
+            React.createElement('polyline', { points: '17,21 17,13 7,13 7,21' }),
+            React.createElement('polyline', { points: '7,3 7,8 15,8' })
+        );
+        
+        const LuDownload = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
+            React.createElement('polyline', { points: '7,10 12,15 17,10' }),
+            React.createElement('line', { x1: 12, y1: 15, x2: 12, y2: 3 })
+        );
+        
+        const LuType = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('polyline', { points: '4,7 4,4 20,4 20,7' }),
+            React.createElement('line', { x1: 9, y1: 20, x2: 15, y2: 20 }),
+            React.createElement('line', { x1: 12, y1: 4, x2: 12, y2: 20 })
+        );
+        
+        const LuImage = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('rect', { width: 18, height: 18, x: 3, y: 3, rx: 2, ry: 2 }),
+            React.createElement('circle', { cx: 9, cy: 9, r: 2 }),
+            React.createElement('path', { d: 'm21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21' })
+        );
+        
+        const LuSquare = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('rect', { width: 18, height: 18, x: 3, y: 3, rx: 2, ry: 2 })
+        );
+        
+        const LuCircle = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('circle', { cx: 12, cy: 12, r: 10 })
+        );
+        
+        const LuMove = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('polyline', { points: '5,9 2,12 5,15' }),
+            React.createElement('polyline', { points: '9,5 12,2 15,5' }),
+            React.createElement('polyline', { points: '15,19 12,22 9,19' }),
+            React.createElement('polyline', { points: '19,9 22,12 19,15' }),
+            React.createElement('line', { x1: 2, y1: 12, x2: 22, y2: 12 }),
+            React.createElement('line', { x1: 12, y1: 2, x2: 12, y2: 22 })
+        );
+        
+        const LuUndo = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M3 7v6h6' }),
+            React.createElement('path', { d: 'm21 17-3-3-3 3' }),
+            React.createElement('path', { d: 'M9 13h9a3 3 0 0 1 0 6h-3' })
+        );
+        
+        const LuRedo = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M21 7v6h-6' }),
+            React.createElement('path', { d: 'm3 17 3-3 3 3' }),
+            React.createElement('path', { d: 'M15 13H6a3 3 0 0 0 0 6h3' })
+        );
+        
+        const LuZoomIn = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('circle', { cx: 11, cy: 11, r: 8 }),
+            React.createElement('path', { d: 'm21 21-4.35-4.35' }),
+            React.createElement('line', { x1: 11, y1: 8, x2: 11, y2: 14 }),
+            React.createElement('line', { x1: 8, y1: 11, x2: 14, y2: 11 })
+        );
+        
+        const LuZoomOut = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('circle', { cx: 11, cy: 11, r: 8 }),
+            React.createElement('path', { d: 'm21 21-4.35-4.35' }),
+            React.createElement('line', { x1: 8, y1: 11, x2: 14, y2: 11 })
+        );
+        
+        const LuAlignLeft = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('line', { x1: 21, y1: 10, x2: 3, y2: 10 }),
+            React.createElement('line', { x1: 21, y1: 6, x2: 3, y2: 6 }),
+            React.createElement('line', { x1: 21, y1: 14, x2: 3, y2: 14 }),
+            React.createElement('line', { x1: 21, y1: 18, x2: 3, y2: 18 })
+        );
+        
+        const LuAlignCenter = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('line', { x1: 18, y1: 10, x2: 6, y2: 10 }),
+            React.createElement('line', { x1: 21, y1: 6, x2: 3, y2: 6 }),
+            React.createElement('line', { x1: 18, y1: 14, x2: 6, y2: 14 }),
+            React.createElement('line', { x1: 21, y1: 18, x2: 3, y2: 18 })
+        );
+        
+        const LuAlignRight = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('line', { x1: 21, y1: 10, x2: 3, y2: 10 }),
+            React.createElement('line', { x1: 21, y1: 6, x2: 3, y2: 6 }),
+            React.createElement('line', { x1: 21, y1: 14, x2: 3, y2: 14 }),
+            React.createElement('line', { x1: 21, y1: 18, x2: 3, y2: 18 })
+        );
+        
+        const LuCopy = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('rect', { width: 14, height: 14, x: 8, y: 8, rx: 2, ry: 2 }),
+            React.createElement('path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' })
+        );
+        
+        const LuTrash2 = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M3 6h18' }),
+            React.createElement('path', { d: 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6' }),
+            React.createElement('path', { d: 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2' }),
+            React.createElement('line', { x1: 10, y1: 11, x2: 10, y2: 17 }),
+            React.createElement('line', { x1: 14, y1: 11, x2: 14, y2: 17 })
+        );
+        
+        const LuBold = () => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z' }),
+            React.createElement('path', { d: 'M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z' })
+        );
+        
+        const LuItalic = () => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('line', { x1: 19, y1: 4, x2: 10, y2: 4 }),
+            React.createElement('line', { x1: 14, y1: 20, x2: 5, y2: 20 }),
+            React.createElement('line', { x1: 15, y1: 4, x2: 9, y2: 20 })
+        );
+        
+        const LuUnderline = () => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M6 4v7a6 6 0 0 0 12 0V4' }),
+            React.createElement('line', { x1: 4, y1: 21, x2: 20, y2: 21 })
+        );
+        
+        const LuEye = () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }, 
+            React.createElement('path', { d: 'M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z' }),
+            React.createElement('circle', { cx: 12, cy: 12, r: 3 })
+        );
+
+        // Simplified TemplateEditor component for testing
+        function TemplateEditor({ template, isOpen = true, inline = true }) {
+            const canvasRef = useRef(null);
+            const [fabricCanvas, setFabricCanvas] = useState(null);
+            const [activeTool, setActiveTool] = useState('select');
+            const [selectedObject, setSelectedObject] = useState(null);
+            const [zoom, setZoom] = useState(1);
+            const [loading, setLoading] = useState(false);
+            const [history, setHistory] = useState([]);
+            const [redoStack, setRedoStack] = useState([]);
+            const maxHistory = 50;
+            const isRestoringRef = useRef(false);
+
+            // Initialize canvas
+            useEffect(() => {
+                if (!canvasRef.current || fabricCanvas) return;
+
+                const canvas = new fabric.Canvas(canvasRef.current, {
+                    width: 800,
+                    height: 600,
+                    backgroundColor: '#ffffff',
+                    selection: true,
+                    preserveObjectStacking: true
+                });
+
+                canvas.on('selection:created', (e) => setSelectedObject(e.selected?.[0] || e.target));
+                canvas.on('selection:updated', (e) => setSelectedObject(e.selected?.[0] || e.target));
+                canvas.on('selection:cleared', () => setSelectedObject(null));
+
+                // history tracking
+                const saveSnapshot = () => {
+                    if (isRestoringRef.current) return;
+                    try {
+                        const json = canvas.toJSON();
+                        const serialized = JSON.stringify(json);
+                        setHistory(prev => {
+                            if (prev.length && prev[prev.length - 1] === serialized) return prev;
+                            const next = [...prev, serialized];
+                            if (next.length > maxHistory) next.shift();
+                            return next;
+                        });
+                        setRedoStack([]);
+                    } catch (e) {
+                        console.error('History snapshot failed:', e);
+                    }
+                };
+
+                canvas.on('object:added', saveSnapshot);
+                canvas.on('object:modified', saveSnapshot);
+                canvas.on('object:removed', saveSnapshot);
+                canvas.on('text:changed', saveSnapshot);
+
+                setFabricCanvas(canvas);
+
+                // Add sample content
+                const text = new fabric.Textbox('Sample Text', {
+                    left: 100,
+                    top: 100,
+                    fontSize: 32,
+                    fontFamily: 'Arial',
+                    fill: '#333333'
+                });
+
+                const rect = new fabric.Rect({
+                    left: 300,
+                    top: 200,
+                    width: 150,
+                    height: 100,
+                    fill: '#4ECDC4',
+                    stroke: '#45B7B8',
+                    strokeWidth: 2
+                });
+
+                canvas.add(text);
+                canvas.add(rect);
+                canvas.renderAll();
+
+                // initial snapshot
+                try {
+                    const json = canvas.toJSON();
+                    const serialized = JSON.stringify(json);
+                    setHistory([serialized]);
+                } catch (e) {
+                    console.error('Initial history snapshot failed:', e);
+                }
+
+                return () => {
+                    canvas.dispose();
+                };
+            }, []);
+
+            const restoreFromSerialized = (serialized) => {
+                if (!fabricCanvas || !serialized) return;
+                isRestoringRef.current = true;
+                try {
+                    const json = JSON.parse(serialized);
+                    fabricCanvas.loadFromJSON(json, () => {
+                        fabricCanvas.renderAll();
+                        isRestoringRef.current = false;
+                    });
+                } catch (e) {
+                    console.error('Error restoring history state:', e);
+                    isRestoringRef.current = false;
+                }
+            };
+
+            const undo = () => {
+                if (!fabricCanvas) return;
+                setHistory(prevHistory => {
+                    if (prevHistory.length <= 1) return prevHistory;
+                    const current = prevHistory[prevHistory.length - 1];
+                    const prev = prevHistory[prevHistory.length - 2];
+                    setRedoStack(prevRedo => [...prevRedo, current]);
+                    restoreFromSerialized(prev);
+                    return prevHistory.slice(0, prevHistory.length - 1);
+                });
+            };
+
+            const redo = () => {
+                if (!fabricCanvas) return;
+                setRedoStack(prevRedo => {
+                    if (!prevRedo.length) return prevRedo;
+                    const next = prevRedo[prevRedo.length - 1];
+                    setHistory(prevHistory => [...prevHistory, next]);
+                    restoreFromSerialized(next);
+                    return prevRedo.slice(0, prevRedo.length - 1);
+                });
+            };
+
+            // keyboard shortcuts
+            useEffect(() => {
+                const handler = (e) => {
+                    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+                    if (!isCtrlOrCmd) return;
+                    if (e.key === 'z' || e.key === 'Z') {
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+                    } else if (e.key === 'y' || e.key === 'Y') {
+                        e.preventDefault();
+                        redo();
+                    }
+                };
+                window.addEventListener('keydown', handler);
+                return () => window.removeEventListener('keydown', handler);
+            }, [undo, redo]);
+
+            const addText = () => {
+                if (!fabricCanvas) return;
+                const text = new fabric.Textbox('New Text', {
+                    left: 100,
+                    top: 100,
+                    fontSize: 24,
+                    fontFamily: 'Arial',
+                    fill: '#000000'
+                });
+                fabricCanvas.add(text);
+                fabricCanvas.setActiveObject(text);
+                fabricCanvas.renderAll();
+            };
+
+            const addShape = (shapeType) => {
+                if (!fabricCanvas) return;
+                let shape;
+                if (shapeType === 'rectangle') {
+                    shape = new fabric.Rect({
+                        left: 100,
+                        top: 100,
+                        width: 100,
+                        height: 100,
+                        fill: '#cccccc'
+                    });
+                } else if (shapeType === 'circle') {
+                    shape = new fabric.Circle({
+                        left: 100,
+                        top: 100,
+                        radius: 50,
+                        fill: '#cccccc'
+                    });
+                }
+                if (shape) {
+                    fabricCanvas.add(shape);
+                    fabricCanvas.setActiveObject(shape);
+                    fabricCanvas.renderAll();
+                }
+            };
+
+            const deleteSelected = () => {
+                if (!fabricCanvas || !selectedObject) return;
+                fabricCanvas.remove(selectedObject);
+                fabricCanvas.renderAll();
+                setSelectedObject(null);
+            };
+
+            const zoomIn = () => {
+                if (!fabricCanvas) return;
+                const newZoom = Math.min(zoom * 1.2, 3);
+                fabricCanvas.setZoom(newZoom);
+                setZoom(newZoom);
+            };
+
+            const zoomOut = () => {
+                if (!fabricCanvas) return;
+                const newZoom = Math.max(zoom / 1.2, 0.1);
+                fabricCanvas.setZoom(newZoom);
+                setZoom(newZoom);
+            };
+
+            const exportDesign = () => {
+                if (!fabricCanvas) return;
+                const dataURL = fabricCanvas.toDataURL({
+                    format: 'png',
+                    quality: 1.0,
+                    multiplier: 2
+                });
+                const link = document.createElement('a');
+                link.download = `design_${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+            };
+
+            return (
+                <div className="template-editor inline-editor">
+                    <div className="flex h-full">
+                        {/* Toolbar */}
+                        <div className="w-16 bg-gray-100 border-r flex flex-col items-center py-4 space-y-2">
+                            <button
+                                onClick={() => setActiveTool('select')}
+                                className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                                    activeTool === 'select' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Select"
+                            >
+                                <LuMove />
+                            </button>
+                            <button
+                                onClick={addText}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 hover:bg-gray-200"
+                                title="Add Text"
+                            >
+                                <LuType />
+                            </button>
+                            <button
+                                onClick={() => addShape('rectangle')}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 hover:bg-gray-200"
+                                title="Rectangle"
+                            >
+                                <LuSquare />
+                            </button>
+                            <button
+                                onClick={() => addShape('circle')}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 hover:bg-gray-200"
+                                title="Circle"
+                            >
+                                <LuCircle />
+                            </button>
+                            
+                            <div className="border-t border-gray-300 w-8 my-2"></div>
+                            
+                            <button
+                                onClick={zoomIn}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 hover:bg-gray-200"
+                                title="Zoom In"
+                            >
+                                <LuZoomIn />
+                            </button>
+                            <button
+                                onClick={zoomOut}
+                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 hover:bg-gray-200"
+                                title="Zoom Out"
+                            >
+                                <LuZoomOut />
+                            </button>
+                            <div className="text-xs px-2 py-1 bg-gray-200 rounded">
+                                {Math.round(zoom * 100)}%
+                            </div>
+                        </div>
+
+                        {/* Canvas Area */}
+                        <div className="flex-1 flex flex-col">
+                            {/* Top Controls */}
+                            <div className="bg-white border-b p-3 flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    {selectedObject && (
+                                        <button
+                                            onClick={deleteSelected}
+                                            className="flex items-center px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                        >
+                                            <LuTrash2 />
+                                            <span className="ml-1">Delete</span>
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={undo}
+                                        className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                    >
+                                        <LuUndo />
+                                        <span className="ml-1">Undo</span>
+                                    </button>
+                                    <button
+                                        onClick={redo}
+                                        className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                    >
+                                        <LuRedo />
+                                        <span className="ml-1">Redo</span>
+                                    </button>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={() => alert('Save functionality would be implemented here')}
+                                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                    >
+                                        <LuSave />
+                                        <span className="ml-2">Save</span>
+                                    </button>
+                                    <button
+                                        onClick={exportDesign}
+                                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                                    >
+                                        <LuDownload />
+                                        <span className="ml-2">Export</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Canvas Container */}
+                            <div className="flex-1 bg-gray-50 p-4 overflow-auto">
+                                <div className="flex items-center justify-center min-h-full">
+                                    <div className="bg-white shadow-lg rounded-lg p-4 relative">
+                                        {loading && (
+                                            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            </div>
+                                        )}
+                                        <canvas ref={canvasRef} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Properties Panel */}
+                        {selectedObject && (
+                            <div className="w-80 bg-white border-l flex flex-col">
+                                <div className="p-4 border-b">
+                                    <h3 className="font-semibold">Properties</h3>
+                                </div>
+                                
+                                <div className="flex-1 overflow-auto p-4 space-y-4">
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 mb-2">Object Type</h4>
+                                        <p className="text-sm text-gray-600 capitalize">{selectedObject.type}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 mb-2">Position</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-sm text-gray-700">X</label>
+                                                <input
+                                                    type="number"
+                                                    value={Math.round(selectedObject.left || 0)}
+                                                    onChange={(e) => {
+                                                        selectedObject.set('left', parseInt(e.target.value));
+                                                        fabricCanvas.renderAll();
+                                                    }}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm text-gray-700">Y</label>
+                                                <input
+                                                    type="number"
+                                                    value={Math.round(selectedObject.top || 0)}
+                                                    onChange={(e) => {
+                                                        selectedObject.set('top', parseInt(e.target.value));
+                                                        fabricCanvas.renderAll();
+                                                    }}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {selectedObject.type === 'textbox' && (
+                                        <div>
+                                            <h4 className="font-medium text-gray-900 mb-2">Text Properties</h4>
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <label className="block text-sm text-gray-700">Font Size</label>
+                                                    <input
+                                                        type="number"
+                                                        value={selectedObject.fontSize || 24}
+                                                        onChange={(e) => {
+                                                            selectedObject.set('fontSize', parseInt(e.target.value));
+                                                            fabricCanvas.renderAll();
+                                                        }}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        min="8"
+                                                        max="200"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-gray-700">Color</label>
+                                                    <input
+                                                        type="color"
+                                                        value={selectedObject.fill || '#000000'}
+                                                        onChange={(e) => {
+                                                            selectedObject.set('fill', e.target.value);
+                                                            fabricCanvas.renderAll();
+                                                        }}
+                                                        className="w-full h-8 border border-gray-300 rounded"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {(selectedObject.type === 'rect' || selectedObject.type === 'circle') && (
+                                        <div>
+                                            <h4 className="font-medium text-gray-900 mb-2">Shape Properties</h4>
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <label className="block text-sm text-gray-700">Fill Color</label>
+                                                    <input
+                                                        type="color"
+                                                        value={selectedObject.fill || '#cccccc'}
+                                                        onChange={(e) => {
+                                                            selectedObject.set('fill', e.target.value);
+                                                            fabricCanvas.renderAll();
+                                                        }}
+                                                        className="w-full h-8 border border-gray-300 rounded"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            return (
+                <div className="test-container">
+                    <div className="test-header">
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Template Editor Test</h1>
+                        <p className="text-gray-600">
+                            This is a test page for the Template Editor component. Try adding text, shapes, and manipulating objects.
+                        </p>
+                    </div>
+                    
+                    <div className="editor-container">
+                        <TemplateEditor />
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

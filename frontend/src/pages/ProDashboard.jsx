@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTutorialAuth } from '../contexts/TutorialAuthContext';
 import { 
-  LuArrowLeft, LuTrendingUp, LuCheck, LuClock, LuX, LuDownload, 
-  LuLock, LuAward, LuBookOpen, LuUpload, LuEye 
+  LuArrowLeft, LuTrendingUp, LuDownload, 
+  LuLock, LuAward, LuBookOpen, LuEye 
 } from 'react-icons/lu';
 import '../styles/pro-dashboard.css';
 
@@ -15,6 +15,7 @@ export default function ProDashboard() {
   const [progressData, setProgressData] = useState(null);
   const [certificateData, setCertificateData] = useState(null);
   const [generatingCertificate, setGeneratingCertificate] = useState(false);
+  const [certificateName, setCertificateName] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -23,6 +24,13 @@ export default function ProDashboard() {
       fetchCertificateData();
     }
   }, [tutorialAuth?.email]);
+
+  // Set default certificate name from auth context
+  useEffect(() => {
+    if (tutorialAuth?.name && !certificateName) {
+      setCertificateName(tutorialAuth.name);
+    }
+  }, [tutorialAuth?.name, certificateName]);
 
   const fetchProgressData = async () => {
     try {
@@ -67,38 +75,49 @@ export default function ProDashboard() {
     setGeneratingCertificate(true);
     
     try {
+      const nameToUse = certificateName?.trim() || undefined;
+      
       const res = await fetch(`${API_BASE}/pro/certificate.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Tutorial-Email': tutorialAuth?.email || ''
-        }
+        },
+        body: JSON.stringify({
+          name: nameToUse
+        })
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Failed to generate certificate' }));
+        throw new Error(errorData.message || 'Failed to generate certificate');
+      }
+      
       const data = await res.json();
       
       if (data.status === 'success') {
-        alert('Certificate generated successfully!');
+        const actualName = data.certificate_name || nameToUse || 'Unknown';
+        alert(`Certificate generated successfully for: ${actualName}`);
+        
+        // Open download URL in new tab
+        if (data.download_url) {
+          window.open(data.download_url, '_blank');
+        }
+        
+        // Update the certificate name field with the actual name used
+        if (data.certificate_name) {
+          setCertificateName(data.certificate_name);
+        }
+        
         fetchCertificateData(); // Refresh certificate data
       } else {
         alert(data.message || 'Failed to generate certificate');
       }
     } catch (error) {
       console.error('Error generating certificate:', error);
-      alert('Failed to generate certificate');
+      alert(error.message || 'Failed to generate certificate');
     } finally {
       setGeneratingCertificate(false);
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'approved':
-        return <LuCheck className="status-approved" />;
-      case 'rejected':
-        return <LuX className="status-rejected" />;
-      case 'pending':
-      default:
-        return <LuClock className="status-pending" />;
     }
   };
 
@@ -181,6 +200,22 @@ export default function ProDashboard() {
             <div className="certificate-eligible">
               <p className="eligible-text">🎉 Congratulations! You're eligible for a certificate.</p>
               
+              {!certificateData?.certificate_exists && (
+                <div className="certificate-name-input">
+                  <label htmlFor="certificateName">Name on certificate</label>
+                  <input
+                    id="certificateName"
+                    type="text"
+                    placeholder="Enter the name to appear on your certificate"
+                    value={certificateName}
+                    onChange={(e) => setCertificateName(e.target.value)}
+                    maxLength={80}
+                    disabled={generatingCertificate}
+                  />
+                  <small>Leave blank to use your account name.</small>
+                </div>
+              )}
+              
               {certificateData?.certificate_exists ? (
                 <div className="existing-certificate">
                   <p>Certificate Code: <strong>{certificateData.certificate.certificate_code}</strong></p>
@@ -234,26 +269,11 @@ export default function ProDashboard() {
                 </div>
                 
                 <div className="tutorial-status">
-                  <div className="completion-info">
-                    <div className="completion-percentage">
-                      {Math.round(tutorial.completion_percentage)}%
-                    </div>
-                    <div className="completion-bar">
-                      <div 
-                        className="completion-fill"
-                        style={{ width: `${tutorial.completion_percentage}%` }}
-                      ></div>
-                    </div>
+                  <div className="status-indicator">
+                    <span className={`status-badge status-${tutorial.status?.toLowerCase().replace(/\s+/g, '-') || 'not-started'}`}>
+                      {tutorial.status || 'Not Started'}
+                    </span>
                   </div>
-                  
-                  {tutorial.practice_status && (
-                    <div className="practice-status">
-                      {getStatusIcon(tutorial.practice_status)}
-                      <span className={`status-text status-${tutorial.practice_status}`}>
-                        Practice {tutorial.practice_status}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 
                 <div className="tutorial-actions">

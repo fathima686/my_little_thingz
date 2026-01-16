@@ -10,6 +10,10 @@ class DesignEditor {
         this.currentVersion = 1;
         this.currentStatus = 'submitted';
         this.isLoading = false;
+        this.history = [];
+        this.redoStack = [];
+        this.isRestoring = false;
+        this.maxHistory = 50;
         
         this.init();
     }
@@ -33,6 +37,7 @@ class DesignEditor {
         
         // Bind events
         this.bindEvents();
+        this.initHistoryTracking();
         
         // Load design from URL parameters
         this.loadFromURL();
@@ -82,6 +87,8 @@ class DesignEditor {
         document.getElementById('sendBackwardBtn').addEventListener('click', () => this.sendBackward());
         document.getElementById('clearCanvasBtn').addEventListener('click', () => this.clearCanvas());
         document.getElementById('resetZoomBtn').addEventListener('click', () => this.resetZoom());
+        document.getElementById('undoBtn').addEventListener('click', () => this.undo());
+        document.getElementById('redoBtn').addEventListener('click', () => this.redo());
         
         // Save buttons
         document.getElementById('saveDesignBtn').addEventListener('click', () => this.saveDesign());
@@ -107,6 +114,91 @@ class DesignEditor {
                 this.autoSave();
             }
         }, 30000);
+
+        // Keyboard shortcuts for undo/redo
+        document.addEventListener('keydown', (e) => {
+            const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+            if (!isCtrlOrCmd) return;
+            if (e.key === 'z' || e.key === 'Z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    this.redo();
+                } else {
+                    this.undo();
+                }
+            }
+            if (e.key === 'y' || e.key === 'Y') {
+                e.preventDefault();
+                this.redo();
+            }
+        });
+    }
+
+    initHistoryTracking() {
+        // initial snapshot (blank canvas with mockup)
+        this.saveHistorySnapshot();
+
+        const recordChange = () => {
+            if (this.isRestoring) return;
+            this.saveHistorySnapshot();
+            this.redoStack = [];
+        };
+
+        this.canvas.on('object:added', recordChange);
+        this.canvas.on('object:modified', recordChange);
+        this.canvas.on('object:removed', recordChange);
+        this.canvas.on('text:changed', recordChange);
+    }
+
+    saveHistorySnapshot() {
+        try {
+            const json = this.canvas.toJSON();
+            const serialized = JSON.stringify(json);
+            // Avoid duplicate consecutive states
+            if (this.history.length > 0 && this.history[this.history.length - 1] === serialized) {
+                return;
+            }
+            this.history.push(serialized);
+            if (this.history.length > this.maxHistory) {
+                this.history.shift();
+            }
+        } catch (e) {
+            console.error('History snapshot failed:', e);
+        }
+    }
+
+    undo() {
+        if (this.history.length <= 1) {
+            return;
+        }
+        const current = this.history.pop();
+        this.redoStack.push(current);
+        const previous = this.history[this.history.length - 1];
+        this.restoreFromSerialized(previous);
+    }
+
+    redo() {
+        if (this.redoStack.length === 0) {
+            return;
+        }
+        const next = this.redoStack.pop();
+        this.history.push(next);
+        this.restoreFromSerialized(next);
+    }
+
+    restoreFromSerialized(serialized) {
+        if (!serialized) return;
+        this.isRestoring = true;
+        try {
+            const json = JSON.parse(serialized);
+            this.canvas.loadFromJSON(json, () => {
+                this.canvas.renderAll();
+                this.isRestoring = false;
+            });
+        } catch (e) {
+            console.error('Error restoring history state:', e);
+            this.isRestoring = false;
+        }
     }
     
     loadFromURL() {
@@ -318,6 +410,7 @@ class DesignEditor {
         if (confirm('Are you sure you want to clear the entire canvas? This action cannot be undone.')) {
             this.canvas.clear();
             this.addProductMockup();
+            this.saveHistorySnapshot();
         }
     }
     

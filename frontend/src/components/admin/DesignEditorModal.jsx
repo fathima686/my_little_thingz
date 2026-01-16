@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { LuX, LuDownload, LuSave, LuUpload, LuImage, LuType, LuSquare, LuRotateCw, LuScissors, LuFileText, LuPlus } from 'react-icons/lu';
+import React, { useState, useEffect, useRef } from 'react';
+import { LuX, LuDownload, LuSave, LuUpload, LuImage, LuType, LuSquare, LuRotateCw, LuScissors, LuFileText, LuPlus, LuUndo, LuRedo } from 'react-icons/lu';
+import TemplateGallery from './TemplateGallery';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
@@ -16,6 +17,13 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
   const [loading, setLoading] = useState(false);
   const [activeTool, setActiveTool] = useState(null);
   const [templateImageSlots, setTemplateImageSlots] = useState({}); // Store images for each grid slot
+
+  // Undo / Redo history for Fabric canvas
+  const historyRef = useRef([]);
+  const redoRef = useRef([]);
+  const isRestoringRef = useRef(false);
+  const historyAttachedRef = useRef(false);
+  const MAX_HISTORY = 50;
 
   useEffect(() => {
     if (isOpen && showTemplateSelection) {
@@ -232,8 +240,83 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
         } else {
           console.log('Existing design loaded, skipping new images');
         }
+
+        // Attach history tracking once design (or blank state) is ready
+        if (!historyAttachedRef.current) {
+          attachHistory(fc);
+          historyAttachedRef.current = true;
+        }
       });
     }, 100);
+  };
+
+  const saveSnapshot = (fc) => {
+    if (!fc || isRestoringRef.current) return;
+    try {
+      const json = fc.toJSON();
+      const serialized = JSON.stringify(json);
+      const history = historyRef.current;
+      if (history.length && history[history.length - 1] === serialized) {
+        return;
+      }
+      history.push(serialized);
+      if (history.length > MAX_HISTORY) {
+        history.shift();
+      }
+      // Whenever we create a new snapshot, clear redo stack
+      redoRef.current = [];
+    } catch (e) {
+      console.error('History snapshot failed:', e);
+    }
+  };
+
+  const attachHistory = (fc) => {
+    // Initial snapshot
+    saveSnapshot(fc);
+
+    const handler = () => saveSnapshot(fc);
+    fc.on('object:added', handler);
+    fc.on('object:modified', handler);
+    fc.on('object:removed', handler);
+    fc.on('text:changed', handler);
+  };
+
+  const restoreFrom = (fc, serialized) => {
+    if (!fc || !serialized) return;
+    isRestoringRef.current = true;
+    try {
+      const json = JSON.parse(serialized);
+      fc.loadFromJSON(json, () => {
+        fc.renderAll();
+        isRestoringRef.current = false;
+      });
+    } catch (e) {
+      console.error('Error restoring canvas state:', e);
+      isRestoringRef.current = false;
+    }
+  };
+
+  const undo = () => {
+    const fc = fabricCanvas;
+    if (!fc) return;
+    const history = historyRef.current;
+    const redoStack = redoRef.current;
+    if (history.length <= 1) return;
+    const current = history.pop();
+    redoStack.push(current);
+    const previous = history[history.length - 1];
+    restoreFrom(fc, previous);
+  };
+
+  const redo = () => {
+    const fc = fabricCanvas;
+    if (!fc) return;
+    const history = historyRef.current;
+    const redoStack = redoRef.current;
+    if (!redoStack.length) return;
+    const next = redoStack.pop();
+    history.push(next);
+    restoreFrom(fc, next);
   };
 
   const loadGridLayoutImages = (fc) => {
@@ -685,199 +768,54 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
           )}
         </div>
 
-        {/* Template Selection */}
+        {/* Template Selection - Using Canva-style TemplateGallery */}
         {showTemplateSelection ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Category Tabs */}
-            <div style={{
-              padding: '16px 20px 0',
-              borderBottom: '1px solid #eee',
-              display: 'flex',
-              gap: 8,
-              overflowX: 'auto',
-              background: '#f9f9f9',
-              flexShrink: 0
-            }}>
-              {categoryOrder.map(cat => {
-                if (!groupedTemplates[cat] || groupedTemplates[cat].length === 0) return null;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setSelectedTemplate(null);
-                      setTemplateLayout(null);
-                      setTemplateImageSlots({});
-                    }}
-                    style={{
-                      padding: '10px 16px',
-                      border: 'none',
-                      borderBottom: selectedCategory === cat ? '3px solid #2196f3' : '3px solid transparent',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      fontWeight: selectedCategory === cat ? 'bold' : 'normal',
-                      color: selectedCategory === cat ? '#2196f3' : '#666',
-                      whiteSpace: 'nowrap',
-                      fontSize: 14,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {categoryLabels[cat] || cat} ({groupedTemplates[cat]?.length || 0})
-                  </button>
-                );
-              })}
-            </div>
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <TemplateGallery
+              inline={true}
+              onSelectTemplate={async (template) => {
+                try {
+                  // Use template-gallery.php API to track usage
+                  const res = await fetch(`${API_BASE}/admin/template-gallery.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'use',
+                      template_id: template.id,
+                      request_id: requestId
+                    })
+                  });
+                  const data = await res.json();
 
-            {/* Templates Grid for Selected Category */}
-            <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-              {/* Grid Layout Selector for Frame/Photo categories */}
-              {selectedTemplate && (selectedCategory === 'Frame' || selectedCategory === 'Photo') && (
-                <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: 16 }}>Choose Grid Layout</h4>
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    {['1×1', '2×1', '1×2', '2×2', '3×2', '2×3', '3×3', '4×3', '3×4'].map(layout => {
-                      const [rows, cols] = layout.split('×').map(Number);
-                      return (
-                        <div
-                          key={layout}
-                          onClick={() => setTemplateLayout(layout)}
-                          style={{
-                            border: templateLayout === layout ? '3px solid #2196f3' : '2px solid #ddd',
-                            borderRadius: 8,
-                            padding: 12,
-                            cursor: 'pointer',
-                            background: 'white',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: `repeat(${cols}, 20px)`,
-                            gridTemplateRows: `repeat(${rows}, 20px)`,
-                            gap: 2,
-                            marginBottom: 8
-                          }}>
-                            {Array(rows * cols).fill(0).map((_, i) => (
-                              <div key={i} style={{
-                                border: '1px solid #ccc',
-                                background: '#f0f0f0',
-                                borderRadius: 2
-                              }} />
-                            ))}
-                          </div>
-                          <div style={{ fontSize: 12, textAlign: 'center', fontWeight: 'bold' }}>{layout}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {templateLayout && (
-                    <div style={{ marginTop: 16, padding: 12, background: 'white', borderRadius: 4 }}>
-                      <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>
-                        Preview: {templateLayout} Grid
-                      </div>
-                      <GridTemplatePreview
-                        layout={templateLayout}
-                        template={selectedTemplate}
-                        onImageSelect={(slotIndex) => handleImageSlotSelect(slotIndex)}
-                        selectedImages={templateImageSlots}
-                      />
-                      <button
-                        onClick={() => selectTemplate(selectedTemplate)}
-                        className="btn btn-primary"
-                        style={{ marginTop: 16, width: '100%' }}
-                        disabled={!templateLayout}
-                      >
-                        Use {templateLayout} Layout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                  // Map template to format expected by editor
+                  const mappedTemplate = {
+                    ...template,
+                    width: template.canvas_width || 800,
+                    height: template.canvas_height || 600,
+                    background_color: template.template_data?.background?.color || 
+                                     (template.template_data?.background?.colors?.[0]) || 
+                                     '#ffffff'
+                  };
 
-              {/* Template Size Selection */}
-              <div>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: 16, color: '#333' }}>
-                  {categoryLabels[selectedCategory] || selectedCategory} Templates
-                </h4>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                  gap: 16
-                }}>
-                  {(groupedTemplates[selectedCategory] || []).map(template => (
-                    <div
-                      key={template.id}
-                      onClick={() => {
-                        setSelectedTemplate(template);
-                        setTemplateLayout(null);
-                        setTemplateImageSlots({});
-                        // If it's not a frame/photo, select directly
-                        if (selectedCategory !== 'Frame' && selectedCategory !== 'Photo') {
-                          selectTemplate(template);
-                        }
-                      }}
-                      style={{
-                        border: selectedTemplate?.id === template.id ? '3px solid #2196f3' : '2px solid #ddd',
-                        borderRadius: 8,
-                        padding: 12,
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'all 0.2s',
-                        background: selectedTemplate?.id === template.id ? '#e3f2fd' : 'white',
-                        boxShadow: selectedTemplate?.id === template.id ? '0 2px 8px rgba(33,150,243,0.2)' : 'none'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (selectedTemplate?.id !== template.id) {
-                          e.currentTarget.style.borderColor = '#2196f3';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (selectedTemplate?.id !== template.id) {
-                          e.currentTarget.style.borderColor = '#ddd';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }
-                      }}
-                    >
-                      <div style={{
-                        width: '100%',
-                        height: 100,
-                        border: '1px solid #ddd',
-                        background: template.background_color || '#fff',
-                        marginBottom: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 28,
-                        color: '#666',
-                        borderRadius: 4,
-                        position: 'relative',
-                        overflow: 'hidden'
-                      }}>
-                        {/* Frame preview visualization */}
-                        {template.category === 'Frame' && (
-                          <div style={{
-                            position: 'absolute',
-                            inset: 4,
-                            border: `3px solid ${template.background_color === '#F5F5DC' ? '#D4AF37' : template.background_color === '#1A1A1A' ? '#333' : template.background_color}`,
-                            borderRadius: 2
-                          }} />
-                        )}
-                        {template.orientation === 'portrait' ? '📄' : template.orientation === 'landscape' ? '📰' : '⬜'}
-                      </div>
-                      <div style={{ fontWeight: 'bold', marginBottom: 4, fontSize: 13, color: '#333' }}>
-                        {template.name}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#666' }}>
-                        {template.width} × {template.height}px
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+                  setSelectedTemplate(mappedTemplate);
+                  if (data.status === 'success' && data.design_id) {
+                    setDesignId(data.design_id);
+                  }
+                  setShowTemplateSelection(false);
+                } catch (e) {
+                  alert('Error selecting template: ' + e.message);
+                }
+              }}
+              onCreateNew={() => {
+                // "Create blank" option
+                setSelectedTemplate({
+                  width: 800,
+                  height: 600,
+                  background_color: '#ffffff'
+                });
+                setShowTemplateSelection(false);
+              }}
+            />
           </div>
         ) : (
           <>
@@ -917,6 +855,12 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
                 </button>
                 <button onClick={deleteSelected} className="btn btn-outline btn-sm">
                   🗑️ Delete
+                </button>
+                <button onClick={undo} className="btn btn-outline btn-sm">
+                  <LuUndo /> Undo
+                </button>
+                <button onClick={redo} className="btn btn-outline btn-sm">
+                  <LuRedo /> Redo
                 </button>
               </div>
               <div style={{ flex: 1, minWidth: 20 }} />
@@ -1103,6 +1047,12 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
               </button>
               <button onClick={deleteSelected} className="btn btn-outline btn-sm">
                 🗑️ Delete
+              </button>
+              <button onClick={undo} className="btn btn-outline btn-sm">
+                <LuUndo /> Undo
+              </button>
+              <button onClick={redo} className="btn btn-outline btn-sm">
+                <LuRedo /> Redo
               </button>
               <div style={{ flex: 1 }} />
               <button onClick={saveDesign} className="btn btn-primary btn-sm" disabled={loading}>

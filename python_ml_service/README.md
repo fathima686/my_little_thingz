@@ -1,284 +1,325 @@
-# Python ML Microservice for My Little Things
+# Free Local Image Classification Service
 
-This Python microservice provides advanced machine learning algorithms as REST API endpoints for your My Little Things gift platform.
+## Overview
 
-## 🚀 Features
+This service provides **free, local image classification** using pre-trained MobileNetV2 from TensorFlow. No paid APIs, no billing, completely free.
 
-### 5 ML Algorithms Implemented:
+## Features
 
-1. **K-Nearest Neighbors (KNN)** - Product Recommendations
-2. **Bayesian Classifier (Naive Bayes)** - Gift Category Prediction  
-3. **Decision Tree** - Add-on Suggestions
-4. **Support Vector Machine (SVM)** - Budget vs Premium Classification
-5. **Backpropagation Neural Network (BPNN)** - Customer Preference Prediction
+- ✅ **100% Free**: No API keys, no billing, no costs
+- ✅ **Local Processing**: All processing happens on your server
+- ✅ **Pre-trained Model**: MobileNetV2 trained on ImageNet (1000 classes)
+- ✅ **Fast**: ~100-200ms per image on modern hardware
+- ✅ **REST API**: Flask-based API for easy integration
+- ✅ **CLI Support**: Can be used from command line
+- ✅ **Batch Processing**: Classify multiple images at once
 
-## 📋 Prerequisites
+## Requirements
 
-- Python 3.8+
-- MySQL Database (same as your PHP application)
-- pip (Python package manager)
+- Python 3.8 or higher
+- ~500MB disk space (for TensorFlow and model)
+- 2GB RAM minimum (4GB recommended)
 
-## 🛠️ Installation
+## Quick Start
 
-1. **Navigate to the Python ML service directory:**
-   ```bash
-   cd python_ml_service
-   ```
+### 1. Setup (One-time)
 
-2. **Create virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database credentials
-   ```
-
-## ⚙️ Configuration
-
-Create a `.env` file with your database settings:
-
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=my_little_things
-DB_USER=root
-DB_PASSWORD=your_password
-
-# Flask Configuration
-DEBUG=True
-HOST=0.0.0.0
-PORT=5000
-
-# ML Configuration
-KNN_K=5
-BAYESIAN_CONFIDENCE_THRESHOLD=0.75
-SVM_KERNEL=rbf
-BPNN_HIDDEN_LAYERS=(50, 25)
-BPNN_LEARNING_RATE=0.001
-```
-
-## 🚀 Running the Service
-
-### Development Mode:
 ```bash
-python app.py
+cd python_ml_service
+setup.bat
 ```
 
-### Production Mode:
+This will:
+- Create Python virtual environment
+- Install TensorFlow and dependencies
+- Download MobileNetV2 model (~14MB)
+
+**Note**: First setup takes 5-10 minutes to download dependencies.
+
+### 2. Start Service
+
 ```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+start-service.bat
 ```
 
-The service will be available at: `http://localhost:5000`
+Service will run on `http://localhost:5000`
 
-## 📡 API Endpoints
+### 3. Test
 
-### 1. KNN Recommendations
-**POST** `/api/ml/knn/recommendations`
+```bash
+test-classifier.bat
+```
+
+## Usage
+
+### REST API
+
+#### Health Check
+```bash
+GET http://localhost:5000/health
+```
+
+Response:
 ```json
 {
-  "product_id": 123,
-  "user_id": 456,
-  "k": 5
+  "status": "healthy",
+  "service": "image_classification",
+  "model": "MobileNetV2",
+  "version": "1.0.0"
 }
 ```
 
-### 2. Bayesian Classification
-**POST** `/api/ml/bayesian/classify`
-```json
+#### Classify Image (JSON)
+```bash
+POST http://localhost:5000/classify
+Content-Type: application/json
+
 {
-  "gift_name": "Custom Chocolate Box",
-  "confidence_threshold": 0.75
+  "image_path": "/path/to/image.jpg"
 }
 ```
 
-### 3. Decision Tree Add-on Suggestions
-**POST** `/api/ml/decision-tree/addon-suggestion`
+Response:
 ```json
 {
-  "cart_total": 1500,
-  "cart_items": [{"id": 1, "price": 1000}, {"id": 2, "price": 500}]
+  "success": true,
+  "ai_enabled": true,
+  "possibly_unrelated": false,
+  "labels": [
+    {"name": "embroidery", "confidence": 0.85},
+    {"name": "textile", "confidence": 0.72}
+  ],
+  "confidence": 0.85,
+  "warning_message": null,
+  "model": "MobileNetV2",
+  "model_type": "local_free"
 }
 ```
 
-### 4. SVM Classification
-**POST** `/api/ml/svm/classify`
-```json
+#### Classify Image (File Upload)
+```bash
+POST http://localhost:5000/classify
+Content-Type: multipart/form-data
+
+image: <file>
+```
+
+#### Batch Classification
+```bash
+POST http://localhost:5000/classify/batch
+Content-Type: application/json
+
 {
-  "gift_data": {
-    "price": 1200,
-    "category_id": 3,
-    "title": "Premium Gift Box",
-    "description": "Luxury handmade gift box",
-    "availability": "limited"
-  }
+  "image_paths": [
+    "/path/to/image1.jpg",
+    "/path/to/image2.jpg"
+  ]
 }
 ```
 
-### 5. BPNN Preference Prediction
-**POST** `/api/ml/bpnn/predict-preference`
+### CLI Usage
+
+```bash
+# Activate virtual environment
+venv\Scripts\activate.bat
+
+# Classify image
+python image_classifier.py path/to/image.jpg
+```
+
+Output:
 ```json
 {
-  "user_data": {
-    "age": 25,
-    "purchase_frequency": 0.5,
-    "avg_order_value": 800
-  },
-  "product_data": {
-    "price": 500,
-    "category_id": 2,
-    "rating": 4.5
-  }
+  "success": true,
+  "ai_enabled": true,
+  "possibly_unrelated": false,
+  "labels": [...],
+  "confidence": 0.85,
+  "warning_message": null
 }
 ```
 
-### 6. Health Check
-**GET** `/api/ml/health`
+## Integration with PHP
 
-### 7. Train Models
-**POST** `/api/ml/models/train`
-```json
-{
-  "algorithm": "all"  // or specific algorithm name
-}
-```
+### Example PHP Code
 
-## 🔗 Integration with PHP
-
-### Option 1: Direct API Calls
 ```php
-// In your PHP code
-$response = file_get_contents('http://localhost:5000/api/ml/knn/recommendations', false, stream_context_create([
-    'http' => [
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => json_encode([
-            'product_id' => $productId,
-            'user_id' => $userId,
-            'k' => 5
-        ])
-    ]
-]));
+<?php
+function classifyImage($imagePath) {
+    $url = 'http://localhost:5000/classify';
+    
+    $data = json_encode(['image_path' => $imagePath]);
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode === 200) {
+        return json_decode($response, true);
+    }
+    
+    return [
+        'success' => false,
+        'error_code' => 'SERVICE_ERROR',
+        'error_message' => 'Classification service unavailable'
+    ];
+}
 
-$result = json_decode($response, true);
+// Usage
+$result = classifyImage('/path/to/uploaded/image.jpg');
+
+if ($result['success'] && $result['possibly_unrelated']) {
+    echo "Warning: " . $result['warning_message'];
+}
+?>
 ```
 
-### Option 2: cURL
-```php
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'http://localhost:5000/api/ml/bayesian/classify');
-curl_setopt($ch, CURLOPT_POST, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['gift_name' => $giftName]));
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+## Unrelated Content Detection
 
-$response = curl_exec($ch);
-curl_close($ch);
-```
+The classifier checks for these categories (confidence ≥ 80%):
 
-## 🧪 Testing
+- **People**: person, face, portrait, man, woman, child
+- **Landscapes**: landscape, scenery, nature, outdoor, mountain
+- **Animals**: animal, pet, dog, cat, bird, horse
+- **Food**: food, meal, dish, restaurant, pizza
+- **Vehicles**: car, automobile, truck, bus
+- **Buildings**: building, architecture, city, house
 
-### Test the service:
+If detected, sets `possibly_unrelated: true` and provides warning message.
+
+## Performance
+
+- **Startup**: ~2-3 seconds (model loading)
+- **Classification**: ~100-200ms per image
+- **Memory**: ~500MB (model in memory)
+- **Disk**: ~500MB (TensorFlow + model)
+
+## Troubleshooting
+
+### Service won't start
+
+1. Check Python version: `python --version` (need 3.8+)
+2. Check virtual environment: `venv\Scripts\activate.bat`
+3. Reinstall dependencies: `pip install -r requirements.txt`
+
+### Classification fails
+
+1. Check image file exists
+2. Check image format (JPEG, PNG supported)
+3. Check image not corrupted
+4. Check service is running: `http://localhost:5000/health`
+
+### Slow performance
+
+1. First classification is slower (model loading)
+2. Subsequent classifications are faster
+3. Consider upgrading hardware (CPU/RAM)
+
+## Model Information
+
+- **Model**: MobileNetV2
+- **Training**: ImageNet (1.4M images, 1000 classes)
+- **Size**: ~14MB
+- **Input**: 224x224 RGB images
+- **Output**: 1000 class probabilities
+- **License**: Apache 2.0 (free for commercial use)
+
+## Advantages Over Google Vision API
+
+| Feature | MobileNetV2 (Local) | Google Vision API |
+|---------|---------------------|-------------------|
+| Cost | Free | Requires billing |
+| Privacy | Local processing | Sends to Google |
+| Speed | 100-200ms | 500-2000ms |
+| Offline | Works offline | Requires internet |
+| Limits | None | Quota limits |
+| Setup | One-time install | API key + billing |
+
+## Security
+
+- ✅ All processing is local (no data sent externally)
+- ✅ No API keys required
+- ✅ No external dependencies at runtime
+- ✅ Input validation on all endpoints
+- ✅ File size limits (10MB max)
+
+## Maintenance
+
+### Update Dependencies
+
 ```bash
-# Health check
-curl http://localhost:5000/api/ml/health
-
-# Test KNN
-curl -X POST http://localhost:5000/api/ml/knn/recommendations \
-  -H "Content-Type: application/json" \
-  -d '{"product_id": 1, "user_id": 1, "k": 5}'
+venv\Scripts\activate.bat
+pip install --upgrade tensorflow flask pillow numpy
 ```
 
-## 📊 Model Training
-
-The service automatically loads training data from your database. To retrain models:
+### Check Service Status
 
 ```bash
-curl -X POST http://localhost:5000/api/ml/models/train \
-  -H "Content-Type: application/json" \
-  -d '{"algorithm": "all"}'
+curl http://localhost:5000/health
 ```
 
-## 🔧 Troubleshooting
+### View Logs
 
-### Common Issues:
-
-1. **Database Connection Error:**
-   - Check your database credentials in `.env`
-   - Ensure MySQL is running
-   - Verify database exists
-
-2. **Port Already in Use:**
-   - Change PORT in `.env` file
-   - Kill existing process: `lsof -ti:5000 | xargs kill -9`
-
-3. **Module Import Errors:**
-   - Ensure virtual environment is activated
-   - Run `pip install -r requirements.txt`
-
-## 📈 Performance
-
-- **Response Time:** < 100ms for most requests
-- **Concurrent Users:** Supports 100+ concurrent requests
-- **Memory Usage:** ~200MB base + model memory
-- **Database Queries:** Optimized with connection pooling
-
-## 🔒 Security
-
-- CORS enabled for cross-origin requests
-- Input validation on all endpoints
-- SQL injection protection
-- Rate limiting (configurable)
-
-## 📝 Logs
-
-Logs are written to `ml_service.log` by default. Check logs for debugging:
+Service logs are printed to console. Redirect to file:
 
 ```bash
-tail -f ml_service.log
+python flask_api.py > service.log 2>&1
 ```
 
-## 🤝 Support
+## Production Deployment
 
-For issues or questions:
-1. Check the logs
-2. Verify database connection
-3. Test individual endpoints
-4. Check Python dependencies
+### Run as Background Service
 
-## 🚀 Deployment
+Use a process manager like:
+- **Windows**: NSSM (Non-Sucking Service Manager)
+- **Linux**: systemd or supervisor
 
-### Using Docker (Optional):
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+### Example systemd service (Linux)
+
+```ini
+[Unit]
+Description=Image Classification Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/path/to/python_ml_service
+Environment="PATH=/path/to/python_ml_service/venv/bin"
+ExecStart=/path/to/python_ml_service/venv/bin/python flask_api.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-### Using PM2 (Process Manager):
-```bash
-npm install -g pm2
-pm2 start app.py --name "ml-service" --interpreter python
-pm2 save
-pm2 startup
-```
+### Performance Tuning
 
----
+For production, consider:
+- Use Gunicorn instead of Flask dev server
+- Enable TensorFlow optimizations
+- Use GPU if available (requires tensorflow-gpu)
+- Cache predictions for identical images
 
-**Your Python ML Microservice is ready! 🎉**
+## Support
 
-The service runs independently alongside your PHP application, providing advanced ML capabilities without changing your existing codebase.
+For issues:
+1. Check service is running: `http://localhost:5000/health`
+2. Check logs for errors
+3. Verify Python version and dependencies
+4. Test with simple image first
 
+## License
+
+- Service code: MIT License
+- TensorFlow: Apache 2.0
+- MobileNetV2: Apache 2.0
+
+All components are free for commercial use.

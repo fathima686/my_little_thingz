@@ -104,92 +104,92 @@ try {
             // Table creation failed, continue without it
         }
         
-        // Try to get tutorial progress, if table doesn't exist, return sample data
-        try {
-            $progressStmt = $pdo->prepare("
-                SELECT lp.*, t.title, t.category, t.duration,
-                       pu.status as practice_status, pu.admin_feedback,
-                       pu.upload_date as practice_upload_date
-                FROM learning_progress lp
-                JOIN tutorials t ON lp.tutorial_id = t.id
-                LEFT JOIN practice_uploads pu ON lp.user_id = pu.user_id AND lp.tutorial_id = pu.tutorial_id
-                WHERE lp.user_id = ?
-                ORDER BY lp.last_accessed DESC
-            ");
-            $progressStmt->execute([$userId]);
-            $tutorialProgress = $progressStmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            // If table doesn't exist, create sample progress data
-            $tutorialProgress = [
-                [
-                    'id' => 1,
-                    'user_id' => $userId,
-                    'tutorial_id' => 1,
-                    'watch_time_seconds' => 2700,
-                    'completion_percentage' => 90.00,
-                    'completed_at' => null,
-                    'practice_uploaded' => 0,
-                    'last_accessed' => date('Y-m-d H:i:s'),
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'title' => 'Hand Embroidery Basics',
-                    'category' => 'embroidery',
-                    'duration' => 45,
-                    'practice_status' => null,
-                    'admin_feedback' => null,
-                    'practice_upload_date' => null
-                ],
-                [
-                    'id' => 2,
-                    'user_id' => $userId,
-                    'tutorial_id' => 2,
-                    'watch_time_seconds' => 1800,
-                    'completion_percentage' => 85.00,
-                    'completed_at' => null,
-                    'practice_uploaded' => 0,
-                    'last_accessed' => date('Y-m-d H:i:s'),
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'title' => 'Resin Art Clock Making',
-                    'category' => 'resin',
-                    'duration' => 90,
-                    'practice_status' => null,
-                    'admin_feedback' => null,
-                    'practice_upload_date' => null
-                ],
-                [
-                    'id' => 3,
-                    'user_id' => $userId,
-                    'tutorial_id' => 3,
-                    'watch_time_seconds' => 3600,
-                    'completion_percentage' => 100.00,
-                    'completed_at' => date('Y-m-d H:i:s'),
-                    'practice_uploaded' => 1,
-                    'last_accessed' => date('Y-m-d H:i:s'),
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'title' => 'Gift Box Creation',
-                    'category' => 'gifts',
-                    'duration' => 60,
-                    'practice_status' => 'approved',
-                    'admin_feedback' => 'Excellent work! Great attention to detail.',
-                    'practice_upload_date' => date('Y-m-d H:i:s')
-                ]
-            ];
-        }
-
-        // Calculate overall progress
-        $totalTutorials = count($tutorialProgress);
-        $completedTutorials = 0;
-        $totalProgress = 0;
+        // Get total tutorials in the course (all active tutorials)
+        $totalTutorialsStmt = $pdo->prepare("SELECT COUNT(*) as total FROM tutorials WHERE is_active = 1");
+        $totalTutorialsStmt->execute();
+        $totalTutorialsResult = $totalTutorialsStmt->fetch(PDO::FETCH_ASSOC);
+        $totalTutorials = (int)($totalTutorialsResult['total'] ?? 0);
         
-        foreach ($tutorialProgress as $tutorial) {
-            $completion = $tutorial['completion_percentage'] ?? 0;
-            $totalProgress += $completion;
-            if ($completion >= 80) {
+        // Get all tutorials with user's progress and practice status
+        // Use subquery to get the latest practice upload status for each tutorial
+        $allTutorialsStmt = $pdo->prepare("
+            SELECT 
+                t.id as tutorial_id,
+                t.title,
+                t.category,
+                t.duration,
+                COALESCE(lp.completion_percentage, 0) as completion_percentage,
+                COALESCE(lp.completed_at, NULL) as completed_at,
+                COALESCE(pu_latest.status, NULL) as practice_status,
+                COALESCE(pu_latest.admin_feedback, NULL) as admin_feedback,
+                COALESCE(pu_latest.upload_date, NULL) as practice_upload_date
+            FROM tutorials t
+            LEFT JOIN learning_progress lp ON t.id = lp.tutorial_id AND lp.user_id = ?
+            LEFT JOIN (
+                SELECT pu1.tutorial_id, pu1.user_id, pu1.status, pu1.admin_feedback, pu1.upload_date
+                FROM practice_uploads pu1
+                INNER JOIN (
+                    SELECT tutorial_id, user_id, MAX(upload_date) as max_date
+                    FROM practice_uploads
+                    WHERE user_id = ?
+                    GROUP BY tutorial_id, user_id
+                ) pu2 ON pu1.tutorial_id = pu2.tutorial_id 
+                    AND pu1.user_id = pu2.user_id 
+                    AND pu1.upload_date = pu2.max_date
+            ) pu_latest ON t.id = pu_latest.tutorial_id AND pu_latest.user_id = ?
+            WHERE t.is_active = 1
+            ORDER BY t.id ASC
+        ");
+        $allTutorialsStmt->execute([$userId, $userId, $userId]);
+        $allTutorials = $allTutorialsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Calculate overall progress: Count completed tutorials + approved practice submissions
+        // A tutorial is considered completed if:
+        // 1. completion_percentage >= 80, OR
+        // 2. practice_status = 'approved'
+        $completedTutorials = 0;
+        $tutorialProgress = [];
+        
+        foreach ($allTutorials as $tutorial) {
+            $completionPercentage = (float)($tutorial['completion_percentage'] ?? 0);
+            $practiceStatus = $tutorial['practice_status'] ?? null;
+            
+            // Determine if tutorial is completed
+            $isCompleted = ($completionPercentage >= 80) || ($practiceStatus === 'approved');
+            
+            // Determine status indicator (no percentages for individual tutorials)
+            $status = 'In Progress';
+            if ($practiceStatus === 'approved') {
+                $status = 'Practice Approved';
+            } elseif ($isCompleted) {
+                $status = 'Completed';
+            } elseif ($completionPercentage > 0) {
+                $status = 'In Progress';
+            } else {
+                $status = 'Not Started';
+            }
+            
+            if ($isCompleted) {
                 $completedTutorials++;
             }
+            
+            // Build tutorial progress without completion_percentage
+            $tutorialProgress[] = [
+                'tutorial_id' => $tutorial['tutorial_id'],
+                'title' => $tutorial['title'],
+                'category' => $tutorial['category'],
+                'duration' => $tutorial['duration'],
+                'status' => $status,
+                'practice_status' => $practiceStatus,
+                'admin_feedback' => $tutorial['admin_feedback'],
+                'practice_upload_date' => $tutorial['practice_upload_date'],
+                'completed_at' => $tutorial['completed_at']
+            ];
         }
         
-        $overallProgress = $totalTutorials > 0 ? ($totalProgress / $totalTutorials) : 0;
-        $certificateEligible = $overallProgress >= 100;
+        // Calculate overall course completion percentage
+        $overallProgress = $totalTutorials > 0 ? (($completedTutorials / $totalTutorials) * 100) : 0;
+        $certificateEligible = $overallProgress >= 80;
 
         echo json_encode([
             'status' => 'success',

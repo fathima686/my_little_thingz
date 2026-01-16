@@ -1,4 +1,14 @@
 <?php
+/**
+ * Practice Upload API V2
+ * 
+ * Features:
+ * - Enhanced image authenticity with pHash-only similarity
+ * - Google Vision API integration for unrelated content detection
+ * - Category-specific comparison
+ * - No auto-rejection, admin is final authority
+ */
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -11,11 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     require_once '../../config/database.php';
-    require_once '../../services/BasicImageAuthenticityService.php';
+    require_once '../../config/env-loader.php';
+    require_once '../../services/EnhancedImageAuthenticityServiceV2.php';
+    
+    // Load environment variables
+    EnvLoader::load();
     
     $database = new Database();
     $pdo = $database->getConnection();
-    $authenticityService = new BasicImageAuthenticityService($pdo);
+    
+    // Get local classifier URL from environment (defaults to localhost:5000)
+    $localClassifierUrl = getenv('LOCAL_CLASSIFIER_URL') ?: $_ENV['LOCAL_CLASSIFIER_URL'] ?? 'http://localhost:5000';
+    
+    $authenticityService = new EnhancedImageAuthenticityServiceV2($pdo, $localClassifierUrl);
 } catch (Exception $e) {
     echo json_encode([
         'status' => 'error',
@@ -45,13 +63,13 @@ if (empty($userEmail) || empty($tutorialId)) {
 }
 
 try {
-    // Get user ID first
+    // Get user ID
     $userStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $userStmt->execute([$userEmail]);
     $userForSub = $userStmt->fetch(PDO::FETCH_ASSOC);
     $userIdForSub = $userForSub['id'] ?? null;
     
-    // Check if user has Pro subscription
+    // Check Pro subscription
     $isPro = ($userEmail === 'soudhame52@gmail.com');
     
     if (!$isPro && $userIdForSub) {
@@ -78,7 +96,6 @@ try {
         exit;
     }
     
-    // Use the user ID we already fetched
     if (!$userIdForSub) {
         echo json_encode([
             'status' => 'error',
@@ -90,7 +107,7 @@ try {
     $userId = $userIdForSub;
     
     // Verify tutorial exists
-    $tutorialStmt = $pdo->prepare("SELECT title FROM tutorials WHERE id = ?");
+    $tutorialStmt = $pdo->prepare("SELECT title, category FROM tutorials WHERE id = ?");
     $tutorialStmt->execute([$tutorialId]);
     $tutorial = $tutorialStmt->fetch(PDO::FETCH_ASSOC);
     
@@ -102,7 +119,7 @@ try {
         exit;
     }
     
-    // Create uploads directory if it doesn't exist
+    // Create uploads directory
     $uploadDir = '../../uploads/practice/';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
@@ -111,7 +128,7 @@ try {
     $uploadedFiles = [];
     $errors = [];
     
-    // Process uploaded files with authenticity verification
+    // Process uploaded files
     if (isset($_FILES['practice_images']) && is_array($_FILES['practice_images']['name'])) {
         $fileCount = count($_FILES['practice_images']['name']);
         
@@ -165,7 +182,7 @@ try {
         exit;
     }
     
-    // Create practice uploads table if it doesn't exist
+    // Ensure practice_uploads table exists
     $pdo->exec("CREATE TABLE IF NOT EXISTS practice_uploads (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -173,16 +190,18 @@ try {
         description TEXT,
         images JSON,
         status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        authenticity_status ENUM('pending', 'verified', 'flagged', 'approved') DEFAULT 'pending',
+        progress_approved TINYINT(1) DEFAULT 0,
         admin_feedback TEXT,
         upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         reviewed_date TIMESTAMP NULL,
         INDEX idx_user_tutorial (user_id, tutorial_id)
     )");
     
-    // Insert practice upload record with authenticity verification
+    // Insert practice upload record
     $insertStmt = $pdo->prepare("
-        INSERT INTO practice_uploads (user_id, tutorial_id, description, images, status, upload_date, verification_status)
-        VALUES (?, ?, ?, ?, 'pending', NOW(), 'pending')
+        INSERT INTO practice_uploads (user_id, tutorial_id, description, images, status, authenticity_status, upload_date)
+        VALUES (?, ?, ?, ?, 'pending', 'pending', NOW())
     ");
     
     $imagesJson = json_encode($uploadedFiles);
@@ -190,16 +209,19 @@ try {
     
     $uploadId = $pdo->lastInsertId();
     
-    // Process each image through simplified authenticity system
+    // Process each image through enhanced authenticity system
     $analysisResults = [];
     $requiresReview = false;
+    $aiWarnings = [];
+    $similarityFlags = [];
+    $processingErrors = [];
     
     foreach ($uploadedFiles as $index => $file) {
         $imageId = $uploadId . '_' . $index;
         $fullFilePath = $uploadDir . $file['stored_name'];
         
         try {
-            // Run simplified authenticity evaluation
+            // Run enhanced authenticity evaluation
             $evaluation = $authenticityService->evaluateImage(
                 $imageId, 
                 'practice_upload', 
@@ -208,10 +230,21 @@ try {
                 $tutorialId
             );
             
+            // Check for errors
+            if (isset($evaluation['error']) && $evaluation['error'] === true) {
+                $processingErrors[] = [
+                    'file' => $file['original_name'],
+                    'error_code' => $evaluation['error_code'],
+                    'error_message' => $evaluation['error_message']
+                ];
+            }
+            
             $analysisResults[] = [
                 'image_id' => $imageId,
                 'file_name' => $file['original_name'],
                 'status' => $evaluation['status'],
+                'error_code' => $evaluation['error_code'] ?? null,
+                'error_message' => $evaluation['error_message'] ?? null,
                 'explanation' => $evaluation['explanation'],
                 'requires_admin_review' => $evaluation['requires_admin_review'],
                 'category' => $evaluation['category'],
@@ -219,26 +252,43 @@ try {
                 'metadata_notes' => $evaluation['metadata_notes'],
                 'flagged_reason' => $evaluation['flagged_reason'],
                 'similar_image' => $evaluation['similar_image'],
+                'ai_warning' => $evaluation['ai_warning'],
                 'file_size' => $file['file_size']
             ];
             
             if ($evaluation['requires_admin_review']) {
                 $requiresReview = true;
+                
+                if ($evaluation['ai_warning']) {
+                    $aiWarnings[] = $evaluation['ai_warning'];
+                }
+                
+                if ($evaluation['similar_image']) {
+                    $similarityFlags[] = "Image '{$file['original_name']}' is similar to existing work";
+                }
             }
             
         } catch (Exception $e) {
-            error_log("Authenticity evaluation error for $imageId: " . $e->getMessage());
+            error_log("Authenticity evaluation exception for $imageId: " . $e->getMessage());
+            $processingErrors[] = [
+                'file' => $file['original_name'],
+                'error_code' => 'EVALUATION_EXCEPTION',
+                'error_message' => $e->getMessage()
+            ];
             $analysisResults[] = [
                 'image_id' => $imageId,
                 'file_name' => $file['original_name'],
-                'status' => 'needs_admin_review',
+                'status' => 'error',
+                'error_code' => 'EVALUATION_EXCEPTION',
+                'error_message' => $e->getMessage(),
                 'explanation' => 'Technical error occurred during analysis',
                 'requires_admin_review' => true,
-                'category' => 'general',
+                'category' => $tutorial['category'] ?? 'general',
                 'images_compared' => 0,
-                'metadata_notes' => 'Error: ' . $e->getMessage(),
-                'flagged_reason' => 'Processing error',
+                'metadata_notes' => 'Exception: ' . $e->getMessage(),
+                'flagged_reason' => 'Processing exception',
                 'similar_image' => null,
+                'ai_warning' => null,
                 'file_size' => $file['file_size'],
                 'error' => true
             ];
@@ -246,7 +296,7 @@ try {
         }
     }
     
-    // Update practice upload status based on analysis
+    // Update practice upload status
     $overallStatus = $requiresReview ? 'flagged' : 'verified';
     $updateStmt = $pdo->prepare("
         UPDATE practice_uploads 
@@ -255,7 +305,7 @@ try {
     ");
     $updateStmt->execute([$overallStatus, $uploadId]);
     
-    // Update learning progress (but don't mark as complete until admin approval if flagged)
+    // Update learning progress
     if (!$requiresReview) {
         // Auto-approve clean images
         $progressStmt = $pdo->prepare("
@@ -284,8 +334,8 @@ try {
     
     // Prepare response
     $uniqueCount = count(array_filter($analysisResults, fn($r) => $r['status'] === 'unique'));
-    $reusedCount = count(array_filter($analysisResults, fn($r) => $r['status'] === 'reused'));
-    $similarCount = count(array_filter($analysisResults, fn($r) => $r['status'] === 'highly_similar'));
+    $reuseCount = count(array_filter($analysisResults, fn($r) => $r['status'] === 'possible_reuse'));
+    $unrelatedCount = count(array_filter($analysisResults, fn($r) => $r['status'] === 'possibly_unrelated'));
     $reviewCount = count(array_filter($analysisResults, fn($r) => $r['requires_admin_review']));
     
     echo json_encode([
@@ -297,63 +347,56 @@ try {
         'files_uploaded' => count($uploadedFiles),
         'files' => $uploadedFiles,
         'errors' => $errors,
+        'processing_errors' => $processingErrors,
         'tutorial_title' => $tutorial['title'],
+        'tutorial_category' => $tutorial['category'] ?? 'general',
         'user_email' => $userEmail,
         'timestamp' => date('Y-m-d H:i:s'),
-        'ai_analysis' => [
-            'system_version' => 'basic_v1.0',
-            'detection_method' => 'file_hash_similarity',
+        'authenticity_analysis' => [
+            'system_version' => 'enhanced_v2.0',
+            'detection_method' => 'phash_similarity + ai_content_analysis',
             'comparison_scope' => 'same_category_only',
+            'ai_enabled' => !empty($localClassifierUrl),
+            'threshold_used' => 'phash_distance_5',
             'analysis_results' => $analysisResults,
             'summary' => [
                 'total_images' => count($analysisResults),
                 'unique_images' => $uniqueCount,
-                'reused_images' => $reusedCount,
-                'similar_images' => $similarCount,
+                'possible_reuse' => $reuseCount,
+                'possibly_unrelated' => $unrelatedCount,
                 'requires_admin_review' => $reviewCount,
+                'processing_errors' => count($processingErrors),
                 'auto_approved' => !$requiresReview
             ],
-            'explanation' => [
-                'unique' => 'No similar images found within the same tutorial category on our platform',
-                'reused' => 'Identical image found within the same category - exact file match detected',
-                'highly_similar' => 'Very similar image found within the same category',
-                'needs_admin_review' => 'Flagged for manual review due to similarity or technical issues'
-            ],
-            'important_notes' => [
-                'We only compare images within the same tutorial category',
-                'We do not claim to detect images from Google or the internet',
-                'Our system detects exact file duplicates within our platform only',
-                'Progress credit requires admin approval for flagged images',
-                'Certificate eligibility requires 80% overall course progress'
-            ]
-        ],
-        'authenticity_analysis' => [
-            'system_version' => 'basic_v1.0',
-            'detection_method' => 'file_hash_similarity',
-            'comparison_scope' => 'same_category_only',
-            'threshold_used' => 'exact_file_match',
-            'results' => $analysisResults,
-            'analysis_results' => $analysisResults, // For frontend compatibility
-            'summary' => [
-                'total_images' => count($analysisResults),
-                'unique_images' => $uniqueCount,
-                'reused_images' => $reusedCount,
-                'similar_images' => $similarCount,
-                'requires_admin_review' => $reviewCount,
-                'auto_approved' => !$requiresReview
+            'warnings' => [
+                'ai_warnings' => $aiWarnings,
+                'similarity_flags' => $similarityFlags,
+                'processing_errors' => $processingErrors
             ],
             'explanation' => [
-                'unique' => 'No similar images found within the same tutorial category on our platform',
-                'reused' => 'Nearly identical image found within the same category - likely reused practice work',
-                'highly_similar' => 'Very similar image found within the same category - may be duplicate practice',
-                'needs_admin_review' => 'Flagged for manual review due to similarity or technical issues'
+                'unique' => 'No similar images found within the same tutorial category',
+                'possible_reuse' => 'Similar image found in same category (pHash distance ≤ 5)',
+                'possibly_unrelated' => 'AI detected possibly unrelated content (confidence ≥ 80%)',
+                'needs_admin_review' => 'Flagged for manual admin review - no auto-rejection',
+                'error' => 'Processing error occurred - requires admin review'
+            ],
+            'error_codes' => [
+                'VISION_KEY_MISSING' => 'Google Vision API key not configured',
+                'GD_NOT_AVAILABLE' => 'PHP GD extension not enabled',
+                'FILE_NOT_FOUND' => 'Image file not found',
+                'PHASH_FAILED' => 'Failed to generate perceptual hash',
+                'VISION_API_FAILED' => 'Google Vision API call failed',
+                'DB_ERROR' => 'Database operation failed'
             ],
             'important_notes' => [
-                'We only compare images within the same tutorial category',
-                'We do not claim to detect images from Google or the internet',
-                'Our system detects reuse of practice work within our platform only',
-                'Progress credit requires admin approval for flagged images',
-                'Certificate eligibility requires 80% overall course progress'
+                'Category-specific comparison: Images are only compared within the selected tutorial category',
+                'AI content warning: Pre-trained Google Vision API detects unrelated content (people, scenery, animals)',
+                'No auto-rejection: Admin is the final authority on all decisions',
+                'pHash similarity: Only perceptual hash with strict threshold (distance ≤ 5)',
+                'Metadata extraction: EXIF data extracted for admin reference only',
+                'Progress credit: Requires admin approval for flagged images',
+                'Certificate eligibility: Requires 80% overall course progress with admin-approved practice work',
+                'Error handling: All errors are logged and flagged for admin review'
             ]
         ]
     ]);

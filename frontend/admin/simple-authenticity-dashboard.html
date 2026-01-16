@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplified Image Authenticity Review - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .filters {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .filters h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        select, input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .reviews-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .reviews-header {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .reviews-header h3 {
+            color: #333;
+        }
+
+        .review-item {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: grid;
+            grid-template-columns: 80px 1fr 200px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .image-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #ddd;
+        }
+
+        .review-details h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .review-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-reused {
+            background: #fee;
+            color: #c53030;
+        }
+
+        .status-highly-similar {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-needs-admin-review {
+            background: #e2e3ff;
+            color: #3c4fe0;
+        }
+
+        .flagged-reason {
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            margin: 0.5rem 0;
+            border-left: 3px solid #ffc107;
+        }
+
+        .metadata-notes {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .review-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .similar-image-info {
+            background: #fff3cd;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .explanation-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .explanation-box h4 {
+            color: #0066cc;
+            margin-bottom: 0.5rem;
+        }
+
+        .explanation-box ul {
+            margin-left: 1.5rem;
+            color: #333;
+        }
+
+        .explanation-box li {
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Simplified Image Authenticity Review</h1>
+        <p>Clear, explainable similarity detection within platform categories only</p>
+    </div>
+
+    <div class="container">
+        <!-- System Explanation -->
+        <div class="explanation-box">
+            <h4>How This System Works</h4>
+            <ul>
+                <li><strong>Perceptual Hash Only:</strong> Uses only pHash algorithm for similarity detection</li>
+                <li><strong>Category-Based:</strong> Compares images only within the same tutorial category</li>
+                <li><strong>Strict Threshold:</strong> Flags only when Hamming distance ≤ 5 (very similar)</li>
+                <li><strong>Platform-Only:</strong> Detects reuse within our platform, not from Google/internet</li>
+                <li><strong>Clear States:</strong> Unique, Reused, Highly Similar, or Needs Review</li>
+                <li><strong>Admin Control:</strong> No auto-rejection, all flagged images require manual review</li>
+            </ul>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Pending Reviews</h3>
+                <div class="number" id="pending-count">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Approved Today</h3>
+                <div class="number" id="approved-count">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>False Positives</h3>
+                <div class="number" id="false-positive-count">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Average Wait Time</h3>
+                <div class="number" id="avg-wait-time">-</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <h3>Filter Reviews</h3>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Category</label>
+                    <select id="category-filter">
+                        <option value="">All Categories</option>
+                        <option value="embroidery">Embroidery</option>
+                        <option value="painting">Painting</option>
+                        <option value="drawing">Drawing</option>
+                        <option value="crafts">Crafts</option>
+                        <option value="jewelry">Jewelry</option>
+                        <option value="pottery">Pottery</option>
+                        <option value="woodwork">Woodwork</option>
+                        <option value="textile">Textile</option>
+                        <option value="photography">Photography</option>
+                        <option value="digital_art">Digital Art</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="status-filter">
+                        <option value="">All Statuses</option>
+                        <option value="reused">Reused</option>
+                        <option value="highly_similar">Highly Similar</option>
+                        <option value="needs_admin_review">Needs Review</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="loadReviews()">Apply Filters</button>
+                </div>
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-success" onclick="batchApprove()">Batch Approve Selected</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews List -->
+        <div class="reviews-section">
+            <div class="reviews-header">
+                <h3>Pending Reviews</h3>
+                <div>
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                    <label for="select-all">Select All</label>
+                </div>
+            </div>
+            <div id="reviews-container">
+                <div class="loading">Loading reviews...</div>
+            </div>
+            <div class="pagination" id="pagination-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let selectedReviews = new Set();
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadReviews();
+        });
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/my_little_thingz/backend/api/admin/simple-authenticity-review.php?action=review_statistics', {
+                    headers: {
+                        'X-Admin-Email': 'admin@mylittlethingz.com'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('pending-count').textContent = data.data.overall.pending || 0;
+                    document.getElementById('approved-count').textContent = data.data.overall.approved || 0;
+                    document.getElementById('false-positive-count').textContent = data.data.overall.false_positives || 0;
+                    
+                    // Calculate average wait time (placeholder)
+                    document.getElementById('avg-wait-time').textContent = '2.3h';
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        async function loadReviews(page = 1) {
+            currentPage = page;
+            const category = document.getElementById('category-filter').value;
+            const status = document.getElementById('status-filter').value;
+            
+            const params = new URLSearchParams({
+                action: 'pending_reviews',
+                page: page,
+                limit: 10
+            });
+            
+            if (category) params.append('category', category);
+            if (status) params.append('status', status);
+            
+            try {
+                const response = await fetch(`/my_little_thingz/backend/api/admin/simple-authenticity-review.php?${params}`, {
+                    headers: {
+                        'X-Admin-Email': 'admin@mylittlethingz.com'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayReviews(data.data.reviews);
+                    displayPagination(data.data.pagination);
+                } else {
+                    document.getElementById('reviews-container').innerHTML = 
+                        `<div class="error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('reviews-container').innerHTML = 
+                    `<div class="error">Error loading reviews: ${error.message}</div>`;
+            }
+        }
+
+        function displayReviews(reviews) {
+            const container = document.getElementById('reviews-container');
+            
+            if (reviews.length === 0) {
+                container.innerHTML = '<div class="loading">No pending reviews found.</div>';
+                return;
+            }
+            
+            container.innerHTML = reviews.map(review => `
+                <div class="review-item">
+                    <div>
+                        <input type="checkbox" class="review-checkbox" 
+                               value="${review.image_id}:${review.image_type}"
+                               onchange="toggleReviewSelection('${review.image_id}', '${review.image_type}')">
+                        <img src="/my_little_thingz/backend/uploads/practice/placeholder.jpg" 
+                             alt="Practice Image" class="image-preview"
+                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0yNSAzNUwyNSA0NUw1NSA0NUw1NSAzNUwyNSAzNVoiIGZpbGw9IiNEREREREQiLz4KPC9zdmc+Cg=='">
+                    </div>
+                    <div class="review-details">
+                        <h4>${review.tutorial_title || 'Unknown Tutorial'}</h4>
+                        <div class="review-meta">
+                            <span>User: ${review.user_email}</span>
+                            <span>Category: ${review.category}</span>
+                            <span>Waiting: ${review.hours_waiting}h</span>
+                        </div>
+                        <div class="status-badge status-${review.evaluation_status.replace('_', '-')}">
+                            ${review.evaluation_status.replace('_', ' ').toUpperCase()}
+                        </div>
+                        ${review.flagged_reason ? `
+                            <div class="flagged-reason">
+                                <strong>Flagged:</strong> ${review.flagged_reason}
+                            </div>
+                        ` : ''}
+                        ${review.similar_image_info ? `
+                            <div class="similar-image-info">
+                                <strong>Similar Image:</strong> ${review.similar_image_info.image_id} 
+                                (Distance: ${review.similar_image_info.distance})
+                            </div>
+                        ` : ''}
+                        <div class="metadata-notes">${review.metadata_notes || 'No metadata notes'}</div>
+                    </div>
+                    <div class="review-actions">
+                        <button class="btn btn-success" onclick="reviewDecision('${review.image_id}', '${review.image_type}', 'approved')">
+                            Approve
+                        </button>
+                        <button class="btn btn-danger" onclick="reviewDecision('${review.image_id}', '${review.image_type}', 'rejected')">
+                            Reject
+                        </button>
+                        <button class="btn btn-warning" onclick="reviewDecision('${review.image_id}', '${review.image_type}', 'false_positive')">
+                            False Positive
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayPagination(pagination) {
+            const container = document.getElementById('pagination-container');
+            const { current_page, total_pages } = pagination;
+            
+            let html = '';
+            
+            // Previous button
+            if (current_page > 1) {
+                html += `<button onclick="loadReviews(${current_page - 1})">Previous</button>`;
+            }
+            
+            // Page numbers
+            for (let i = Math.max(1, current_page - 2); i <= Math.min(total_pages, current_page + 2); i++) {
+                html += `<button class="${i === current_page ? 'active' : ''}" onclick="loadReviews(${i})">${i}</button>`;
+            }
+            
+            // Next button
+            if (current_page < total_pages) {
+                html += `<button onclick="loadReviews(${current_page + 1})">Next</button>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('.review-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+                const [imageId, imageType] = checkbox.value.split(':');
+                if (selectAll.checked) {
+                    selectedReviews.add(checkbox.value);
+                } else {
+                    selectedReviews.delete(checkbox.value);
+                }
+            });
+        }
+
+        function toggleReviewSelection(imageId, imageType) {
+            const key = `${imageId}:${imageType}`;
+            if (selectedReviews.has(key)) {
+                selectedReviews.delete(key);
+            } else {
+                selectedReviews.add(key);
+            }
+        }
+
+        async function reviewDecision(imageId, imageType, decision) {
+            const notes = decision === 'false_positive' ? 
+                prompt('Please provide a reason for marking this as false positive:') : '';
+            
+            if (decision === 'false_positive' && !notes) {
+                return; // User cancelled
+            }
+            
+            try {
+                const response = await fetch('/my_little_thingz/backend/api/admin/simple-authenticity-review.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Admin-Email': 'admin@mylittlethingz.com'
+                    },
+                    body: new URLSearchParams({
+                        action: 'review_decision',
+                        image_id: imageId,
+                        image_type: imageType,
+                        decision: decision,
+                        notes: notes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showMessage(`Review decision processed: ${decision}`, 'success');
+                    loadReviews(currentPage);
+                    loadStatistics();
+                } else {
+                    showMessage(`Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`Error processing decision: ${error.message}`, 'error');
+            }
+        }
+
+        async function batchApprove() {
+            if (selectedReviews.size === 0) {
+                alert('Please select reviews to approve');
+                return;
+            }
+            
+            const imageIds = Array.from(selectedReviews).map(key => {
+                const [imageId, imageType] = key.split(':');
+                return { image_id: imageId, image_type: imageType };
+            });
+            
+            try {
+                const response = await fetch('/my_little_thingz/backend/api/admin/simple-authenticity-review.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@mylittlethingz.com'
+                    },
+                    body: JSON.stringify({
+                        action: 'batch_approve',
+                        image_ids: imageIds,
+                        notes: 'Batch approval'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showMessage(`Batch approval completed: ${data.data.successful} approved`, 'success');
+                    selectedReviews.clear();
+                    document.getElementById('select-all').checked = false;
+                    loadReviews(currentPage);
+                    loadStatistics();
+                } else {
+                    showMessage(`Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`Error processing batch approval: ${error.message}`, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(messageDiv, container.firstChild);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

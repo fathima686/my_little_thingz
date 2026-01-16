@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Review Dashboard V2 - Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: auto;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 32px;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .reviews-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .review-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+
+        .review-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .review-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .review-header h3 {
+            margin-bottom: 5px;
+        }
+
+        .review-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .review-body {
+            padding: 20px;
+        }
+
+        .review-section {
+            margin-bottom: 20px;
+        }
+
+        .review-section h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .review-section p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .image-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .image-preview img:hover {
+            transform: scale(1.05);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-approve {
+            flex: 1;
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background: #218838;
+        }
+
+        .btn-reject {
+            flex: 1;
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #c82333;
+        }
+
+        .notes-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            margin-top: 10px;
+        }
+
+        .notes-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .empty-state {
+            background: white;
+            padding: 60px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .empty-state h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #666;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Image Review Dashboard V2</h1>
+            <p>Review and approve/reject flagged practice images with AI-powered content detection</p>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Admin Email</label>
+                <input type="email" id="adminEmail" placeholder="admin@example.com" value="soudhame52@gmail.com">
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="statusFilter">
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Category</label>
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                    <option value="embroidery">Embroidery</option>
+                    <option value="painting">Painting</option>
+                    <option value="drawing">Drawing</option>
+                    <option value="crafts">Crafts</option>
+                    <option value="jewelry">Jewelry</option>
+                    <option value="pottery">Pottery</option>
+                    <option value="woodwork">Woodwork</option>
+                    <option value="textile">Textile</option>
+                    <option value="photography">Photography</option>
+                    <option value="digital_art">Digital Art</option>
+                    <option value="general">General</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadReviews()">🔄 Refresh</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="totalPending">0</h3>
+                <p>Pending Reviews</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalApproved">0</h3>
+                <p>Approved Today</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalRejected">0</h3>
+                <p>Rejected Today</p>
+            </div>
+        </div>
+
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            Loading reviews...
+        </div>
+
+        <div id="reviewsContainer" class="reviews-grid"></div>
+    </div>
+
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <img id="modalImage" src="" alt="Full size image">
+    </div>
+
+    <script>
+        const API_BASE = '../../backend/api/admin';
+
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        async function loadReviews() {
+            const adminEmail = document.getElementById('adminEmail').value;
+            const status = document.getElementById('statusFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+
+            if (!adminEmail) {
+                showAlert('Please enter admin email', 'error');
+                return;
+            }
+
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('reviewsContainer').innerHTML = '';
+
+            try {
+                const url = new URL(`${API_BASE}/image-review-v2.php`, window.location.origin);
+                url.searchParams.append('status', status);
+                if (category) url.searchParams.append('category', category);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Admin-Email': adminEmail
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    displayReviews(result.data.reviews);
+                    updateStats(result.data);
+                } else {
+                    showAlert(result.message || 'Failed to load reviews', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                showAlert('Error loading reviews: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
+        function displayReviews(reviews) {
+            const container = document.getElementById('reviewsContainer');
+
+            if (reviews.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>✅ No Reviews Found</h3>
+                        <p>All caught up! There are no pending reviews at the moment.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = reviews.map(review => `
+                <div class="review-card">
+                    <div class="review-header">
+                        <h3>${review.tutorial_title || 'Unknown Tutorial'}</h3>
+                        <p>Student: ${review.user_email} | Category: ${review.category}</p>
+                    </div>
+                    <div class="review-body">
+                        <div class="review-section">
+                            <h4>Evaluation Status</h4>
+                            <span class="badge ${getBadgeClass(review.evaluation_status)}">
+                                ${formatStatus(review.evaluation_status)}
+                            </span>
+                        </div>
+
+                        ${review.flagged_reason ? `
+                        <div class="review-section">
+                            <h4>Flagged Reason</h4>
+                            <p>${review.flagged_reason}</p>
+                        </div>
+                        ` : ''}
+
+                        ${review.ai_warning ? `
+                        <div class="review-section">
+                            <h4>⚠️ AI Warning</h4>
+                            <p style="color: #dc3545; font-weight: 600;">${review.ai_warning}</p>
+                        </div>
+                        ` : ''}
+
+                        ${review.metadata_notes ? `
+                        <div class="review-section">
+                            <h4>Image Metadata</h4>
+                            <p>${review.metadata_notes}</p>
+                        </div>
+                        ` : ''}
+
+                        ${review.similar_image_info ? `
+                        <div class="review-section">
+                            <h4>Similar Image Found</h4>
+                            <p>Distance: ${review.similar_image_info.distance} | 
+                               Created: ${new Date(review.similar_image_info.created_at).toLocaleDateString()}</p>
+                        </div>
+                        ` : ''}
+
+                        ${review.image_urls && review.image_urls.length > 0 ? `
+                        <div class="review-section">
+                            <h4>Uploaded Images</h4>
+                            <div class="image-preview">
+                                ${review.image_urls.map(img => `
+                                    <img src="${img.url}" 
+                                         alt="${img.original_name}" 
+                                         onclick="openModal('${img.url}')"
+                                         title="${img.original_name} (${formatFileSize(img.file_size)})">
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        ${review.admin_decision === 'pending' ? `
+                        <div class="review-section">
+                            <h4>Admin Notes (Optional)</h4>
+                            <textarea class="notes-input" id="notes_${review.image_id}" 
+                                      placeholder="Add feedback for the student..."></textarea>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-approve" 
+                                    onclick="submitDecision('${review.image_id}', '${review.image_type}', 'approved')">
+                                ✅ Approve
+                            </button>
+                            <button class="btn btn-reject" 
+                                    onclick="submitDecision('${review.image_id}', '${review.image_type}', 'rejected')">
+                                ❌ Reject
+                            </button>
+                        </div>
+                        ` : `
+                        <div class="review-section">
+                            <h4>Admin Decision</h4>
+                            <span class="badge ${review.admin_decision === 'approved' ? 'badge-success' : 'badge-danger'}">
+                                ${review.admin_decision.toUpperCase()}
+                            </span>
+                            ${review.admin_notes ? `<p style="margin-top: 10px;">${review.admin_notes}</p>` : ''}
+                            <p style="margin-top: 5px; font-size: 12px; color: #999;">
+                                Reviewed: ${new Date(review.reviewed_at).toLocaleString()}
+                            </p>
+                        </div>
+                        `}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function submitDecision(imageId, imageType, decision) {
+            const adminEmail = document.getElementById('adminEmail').value;
+            const notesElement = document.getElementById(`notes_${imageId}`);
+            const adminNotes = notesElement ? notesElement.value : '';
+
+            if (!confirm(`Are you sure you want to ${decision} this image?`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('image_id', imageId);
+                formData.append('image_type', imageType);
+                formData.append('decision', decision);
+                formData.append('admin_notes', adminNotes);
+
+                const response = await fetch(`${API_BASE}/image-review-v2.php`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Admin-Email': adminEmail
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showAlert(`Image ${decision} successfully!`, 'success');
+                    loadReviews(); // Reload reviews
+                } else {
+                    showAlert(result.message || 'Failed to submit decision', 'error');
+                }
+            } catch (error) {
+                console.error('Error submitting decision:', error);
+                showAlert('Error submitting decision: ' + error.message, 'error');
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('totalPending').textContent = data.total_count || 0;
+            // Note: Approved/Rejected today stats would need additional API endpoint
+        }
+
+        function getBadgeClass(status) {
+            const classes = {
+                'unique': 'badge-success',
+                'possible_reuse': 'badge-warning',
+                'possibly_unrelated': 'badge-danger',
+                'needs_admin_review': 'badge-info'
+            };
+            return classes[status] || 'badge-info';
+        }
+
+        function formatStatus(status) {
+            return status.replace(/_/g, ' ').toUpperCase();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes >= 1048576) {
+                return (bytes / 1048576).toFixed(1) + ' MB';
+            } else if (bytes >= 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            } else {
+                return bytes + ' bytes';
+            }
+        }
+
+        function openModal(imageUrl) {
+            document.getElementById('modalImage').src = imageUrl;
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        // Load reviews on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadReviews();
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (document.getElementById('statusFilter').value === 'pending') {
+                loadReviews();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTutorialAuth } from '../contexts/TutorialAuthContext';
 import { LuArrowLeft, LuDownload, LuLock, LuUpload, LuCheck, LuX, LuClock } from 'react-icons/lu';
+import ImageAnalysisResults from '../components/ImageAnalysisResults';
 import '../styles/tutorial-viewer.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
@@ -19,6 +20,8 @@ export default function TutorialViewer() {
   const [practiceUpload, setPracticeUpload] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Check if user can download videos (Premium and Pro feature)
   const canDownloadVideos = () => {
@@ -218,24 +221,31 @@ export default function TutorialViewer() {
       if (data.status === 'success') {
         setUploadStatus('success');
         
-        // Enhanced success message with progress information
-        const successMessage = data.auto_approved ? 
-          `🎉 Upload Successful & Auto-Approved!\n\n` +
-          `✅ ${data.files_uploaded} file(s) uploaded\n` +
-          `✅ Upload ID: ${data.upload_id}\n` +
-          `✅ Status: Approved\n` +
-          `✅ Progress Bonus: +${data.practice_bonus}%\n\n` +
-          `📈 Your tutorial progress has been updated!\n` +
-          `Files uploaded:\n${data.files.map(f => `• ${f.original_name}`).join('\n')}\n\n` +
-          `${data.message_detail}` :
-          `✅ Upload Successful!\n\n` +
-          `${data.files_uploaded} file(s) uploaded\n` +
-          `Upload ID: ${data.upload_id}\n` +
-          `Status: Pending Review\n\n` +
-          `Files uploaded:\n${data.files.map(f => `• ${f.original_name}`).join('\n')}\n\n` +
-          `You'll receive feedback within 24-48 hours.`;
+        // Show AI analysis results if available
+        if (data.ai_analysis && data.ai_analysis.analysis_results) {
+          setAnalysisResults(data.ai_analysis.analysis_results);
+          setShowAnalysis(true);
+        } else {
+          // Fallback to enhanced success message if no AI analysis
+          const successMessage = data.auto_approved ? 
+            `🎉 Upload Successful & Auto-Approved!\n\n` +
+            `✅ ${data.files_uploaded} file(s) uploaded\n` +
+            `✅ Upload ID: ${data.upload_id}\n` +
+            `✅ Status: Approved\n` +
+            `✅ Progress Bonus: +${data.practice_bonus}%\n\n` +
+            `📈 Your tutorial progress has been updated!\n` +
+            `Files uploaded:\n${data.files.map(f => `• ${f.original_name}`).join('\n')}\n\n` +
+            `${data.message_detail}` :
+            `✅ Upload Successful!\n\n` +
+            `${data.files_uploaded} file(s) uploaded\n` +
+            `Upload ID: ${data.upload_id}\n` +
+            `Status: Pending Review\n\n` +
+            `Files uploaded:\n${data.files.map(f => `• ${f.original_name}`).join('\n')}\n\n` +
+            `You'll receive feedback within 24-48 hours.`;
+          
+          alert(successMessage);
+        }
         
-        alert(successMessage);
         fetchPracticeUpload(); // Refresh upload status
       } else {
         setUploadStatus('error');
@@ -268,152 +278,167 @@ export default function TutorialViewer() {
     }
   };
 
+  const closeAnalysis = () => {
+    setShowAnalysis(false);
+    setAnalysisResults(null);
+  };
+
   return (
-    <div className="tutorial-viewer-container">
-      <header className="viewer-header">
-        <Link to="/tutorials" className="back-button">
-          <LuArrowLeft size={20} />
-          Back to Tutorials
-        </Link>
-        <h1>{tutorial.title}</h1>
-      </header>
+    <>
+      <div className="tutorial-viewer-container">
+        <header className="viewer-header">
+          <Link to="/tutorials" className="back-button">
+            <LuArrowLeft size={20} />
+            Back to Tutorials
+          </Link>
+          <h1>{tutorial.title}</h1>
+        </header>
 
-      <div className="viewer-content">
-        <div className="video-container">
-          {tutorial.video_url ? (
-            <iframe
-              width="100%"
-              height="600"
-              src={resolveUrl(tutorial.video_url)}
-              title={tutorial.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          ) : (
-            <div className="video-placeholder">
-              <p>Video not available</p>
-            </div>
-          )}
-        </div>
-
-        <div className="viewer-sidebar">
-          <div className="tutorial-info">
-            <h2>{tutorial.title}</h2>
-            
-            <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Duration</span>
-                <span className="value">{tutorial.duration || 'N/A'} minutes</span>
+        <div className="viewer-content">
+          <div className="video-container">
+            {tutorial.video_url ? (
+              <iframe
+                width="100%"
+                height="600"
+                src={resolveUrl(tutorial.video_url)}
+                title={tutorial.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <div className="video-placeholder">
+                <p>Video not available</p>
               </div>
-              <div className="info-item">
-                <span className="label">Level</span>
-                <span className="value">{tutorial.difficulty_level || 'Beginner'}</span>
-              </div>
-              <div className="info-item">
-                <span className="label">Category</span>
-                <span className="value">{tutorial.category && tutorial.category !== '0' ? tutorial.category : 'General'}</span>
-              </div>
-            </div>
+            )}
+          </div>
 
-            <div className="description">
-              <h3>About This Tutorial</h3>
-              <p>{tutorial.description}</p>
-            </div>
-
-            <div className="tutorial-tools">
-              {canDownloadVideos() ? (
-                resourceUrl ? (
-                  <a className="tool-btn" href={resourceUrl} download target="_blank" rel="noopener noreferrer">
-                    <LuDownload size={18} />
-                    Download Resources
-                  </a>
-                ) : (
-                  <button className="tool-btn" disabled title="No resources available">
-                    <LuDownload size={18} />
-                    Download Resources
-                  </button>
-                )
-              ) : (
-                <div className="download-restricted">
-                  <button className="tool-btn restricted" disabled title="Premium/Pro feature">
-                    <LuLock size={18} />
-                    Download Restricted
-                  </button>
-                  <p className="restriction-note">
-                    Download feature is available for Premium and Pro subscribers only.
-                    <br />
-                    <span>Current plan: <strong>{subscriptionStatus?.plan_code || 'Basic'}</strong></span>
-                  </p>
+          <div className="viewer-sidebar">
+            <div className="tutorial-info">
+              <h2>{tutorial.title}</h2>
+              
+              <div className="info-grid">
+                <div className="info-item">
+                  <span className="label">Duration</span>
+                  <span className="value">{tutorial.duration || 'N/A'} minutes</span>
                 </div>
-              )}
+                <div className="info-item">
+                  <span className="label">Level</span>
+                  <span className="value">{tutorial.difficulty_level || 'Beginner'}</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Category</span>
+                  <span className="value">{tutorial.category && tutorial.category !== '0' ? tutorial.category : 'General'}</span>
+                </div>
+              </div>
 
-              {/* Practice Upload Section - Pro Only */}
-              {canUploadPractice() && (
-                <div className="practice-upload-section">
-                  <h4>Submit Practice Work</h4>
-                  
-                  {practiceUpload ? (
-                    <div className="existing-upload">
-                      <div className="upload-status">
-                        {getPracticeStatusIcon(practiceUpload.status)}
-                        <span className={`status-text status-${practiceUpload.status}`}>
-                          {practiceUpload.status === 'approved' && 'Approved'}
-                          {practiceUpload.status === 'rejected' && 'Needs Revision'}
-                          {practiceUpload.status === 'pending' && 'Under Review'}
-                        </span>
-                      </div>
-                      
-                      <div className="upload-info">
-                        <p><strong>File:</strong> {practiceUpload.original_filename}</p>
-                        <p><strong>Uploaded:</strong> {new Date(practiceUpload.upload_date).toLocaleDateString()}</p>
-                        {practiceUpload.admin_feedback && (
-                          <div className="admin-feedback">
-                            <p><strong>Feedback:</strong></p>
-                            <p>{practiceUpload.admin_feedback}</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <label className="upload-btn secondary">
-                        <LuUpload size={18} />
-                        {uploading ? 'Uploading...' : (practiceUpload.status === 'rejected' ? 'Resubmit Work' : 'Update Submission')}
-                        <input
-                          type="file"
-                          accept="image/*,video/*,.pdf"
-                          multiple
-                          onChange={handlePracticeUpload}
-                          disabled={uploading}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
-                    </div>
+              <div className="description">
+                <h3>About This Tutorial</h3>
+                <p>{tutorial.description}</p>
+              </div>
+
+              <div className="tutorial-tools">
+                {canDownloadVideos() ? (
+                  resourceUrl ? (
+                    <a className="tool-btn" href={resourceUrl} download target="_blank" rel="noopener noreferrer">
+                      <LuDownload size={18} />
+                      Download Resources
+                    </a>
                   ) : (
-                    <div className="new-upload">
-                      <p>Upload your practice work for this tutorial to track your progress.</p>
-                      <label className="upload-btn">
-                        <LuUpload size={18} />
-                        {uploading ? 'Uploading...' : 'Upload Practice Work'}
-                        <input
-                          type="file"
-                          accept="image/*,video/*,.pdf"
-                          multiple
-                          onChange={handlePracticeUpload}
-                          disabled={uploading}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
-                      <p className="upload-hint">
-                        Accepted formats: JPG, PNG, GIF, WebP, MP4, AVI, PDF (Max 10MB each)
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    <button className="tool-btn" disabled title="No resources available">
+                      <LuDownload size={18} />
+                      Download Resources
+                    </button>
+                  )
+                ) : (
+                  <div className="download-restricted">
+                    <button className="tool-btn restricted" disabled title="Premium/Pro feature">
+                      <LuLock size={18} />
+                      Download Restricted
+                    </button>
+                    <p className="restriction-note">
+                      Download feature is available for Premium and Pro subscribers only.
+                      <br />
+                      <span>Current plan: <strong>{subscriptionStatus?.plan_code || 'Basic'}</strong></span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Practice Upload Section - Pro Only */}
+                {canUploadPractice() && (
+                  <div className="practice-upload-section">
+                    <h4>Submit Practice Work</h4>
+                    
+                    {practiceUpload ? (
+                      <div className="existing-upload">
+                        <div className="upload-status">
+                          {getPracticeStatusIcon(practiceUpload.status)}
+                          <span className={`status-text status-${practiceUpload.status}`}>
+                            {practiceUpload.status === 'approved' && 'Approved'}
+                            {practiceUpload.status === 'rejected' && 'Needs Revision'}
+                            {practiceUpload.status === 'pending' && 'Under Review'}
+                          </span>
+                        </div>
+                        
+                        <div className="upload-info">
+                          <p><strong>File:</strong> {practiceUpload.original_filename}</p>
+                          <p><strong>Uploaded:</strong> {new Date(practiceUpload.upload_date).toLocaleDateString()}</p>
+                          {practiceUpload.admin_feedback && (
+                            <div className="admin-feedback">
+                              <p><strong>Feedback:</strong></p>
+                              <p>{practiceUpload.admin_feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <label className="upload-btn secondary">
+                          <LuUpload size={18} />
+                          {uploading ? 'Uploading...' : (practiceUpload.status === 'rejected' ? 'Resubmit Work' : 'Update Submission')}
+                          <input
+                            type="file"
+                            accept="image/*,video/*,.pdf"
+                            multiple
+                            onChange={handlePracticeUpload}
+                            disabled={uploading}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="new-upload">
+                        <p>Upload your practice work for this tutorial to track your progress.</p>
+                        <label className="upload-btn">
+                          <LuUpload size={18} />
+                          {uploading ? 'Uploading...' : 'Upload Practice Work'}
+                          <input
+                            type="file"
+                            accept="image/*,video/*,.pdf"
+                            multiple
+                            onChange={handlePracticeUpload}
+                            disabled={uploading}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        <p className="upload-hint">
+                          Accepted formats: JPG, PNG, GIF, WebP, MP4, AVI, PDF (Max 10MB each)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* AI Analysis Results Modal */}
+      {showAnalysis && analysisResults && (
+        <ImageAnalysisResults 
+          analysisResults={analysisResults}
+          onClose={closeAnalysis}
+        />
+      )}
+    </>
   );
 }
