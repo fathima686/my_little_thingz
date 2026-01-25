@@ -15,7 +15,7 @@ export default function ProDashboard() {
   const [progressData, setProgressData] = useState(null);
   const [certificateData, setCertificateData] = useState(null);
   const [generatingCertificate, setGeneratingCertificate] = useState(false);
-  const [certificateName, setCertificateName] = useState('');
+  const [certificateName, setCertificateName] = useState(''); // Empty by default for manual entry
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -24,13 +24,6 @@ export default function ProDashboard() {
       fetchCertificateData();
     }
   }, [tutorialAuth?.email]);
-
-  // Set default certificate name from auth context
-  useEffect(() => {
-    if (tutorialAuth?.name && !certificateName) {
-      setCertificateName(tutorialAuth.name);
-    }
-  }, [tutorialAuth?.name, certificateName]);
 
   const fetchProgressData = async () => {
     try {
@@ -166,6 +159,10 @@ export default function ProDashboard() {
             <div className="stat-item">
               <div className="stat-number">{overall_progress?.completion_percentage || 0}%</div>
               <div className="stat-label">Completed</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">{overall_progress?.watched_tutorials || (overall_progress?.completed_tutorials + (overall_progress?.in_progress_tutorials || 0)) || 0}</div>
+              <div className="stat-label">Videos Watched</div>
             </div>
             <div className="stat-item">
               <div className="stat-number">{overall_progress?.completed_tutorials || 0}</div>

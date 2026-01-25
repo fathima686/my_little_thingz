@@ -125,29 +125,54 @@ try {
     
     $userId = $user['id'];
     
-    // CERTIFICATE NAME RESOLUTION - ALWAYS prioritize requested name
+    // CERTIFICATE NAME RESOLUTION - Different logic for POST vs GET
     $userName = '';
     
-    // 1) FIRST PRIORITY: Use the name from the request if provided
-    if (!empty($requestedName)) {
-        $userName = $requestedName;
-    } else {
-        // 2) Fallback to database name field
-        if (!empty($user['name'])) {
-            $userName = trim($user['name']);
+    // For GET requests (downloads), ALWAYS use stored name from database first
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        // Get the stored certificate name from database - this is the authoritative source for downloads
+        $existingCertStmt = $pdo->prepare("SELECT user_name, certificate_id FROM certificates WHERE user_id = ? ORDER BY issued_at DESC LIMIT 1");
+        $existingCertStmt->execute([$userId]);
+        $existingCert = $existingCertStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existingCert && !empty($existingCert['user_name'])) {
+            $userName = $existingCert['user_name'];
+            $certificateId = $existingCert['certificate_id'];
+            error_log("GET request - Using stored name from database: '$userName'"); // Debug
         } else {
-            // 3) Fallback to first_name + last_name
-            $userName = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
-            if (empty($userName)) {
-                // 4) Extract from email as last resort
-                $emailParts = explode('@', $userEmail);
-                $emailName = $emailParts[0] ?? '';
-                $emailName = preg_replace('/[0-9._-]+/', ' ', $emailName);
-                $emailName = trim($emailName);
-                if (!empty($emailName)) {
-                    $userName = ucwords(strtolower($emailName));
-                } else {
-                    $userName = 'Student';
+            error_log("GET request - No stored certificate found, will resolve name"); // Debug
+            // Fall through to name resolution logic below
+        }
+    }
+    
+    // If we don't have a name yet (POST request or GET with no stored certificate), resolve it
+    if (empty($userName)) {
+        // 1) FIRST PRIORITY: Use the name from the request if provided (POST only)
+        if (!empty($requestedName)) {
+            $userName = $requestedName;
+            error_log("Using requested name: '$userName'"); // Debug
+        } else {
+            error_log("No requested name provided"); // Debug
+            // 2) Fallback to database name field
+            if (!empty($user['name'])) {
+                $userName = trim($user['name']);
+                error_log("Using database name field: '$userName'"); // Debug
+            } else {
+                // 3) Fallback to first_name + last_name
+                $userName = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
+                if (empty($userName)) {
+                    // 4) Extract from email as last resort
+                    $emailParts = explode('@', $userEmail);
+                    $emailName = $emailParts[0] ?? '';
+                    $emailName = preg_replace('/[0-9._-]+/', ' ', $emailName);
+                    $emailName = trim($emailName);
+                    if (!empty($emailName)) {
+                        $userName = ucwords(strtolower($emailName));
+                        error_log("Using email-derived name: '$userName'"); // Debug
+                    } else {
+                        $userName = 'Student';
+                        error_log("Using fallback name: '$userName'"); // Debug
+                    }
                 }
             }
         }
@@ -251,6 +276,7 @@ try {
     } else {
         // Insert certificate record
         try {
+            error_log("Inserting certificate with userName: '$userName'"); // Debug
             $insertStmt = $pdo->prepare("
                 INSERT INTO certificates 
                 (user_id, certificate_id, user_name, completion_date, tutorials_completed, overall_progress)
@@ -263,6 +289,7 @@ try {
                 $completedTutorials,
                 round($overallProgress, 2)
             ]);
+            error_log("Certificate inserted successfully"); // Debug
         } catch (Exception $e) {
             // If insert fails (e.g., duplicate), try to get existing certificate
             $existingCertStmt = $pdo->prepare("SELECT certificate_id FROM certificates WHERE user_id = ? ORDER BY issued_at DESC LIMIT 1");
@@ -294,10 +321,16 @@ try {
     }
     
     // Handle GET request (download request) - return HTML certificate
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        // Name is already resolved above, just proceed with certificate generation
+        error_log("GET request - Final userName for certificate: '$userName'"); // Debug
+    }
+    
     header('Content-Type: text/html');
     header('Content-Disposition: attachment; filename="certificate_' . $certificateId . '.html"');
     
     // Create simple HTML certificate (since TCPDF might not be available)
+    error_log("Certificate generation: userName = '$userName', certificateId = '$certificateId'"); // Debug log
     $certificateHtml = generateCertificateHTML($userName, $certificateId, $completedTutorials, $totalTutorials);
     echo $certificateHtml;
     
@@ -311,6 +344,9 @@ try {
 
 function generateCertificateHTML($userName, $certificateId, $completedTutorials, $totalTutorials) {
     $completionDate = date('F j, Y');
+    
+    // Debug log to see what name is being used
+    error_log("generateCertificateHTML called with userName = '$userName'");
     
     return "
     <!DOCTYPE html>

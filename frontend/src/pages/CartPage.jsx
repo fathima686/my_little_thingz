@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuShoppingCart, LuTrash2, LuPlus, LuMinus, LuArrowLeft, LuX, LuWand, LuMessageCircle } from 'react-icons/lu';
+import { LuShoppingCart, LuTrash2, LuPlus, LuMinus, LuArrowLeft, LuX, LuWand } from 'react-icons/lu';
 import { useAuth } from '../contexts/AuthContext';
 import CustomizationModal from '../components/customer/CustomizationModal';
 import AddonSuggestions from '../components/customer/AddonSuggestions';
-import ProductChat from '../components/ProductChat';
+import PAYMENT_CONFIG from '../config/payment';
 import '../styles/customization-modal.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
@@ -69,10 +69,6 @@ export default function CartPage() {
   const [showApprovalPopup, setShowApprovalPopup] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState([]); // Track selected addons
   
-  // Product Chat State
-  const [showProductChat, setShowProductChat] = useState(false);
-  const [chatProduct, setChatProduct] = useState(null);
-
   // Normalized address fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -222,8 +218,11 @@ export default function CartPage() {
         setPlacing(false);
         return;
       }
+
+      // Always load Razorpay script (needed for real payment UI)
       await loadRazorpay();
-      const createUrl = `${API_BASE}/customer/razorpay-create-order.php${auth?.user_id ? `?user_id=${encodeURIComponent(auth.user_id)}` : ''}`;
+
+      const createUrl = PAYMENT_CONFIG.getCreateOrderUrl(API_BASE) + (auth?.user_id ? `?user_id=${encodeURIComponent(auth.user_id)}` : '');
       const res = await fetch(createUrl, {
         method: 'POST',
         headers: {
@@ -258,58 +257,94 @@ export default function CartPage() {
         setShippingCharges(order.shipping);
       }
 
-      const rzp = new window.Razorpay({
-        key: key_id,
-        amount: Math.round(order.amount * 100),
-        currency: order.currency || 'INR',
-        name: 'My Little Thingz',
-        description: `Order ${order.order_number}`,
-        order_id: order.razorpay_order_id,
-        theme: { color: '#6b46c1' },
-        handler: async function (response) {
-          try {
-            const verifyUrl = `${API_BASE}/customer/razorpay-verify.php${auth?.user_id ? `?user_id=${encodeURIComponent(auth.user_id)}` : ''}`;
-            const verifyRes = await fetch(verifyUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-User-ID': String(auth?.user_id ?? ''),
-                'Authorization': `Bearer ${auth?.token ?? ''}`
-              },
-              body: JSON.stringify({
-                order_id: order.id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyData.status === 'success') {
-              setItems([]);
-              window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: `Payment successful. Order: ${order.order_number}` } }));
-              navigate('/dashboard?show=orders');
-            } else {
-              window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: verifyData.message || 'Payment verification failed' } }));
-            }
-          } catch (e) {
-            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Network error during payment verification' } }));
-          } finally {
-            setPlacing(false);
+      // Payment handler function
+      const handlePaymentSuccess = async function (response) {
+        try {
+          const verifyUrl = PAYMENT_CONFIG.getVerifyUrl(API_BASE) + (auth?.user_id ? `?user_id=${encodeURIComponent(auth.user_id)}` : '');
+          const verifyRes = await fetch(verifyUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-User-ID': String(auth?.user_id ?? ''),
+              'Authorization': `Bearer ${auth?.token ?? ''}`
+            },
+            body: JSON.stringify({
+              order_id: order.id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.status === 'success') {
+            setItems([]);
+            const message = verifyData.simulation_mode 
+              ? `Payment successful (Simulation Mode). Order: ${order.order_number}` 
+              : `Payment successful. Order: ${order.order_number}`;
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message } }));
+            navigate('/dashboard?show=orders');
+          } else {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: verifyData.message || 'Payment verification failed' } }));
           }
-        },
-        modal: {
-          ondismiss: function () {
-            setPlacing(false);
-          }
-        },
-        prefill: {
-          name: '',
-          email: '',
-          contact: ''
+        } catch (e) {
+          window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Network error during payment verification' } }));
+        } finally {
+          setPlacing(false);
         }
-      });
+      };
 
-      rzp.open();
+      if (PAYMENT_CONFIG.TEST_MODE) {
+        // Use mock Razorpay for test mode
+        const modeMessage = 'Test Mode: Simulating payment...';
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'info', message: modeMessage } }));
+        
+        const mockRzp = {
+          ...PAYMENT_CONFIG.mockRazorpay,
+          order_id: order.razorpay_order_id,
+          handler: handlePaymentSuccess
+        };
+        
+        mockRzp.open();
+      } else {
+        // Always try to use real Razorpay, even in simulation mode
+        // This will show the actual Razorpay payment page
+        
+        if (data.simulation_mode) {
+          // Show info that we're using simulation backend but real Razorpay UI
+          window.dispatchEvent(new CustomEvent('toast', { 
+            detail: { 
+              type: 'info', 
+              message: 'Using Razorpay payment interface (backend simulation mode)' 
+            } 
+          }));
+        }
+        
+        // Load Razorpay script if not already loaded
+        await loadRazorpay();
+        
+        const rzp = new window.Razorpay({
+          key: key_id,
+          amount: Math.round(order.amount * 100),
+          currency: order.currency || 'INR',
+          name: 'My Little Thingz',
+          description: `Order ${order.order_number}`,
+          order_id: order.razorpay_order_id,
+          theme: { color: '#6b46c1' },
+          handler: handlePaymentSuccess,
+          modal: {
+            ondismiss: function () {
+              setPlacing(false);
+            }
+          },
+          prefill: {
+            name: `${firstName} ${lastName}`.trim(),
+            email: auth?.email || '',
+            contact: phone || ''
+          }
+        });
+
+        rzp.open();
+      }
     } catch (e) {
       window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message || 'Unable to initialize payment' } }));
       setPlacing(false);
@@ -367,15 +402,6 @@ export default function CartPage() {
     checkCustomizationStatus();
   };
 
-  const handleChatWithAdmin = (item) => {
-    setChatProduct({
-      id: item.artwork_id,
-      name: item.title,
-      cartItemId: item.id
-    });
-    setShowProductChat(true);
-  };
-
   const placeOrder = async () => {
     if (items.length === 0) return;
     setPlacing(true);
@@ -427,7 +453,14 @@ export default function CartPage() {
           <LuArrowLeft />
         </button>
         <h1><LuShoppingCart /> My Cart</h1>
-        <div />
+        <button 
+          className="btn-refresh" 
+          onClick={fetchCart}
+          disabled={loading}
+          title="Refresh cart"
+        >
+          {loading ? '🔄' : '↻'}
+        </button>
       </header>
 
       {loading ? (
@@ -442,11 +475,29 @@ export default function CartPage() {
       ) : (
         <div className="cart-grid">
           <div className="cart-list">
+            {/* Custom Design Notice */}
+            {items.some(item => item.title && item.title.includes('Custom Design')) && (
+              <div className="custom-design-notice">
+                <div className="custom-design-notice-content">
+                  <span className="custom-design-notice-icon">🎨</span>
+                  <div>
+                    <strong>Custom Design Ready!</strong>
+                    <p>Your personalized design has been completed by our team and is ready for purchase.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {items.map(item => (
               <div key={item.id} className="cart-row">
-                <img src={item.image_url || '/api/placeholder/80/80'} alt={item.title} className="thumb" />
                 <div className="info">
-                  <div className="title">{item.title}</div>
+                  <div className="title">
+                    {item.title}
+                    {/* Custom Design Badge */}
+                    {item.title && item.title.includes('Custom Design') && (
+                      <span className="custom-design-badge">✨ CUSTOM</span>
+                    )}
+                  </div>
                   {(() => {
                     const raw = item?.selected_options;
                     let opts = null;
@@ -514,13 +565,6 @@ export default function CartPage() {
                       title="Customize this item"
                     >
                       <LuWand /> Customize
-                    </button>
-                    <button 
-                      className="chat-item-btn"
-                      onClick={() => handleChatWithAdmin(item)}
-                      title="Chat about this item"
-                    >
-                      <LuMessageCircle /> Chat
                     </button>
                   </div>
                 </div>
@@ -732,8 +776,23 @@ export default function CartPage() {
             >
               {placing ? 'Processing…' : 
                customizationStatus && !customizationStatus.can_proceed_payment ? 
-               'Awaiting Approval' : 'Pay Securely'}
+               'Awaiting Approval' : 
+               PAYMENT_CONFIG.TEST_MODE ? 'Pay Securely (Test Mode)' : 'Pay Securely'}
             </button>
+            {PAYMENT_CONFIG.TEST_MODE && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#f59e0b', 
+                textAlign: 'center', 
+                marginTop: '8px',
+                padding: '6px 12px',
+                background: '#fef3c7',
+                borderRadius: '6px',
+                border: '1px solid #f59e0b'
+              }}>
+                🧪 Test Mode Active - No real payment will be processed
+              </div>
+            )}
             <Link className="btn btn-soft" to="/dashboard">Continue Shopping</Link>
           </aside>
         </div>
@@ -749,7 +808,49 @@ export default function CartPage() {
         .btn-back:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(59,130,246,.2); }
         .cart-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
         .cart-list { display: grid; gap: 10px; }
-        .cart-row { display: grid; grid-template-columns: 80px 1fr 32px; gap: 12px; align-items: center; padding: 10px; border: 1px solid #eee; border-radius: 10px; }
+        .cart-row { display: grid; grid-template-columns: 1fr 32px; gap: 12px; align-items: center; padding: 10px; border: 1px solid #eee; border-radius: 10px; }
+        .cart-row:has(.custom-design-badge) { border-color: #6b46c1; background: linear-gradient(135deg, #f8fafc, #f3f0ff); }
+        .custom-design-badge { 
+          display: inline-block; 
+          background: linear-gradient(135deg, #6b46c1, #8b5cf6); 
+          color: white; 
+          padding: 2px 8px; 
+          border-radius: 12px; 
+          font-size: 10px; 
+          font-weight: bold; 
+          margin-left: 8px; 
+          text-transform: uppercase;
+          box-shadow: 0 2px 4px rgba(107, 70, 193, 0.3);
+        }
+        .custom-design-notice {
+          background: linear-gradient(135deg, #f3f0ff, #faf5ff);
+          border: 2px solid #6b46c1;
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 16px;
+          box-shadow: 0 4px 12px rgba(107, 70, 193, 0.15);
+        }
+        .custom-design-notice-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .custom-design-notice-icon {
+          font-size: 24px;
+          flex-shrink: 0;
+        }
+        .custom-design-notice strong {
+          color: #6b46c1;
+          font-size: 16px;
+          display: block;
+          margin-bottom: 4px;
+        }
+        .custom-design-notice p {
+          margin: 0;
+          color: #4c1d95;
+          font-size: 14px;
+          line-height: 1.4;
+        }
         .thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
         .info { display: grid; gap: 8px; }
         .title { font-weight: 600; }
@@ -894,48 +995,6 @@ export default function CartPage() {
           color: white;
         }
 
-        .chat-item-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 12px;
-          background: #f0f9ff;
-          border: 1px solid #0ea5e9;
-          border-radius: 6px;
-          color: #0ea5e9;
-          font-size: 12px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .chat-item-btn:hover {
-          background: #0ea5e9;
-          color: white;
-        }
-
-        .chat-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 20px;
-        }
-
-        .chat-container {
-          width: 100%;
-          max-width: 600px;
-          max-height: 80vh;
-          overflow: hidden;
-          border-radius: 12px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
-
         /* Approval Popup Styles */
         .approval-popup-overlay {
           position: fixed;
@@ -1059,6 +1118,27 @@ export default function CartPage() {
           background: #e5e7eb;
           color: #374151;
         }
+        .btn-refresh {
+          background: #f3f4f6;
+          color: #4b5563;
+          border: 1px solid #d1d5db;
+          padding: 8px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 16px;
+          transition: all 0.2s;
+          justify-self: end;
+        }
+        .btn-refresh:hover {
+          background: #e5e7eb;
+          color: #374151;
+          transform: rotate(180deg);
+        }
+        .btn-refresh:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
       `}</style>
 
       {/* Customization Modal */}
@@ -1122,21 +1202,6 @@ export default function CartPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Product Chat */}
-      {showProductChat && chatProduct && (
-        <div className="chat-overlay">
-          <div className="chat-container">
-            <ProductChat
-              productId={chatProduct.id}
-              userId={auth?.user_id}
-              cartItemId={chatProduct.cartItemId}
-              productName={chatProduct.name}
-              onClose={() => setShowProductChat(false)}
-            />
           </div>
         </div>
       )}

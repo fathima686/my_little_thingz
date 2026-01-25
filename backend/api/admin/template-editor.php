@@ -311,6 +311,14 @@ function completeDesign($pdo, $input) {
                     $_SERVER['HTTP_X_ADMIN_USER_ID'] ?? null,
                     $_SERVER['HTTP_X_ADMIN_USER_ID'] ?? null
                 ]);
+                
+                // Add completed design to customer's cart
+                try {
+                    addCompletedDesignToCart($pdo, $requestId, $designId, $finalImageUrl);
+                } catch (Exception $e) {
+                    error_log("Failed to add completed design to cart: " . $e->getMessage());
+                    // Don't fail the whole operation, just log the error
+                }
             }
             
             $pdo->commit();
@@ -388,5 +396,159 @@ function exportDesign($pdo) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
+}
+
+/**
+ * Add completed custom design to customer's cart
+ */
+function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl, $adminSetPrice = null) {
+    // Get request details
+    $requestStmt = $pdo->prepare("
+        SELECT customer_id, user_id, title, description 
+        FROM custom_requests 
+        WHERE id = ?
+    ");
+    $requestStmt->execute([$requestId]);
+    $request = $requestStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$request) {
+        throw new Exception("Request not found");
+    }
+    
+    // Determine the final price to use
+    $finalPrice = 50.00; // Default fallback price
+    
+    if ($adminSetPrice && is_numeric($adminSetPrice) && $adminSetPrice > 0) {
+        // Use admin-set price (highest priority)
+        $finalPrice = (float)$adminSetPrice;
+        error_log("Using admin-set price: ₹$finalPrice for request #$requestId");
+        
+        // Update the custom_requests table with the final price
+        try {
+            // Check if price column exists, if not add it
+            $checkColumn = $pdo->query("SHOW COLUMNS FROM custom_requests LIKE 'final_price'");
+            if ($checkColumn->rowCount() == 0) {
+                $pdo->exec("ALTER TABLE custom_requests ADD COLUMN final_price DECIMAL(10,2) NULL");
+                error_log("Added final_price column to custom_requests table");
+            }
+            
+            // Update the request with the final price
+            $updatePriceStmt = $pdo->prepare("UPDATE custom_requests SET final_price = ? WHERE id = ?");
+            $updatePriceStmt->execute([$finalPrice, $requestId]);
+            error_log("Updated request #$requestId with final price: ₹$finalPrice");
+            
+        } catch (Exception $e) {
+            error_log("Failed to update request with final price: " . $e->getMessage());
+        }
+        
+    } else {
+        // Try to get price from existing columns as fallback
+        try {
+            // Check for final_price column first
+            $priceCheck = $pdo->query("SHOW COLUMNS FROM custom_requests LIKE 'final_price'");
+            if ($priceCheck && $priceCheck->rowCount() > 0) {
+                $priceStmt = $pdo->prepare("SELECT final_price FROM custom_requests WHERE id = ?");
+                $priceStmt->execute([$requestId]);
+                $priceResult = $priceStmt->fetch(PDO::FETCH_ASSOC);
+                if ($priceResult && $priceResult['final_price']) {
+                    $finalPrice = $priceResult['final_price'];
+                    error_log("Using existing final_price: ₹$finalPrice for request #$requestId");
+                }
+            } else {
+                // Check for budget fields as fallback
+                $budgetStmt = $pdo->prepare("SELECT budget_min FROM custom_requests WHERE id = ?");
+                $budgetStmt->execute([$requestId]);
+                $budgetResult = $budgetStmt->fetch(PDO::FETCH_ASSOC);
+                if ($budgetResult && $budgetResult['budget_min'] && is_numeric($budgetResult['budget_min'])) {
+                    $finalPrice = (float)$budgetResult['budget_min'];
+                    error_log("Using customer budget as fallback price: ₹$finalPrice for request #$requestId");
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Price determination failed, using default: " . $e->getMessage());
+        }
+    }
+    
+    $customerId = $request['customer_id'] ?: $request['user_id'];
+    if (!$customerId) {
+        throw new Exception("No customer ID found for request");
+    }
+    
+    // Create or get custom artwork entry
+    $artworkTitle = "Custom Design: " . ($request['title'] ?: "Request #$requestId");
+    $artworkDescription = $request['description'] ?: "Custom designed item";
+    
+    // Check if artwork already exists for this request
+    $checkArtworkStmt = $pdo->prepare("
+        SELECT id FROM artworks 
+        WHERE title = ? AND description LIKE ? 
+        LIMIT 1
+    ");
+    $checkArtworkStmt->execute([$artworkTitle, "%Request #$requestId%"]);
+    $existingArtwork = $checkArtworkStmt->fetch();
+    
+    if ($existingArtwork) {
+        $artworkId = $existingArtwork['id'];
+        
+        // Update existing artwork with the final price
+        $updateArtworkStmt = $pdo->prepare("
+            UPDATE artworks 
+            SET price = ?, image_url = COALESCE(?, image_url), updated_at = NOW()
+            WHERE id = ?
+        ");
+        $updateArtworkStmt->execute([$finalPrice, $imageUrl, $artworkId]);
+        error_log("Updated existing artwork #$artworkId with final price: ₹$finalPrice");
+        
+    } else {
+        // Create new artwork entry for the custom design
+        $insertArtworkStmt = $pdo->prepare("
+            INSERT INTO artworks (
+                title, description, price, image_url, 
+                status, availability, artist_id, category,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, 'active', 'available', 1, 'custom', NOW(), NOW())
+        ");
+        
+        $insertArtworkStmt->execute([
+            $artworkTitle,
+            $artworkDescription . " (Request #$requestId)",
+            $finalPrice,
+            $imageUrl ?: 'uploads/designs/default-custom.jpg'
+        ]);
+        
+        $artworkId = $pdo->lastInsertId();
+        error_log("Created new artwork #$artworkId with final price: ₹$finalPrice");
+    }
+    
+    // Check if already in cart
+    $checkCartStmt = $pdo->prepare("
+        SELECT id FROM cart 
+        WHERE user_id = ? AND artwork_id = ?
+    ");
+    $checkCartStmt->execute([$customerId, $artworkId]);
+    $existingCartItem = $checkCartStmt->fetch();
+    
+    if (!$existingCartItem) {
+        // Add to cart
+        $insertCartStmt = $pdo->prepare("
+            INSERT INTO cart (user_id, artwork_id, quantity, added_at)
+            VALUES (?, ?, 1, NOW())
+        ");
+        $insertCartStmt->execute([$customerId, $artworkId]);
+        
+        error_log("Added completed design to cart: Request #$requestId -> Artwork #$artworkId (₹$finalPrice) for Customer #$customerId");
+    } else {
+        error_log("Design already in cart: Request #$requestId -> Artwork #$artworkId (₹$finalPrice) for Customer #$customerId");
+    }
+    
+    // Update request to mark as ready for purchase
+    $updateRequestStmt = $pdo->prepare("
+        UPDATE custom_requests 
+        SET workflow_stage = 'design_completed', 
+            design_completed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ?
+    ");
+    $updateRequestStmt->execute([$requestId]);
 }
 ?>

@@ -6,6 +6,8 @@ const API_BASE = 'http://localhost/my_little_thingz/backend/api';
 export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, session = null, auth, isAdmin = false, adminHeader = {} }) {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [formData, setFormData] = useState({
     subject_id: '',
     title: '',
@@ -16,6 +18,200 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
     duration_minutes: 60,
     max_participants: 50
   });
+
+  // Validation functions
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+    
+    switch (name) {
+      case 'subject_id':
+        if (!value || value === '') {
+          newErrors.subject_id = 'Please select a subject';
+        } else {
+          delete newErrors.subject_id;
+        }
+        break;
+        
+      case 'title':
+        if (!value || value.trim() === '') {
+          newErrors.title = 'Title is required';
+        } else if (value.trim().length < 5) {
+          newErrors.title = 'Title must be at least 5 characters long';
+        } else if (value.trim().length > 100) {
+          newErrors.title = 'Title must not exceed 100 characters';
+        } else if (!/^[a-zA-Z0-9\s\-\.\,\:\(\)]+$/.test(value.trim())) {
+          newErrors.title = 'Title contains invalid characters';
+        } else {
+          delete newErrors.title;
+        }
+        break;
+        
+      case 'description':
+        if (value && value.trim().length > 500) {
+          newErrors.description = 'Description must not exceed 500 characters';
+        } else {
+          delete newErrors.description;
+        }
+        break;
+        
+      case 'google_meet_link':
+        if (!value || value.trim() === '') {
+          newErrors.google_meet_link = 'Google Meet link is required';
+        } else {
+          const meetLinkPattern = /^https:\/\/meet\.google\.com\/[a-z0-9\-]+$/;
+          if (!meetLinkPattern.test(value.trim())) {
+            newErrors.google_meet_link = 'Please enter a valid Google Meet link (e.g., https://meet.google.com/abc-defg-hij)';
+          } else {
+            delete newErrors.google_meet_link;
+          }
+        }
+        break;
+        
+      case 'scheduled_date':
+        if (!value) {
+          newErrors.scheduled_date = 'Date is required';
+        } else {
+          const selectedDate = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          if (selectedDate < today) {
+            newErrors.scheduled_date = 'Date cannot be in the past';
+          } else {
+            const maxDate = new Date();
+            maxDate.setMonth(maxDate.getMonth() + 6); // 6 months from now
+            if (selectedDate > maxDate) {
+              newErrors.scheduled_date = 'Date cannot be more than 6 months in the future';
+            } else {
+              delete newErrors.scheduled_date;
+            }
+          }
+        }
+        break;
+        
+      case 'scheduled_time':
+        if (!value) {
+          newErrors.scheduled_time = 'Time is required';
+        } else {
+          // If date is today, check if time is in the future
+          if (formData.scheduled_date === new Date().toISOString().split('T')[0]) {
+            const now = new Date();
+            const [hours, minutes] = value.split(':');
+            const selectedTime = new Date();
+            selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            
+            if (selectedTime <= now) {
+              newErrors.scheduled_time = 'Time must be in the future for today\'s date';
+            } else {
+              delete newErrors.scheduled_time;
+            }
+          } else {
+            delete newErrors.scheduled_time;
+          }
+        }
+        break;
+        
+      case 'duration_minutes':
+        const duration = parseInt(value);
+        if (!duration || isNaN(duration)) {
+          newErrors.duration_minutes = 'Duration is required';
+        } else if (duration < 15) {
+          newErrors.duration_minutes = 'Duration must be at least 15 minutes';
+        } else if (duration > 240) {
+          newErrors.duration_minutes = 'Duration cannot exceed 240 minutes (4 hours)';
+        } else {
+          delete newErrors.duration_minutes;
+        }
+        break;
+        
+      case 'max_participants':
+        const participants = parseInt(value);
+        if (!participants || isNaN(participants)) {
+          newErrors.max_participants = 'Max participants is required';
+        } else if (participants < 1) {
+          newErrors.max_participants = 'Must allow at least 1 participant';
+        } else if (participants > 100) {
+          newErrors.max_participants = 'Cannot exceed 100 participants';
+        } else {
+          delete newErrors.max_participants;
+        }
+        break;
+        
+      default:
+        break;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateForm = () => {
+    const fields = ['subject_id', 'title', 'google_meet_link', 'scheduled_date', 'scheduled_time', 'duration_minutes', 'max_participants'];
+    let isValid = true;
+    
+    fields.forEach(field => {
+      const fieldValid = validateField(field, formData[field]);
+      if (!fieldValid) isValid = false;
+    });
+    
+    // Additional cross-field validation
+    if (formData.scheduled_date && formData.scheduled_time) {
+      const sessionDateTime = new Date(`${formData.scheduled_date}T${formData.scheduled_time}`);
+      const now = new Date();
+      
+      if (sessionDateTime <= now) {
+        setErrors(prev => ({
+          ...prev,
+          scheduled_time: 'Session date and time must be in the future'
+        }));
+        isValid = false;
+      }
+    }
+    
+    return isValid;
+  };
+
+  const handleInputChange = (name, value) => {
+    // Sanitize input based on field type
+    let sanitizedValue = value;
+    
+    switch (name) {
+      case 'title':
+        // Remove potentially harmful characters but keep basic punctuation
+        sanitizedValue = value.replace(/[<>\"'&]/g, '').substring(0, 100);
+        break;
+      case 'description':
+        sanitizedValue = value.replace(/[<>\"'&]/g, '').substring(0, 500);
+        break;
+      case 'google_meet_link':
+        // Ensure it starts with https://meet.google.com/
+        sanitizedValue = value.trim().toLowerCase();
+        break;
+      case 'duration_minutes':
+      case 'max_participants':
+        // Ensure numeric values are within bounds
+        const numValue = parseInt(value);
+        if (!isNaN(numValue)) {
+          sanitizedValue = Math.max(0, numValue);
+        }
+        break;
+      default:
+        sanitizedValue = typeof value === 'string' ? value.trim() : value;
+        break;
+    }
+    
+    setFormData({ ...formData, [name]: sanitizedValue });
+    
+    // Validate field if it has been touched
+    if (touched[name]) {
+      validateField(name, sanitizedValue);
+    }
+  };
+
+  const handleBlur = (name) => {
+    setTouched({ ...touched, [name]: true });
+    validateField(name, formData[name]);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -60,10 +256,27 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
       duration_minutes: 60,
       max_participants: 50
     });
+    setErrors({});
+    setTouched({});
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Mark all fields as touched for validation display
+    const allFields = ['subject_id', 'title', 'google_meet_link', 'scheduled_date', 'scheduled_time', 'duration_minutes', 'max_participants'];
+    const newTouched = {};
+    allFields.forEach(field => newTouched[field] = true);
+    setTouched(newTouched);
+    
+    // Validate entire form
+    if (!validateForm()) {
+      window.dispatchEvent(new CustomEvent('toast', {
+        detail: { type: 'error', message: 'Please fix all validation errors before submitting' }
+      }));
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -134,7 +347,9 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
             </label>
             <select
               value={formData.subject_id}
-              onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
+              onChange={(e) => handleInputChange('subject_id', e.target.value)}
+              onBlur={() => handleBlur('subject_id')}
+              className={errors.subject_id ? 'error' : ''}
               required
             >
               <option value="">Select a subject</option>
@@ -144,6 +359,11 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
                 </option>
               ))}
             </select>
+            {errors.subject_id && (
+              <div className="error-message">
+                ⚠️ {errors.subject_id}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -151,20 +371,46 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              onBlur={() => handleBlur('title')}
               placeholder="e.g., Introduction to Hand Embroidery"
+              className={errors.title ? 'error' : ''}
+              maxLength="100"
               required
             />
+            <div className="input-info">
+              <span className={`char-count ${formData.title.length > 90 ? 'warning' : ''}`}>
+                {formData.title.length}/100 characters
+              </span>
+            </div>
+            {errors.title && (
+              <div className="error-message">
+                ⚠️ {errors.title}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
             <label>Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              onBlur={() => handleBlur('description')}
               placeholder="Brief description of what will be covered..."
+              className={errors.description ? 'error' : ''}
+              maxLength="500"
               rows="3"
             />
+            <div className="input-info">
+              <span className={`char-count ${formData.description.length > 450 ? 'warning' : ''}`}>
+                {formData.description.length}/500 characters
+              </span>
+            </div>
+            {errors.description && (
+              <div className="error-message">
+                ⚠️ {errors.description}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -175,10 +421,20 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
             <input
               type="url"
               value={formData.google_meet_link}
-              onChange={(e) => setFormData({ ...formData, google_meet_link: e.target.value })}
+              onChange={(e) => handleInputChange('google_meet_link', e.target.value)}
+              onBlur={() => handleBlur('google_meet_link')}
               placeholder="https://meet.google.com/xxx-xxxx-xxx"
+              className={errors.google_meet_link ? 'error' : ''}
               required
             />
+            <div className="input-info">
+              Must be a valid Google Meet link
+            </div>
+            {errors.google_meet_link && (
+              <div className="error-message">
+                ⚠️ {errors.google_meet_link}
+              </div>
+            )}
           </div>
 
           <div className="form-row">
@@ -190,10 +446,18 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
               <input
                 type="date"
                 value={formData.scheduled_date}
-                onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
+                onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
+                onBlur={() => handleBlur('scheduled_date')}
                 min={new Date().toISOString().split('T')[0]}
+                max={new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // 6 months from now
+                className={errors.scheduled_date ? 'error' : ''}
                 required
               />
+              {errors.scheduled_date && (
+                <div className="error-message">
+                  ⚠️ {errors.scheduled_date}
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -204,36 +468,66 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
               <input
                 type="time"
                 value={formData.scheduled_time}
-                onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
+                onChange={(e) => handleInputChange('scheduled_time', e.target.value)}
+                onBlur={() => handleBlur('scheduled_time')}
+                className={errors.scheduled_time ? 'error' : ''}
                 required
               />
+              {errors.scheduled_time && (
+                <div className="error-message">
+                  ⚠️ {errors.scheduled_time}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Duration (minutes)</label>
+              <label>Duration (minutes) *</label>
               <input
                 type="number"
                 value={formData.duration_minutes}
-                onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
+                onChange={(e) => handleInputChange('duration_minutes', e.target.value)}
+                onBlur={() => handleBlur('duration_minutes')}
                 min="15"
                 max="240"
+                step="15"
+                className={errors.duration_minutes ? 'error' : ''}
+                required
               />
+              <div className="input-info">
+                Between 15-240 minutes (15 min increments recommended)
+              </div>
+              {errors.duration_minutes && (
+                <div className="error-message">
+                  ⚠️ {errors.duration_minutes}
+                </div>
+              )}
             </div>
 
             <div className="form-group">
               <label>
                 <LuUsers size={18} />
-                Max Participants
+                Max Participants *
               </label>
               <input
                 type="number"
                 value={formData.max_participants}
-                onChange={(e) => setFormData({ ...formData, max_participants: parseInt(e.target.value) || 50 })}
+                onChange={(e) => handleInputChange('max_participants', e.target.value)}
+                onBlur={() => handleBlur('max_participants')}
                 min="1"
                 max="100"
+                className={errors.max_participants ? 'error' : ''}
+                required
               />
+              <div className="input-info">
+                1-100 participants
+              </div>
+              {errors.max_participants && (
+                <div className="error-message">
+                  ⚠️ {errors.max_participants}
+                </div>
+              )}
             </div>
           </div>
 
@@ -241,7 +535,11 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
             <button type="button" className="btn btn-outline" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              disabled={loading || Object.keys(errors).length > 0}
+            >
               {loading ? 'Saving...' : (session ? 'Update Session' : 'Create Session')}
             </button>
           </div>
@@ -337,6 +635,39 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
           box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        .form-group input.error,
+        .form-group select.error,
+        .form-group textarea.error {
+          border-color: #ef4444;
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .error-message {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 6px;
+          color: #ef4444;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .input-info {
+          margin-top: 4px;
+          font-size: 12px;
+          color: #6b7280;
+        }
+
+        .char-count {
+          font-size: 12px;
+          color: #6b7280;
+        }
+
+        .char-count.warning {
+          color: #f59e0b;
+          font-weight: 500;
+        }
+
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -383,6 +714,11 @@ export default function CreateLiveSessionModal({ isOpen, onClose, onSuccess, ses
         .btn-primary:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+          background: #9ca3af;
+        }
+
+        .btn-primary:disabled:hover {
+          background: #9ca3af;
         }
       `}</style>
     </div>

@@ -52,8 +52,15 @@ try {
     $isPro = ($userEmail === 'soudhame52@gmail.com');
     
     if (!$isPro) {
-        $subStmt = $pdo->prepare("SELECT plan_code FROM subscriptions WHERE email = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1");
-        $subStmt->execute([$userEmail]);
+        // Check subscription with proper JOIN to get plan_code
+        $subStmt = $pdo->prepare("
+            SELECT sp.plan_code 
+            FROM subscriptions s 
+            JOIN subscription_plans sp ON s.plan_id = sp.id 
+            WHERE s.user_id = ? AND s.status = 'active' 
+            ORDER BY s.created_at DESC LIMIT 1
+        ");
+        $subStmt->execute([$userId]);
         $sub = $subStmt->fetch(PDO::FETCH_ASSOC);
         $isPro = ($sub && $sub['plan_code'] === 'pro');
     }

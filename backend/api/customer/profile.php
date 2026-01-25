@@ -3,7 +3,7 @@
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, PUT, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, X-Tutorial-Email");
+header("Access-Control-Allow-Headers: Content-Type, X-Tutorial-Email, X-User-ID");
 
 ini_set("display_errors", 0);
 error_reporting(0);
@@ -11,6 +11,60 @@ error_reporting(0);
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     http_response_code(204);
     exit;
+}
+
+// Function to get real learning statistics from database
+function getLearningStats($pdo, $userId) {
+    try {
+        // Get learning progress data
+        $progressStmt = $pdo->prepare("
+            SELECT 
+                COUNT(*) as total_watched,
+                COUNT(CASE WHEN completion_percentage >= 80 THEN 1 END) as completed_tutorials,
+                COUNT(CASE WHEN completion_percentage > 0 AND completion_percentage < 80 THEN 1 END) as in_progress_tutorials,
+                SUM(COALESCE(watch_time_seconds, 0)) as total_watch_seconds
+            FROM learning_progress 
+            WHERE user_id = ?
+        ");
+        $progressStmt->execute([$userId]);
+        $progress = $progressStmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Calculate learning hours from watch time
+        $learning_hours = round(($progress['total_watch_seconds'] ?? 0) / 3600, 1);
+        
+        // If no progress data, check tutorial purchases for fallback
+        if (($progress['total_watched'] ?? 0) == 0) {
+            $purchaseStmt = $pdo->prepare("
+                SELECT COUNT(*) as purchased_count 
+                FROM tutorial_purchases 
+                WHERE user_id = ? AND payment_status = 'completed'
+            ");
+            $purchaseStmt->execute([$userId]);
+            $purchases = $purchaseStmt->fetch(PDO::FETCH_ASSOC);
+            
+            $purchased_count = $purchases['purchased_count'] ?? 0;
+            
+            return [
+                'completed_tutorials' => $purchased_count, // Assume purchased = watched for users without progress tracking
+                'in_progress_tutorials' => 0,
+                'learning_hours' => $purchased_count * 2.5 // Estimate 2.5 hours per tutorial
+            ];
+        }
+        
+        return [
+            'completed_tutorials' => (int)($progress['completed_tutorials'] ?? 0),
+            'in_progress_tutorials' => (int)($progress['in_progress_tutorials'] ?? 0),
+            'learning_hours' => $learning_hours
+        ];
+        
+    } catch (Exception $e) {
+        // Fallback to default values if database query fails
+        return [
+            'completed_tutorials' => 0,
+            'in_progress_tutorials' => 0,
+            'learning_hours' => 0
+        ];
+    }
 }
 
 try {
@@ -78,6 +132,7 @@ try {
         "subscription" => [
             "plan_code" => $planCode,
             "plan_name" => $planName,
+            "status" => "active", // FIXED: Use 'status' instead of 'subscription_status'
             "subscription_status" => "active",
             "is_active" => 1,
             "price" => $isPro ? 999 : 0,
@@ -103,11 +158,12 @@ try {
             ]
         ],
         
-        // Stats
+        // Stats - Get real data from database
         "stats" => [
             "purchased_tutorials" => $isPro ? 0 : 2,
-            "completed_tutorials" => 3,
-            "learning_hours" => $isPro ? 15.5 : 8.0,
+            "completed_tutorials" => getLearningStats($pdo, $userId)['completed_tutorials'],
+            "learning_hours" => getLearningStats($pdo, $userId)['learning_hours'],
+            "in_progress_tutorials" => getLearningStats($pdo, $userId)['in_progress_tutorials'],
             "practice_uploads" => $isPro ? 3 : 0,
             "is_pro_user" => $isPro
         ],

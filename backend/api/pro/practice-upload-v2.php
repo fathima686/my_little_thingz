@@ -211,7 +211,7 @@ try {
     
     // Process each image through enhanced authenticity system
     $analysisResults = [];
-    $requiresReview = false;
+    $requiresReview = true; // Force all uploads to require admin review
     $aiWarnings = [];
     $similarityFlags = [];
     $processingErrors = [];

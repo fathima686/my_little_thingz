@@ -115,7 +115,6 @@ try {
   $title = $_POST['title'] ?? '';
 
   if (trim($description) === '') { echo json_encode(['status'=>'error','message'=>'Description is required']); exit; }
-  if (trim($occasion) === '') { echo json_encode(['status'=>'error','message'=>'Occasion is required']); exit; }
   if (trim($deadline) === '') { echo json_encode(['status'=>'error','message'=>'Date is required']); exit; }
 
   // Require at least one image
@@ -126,7 +125,7 @@ try {
   if (!$hasImage) { echo json_encode(['status'=>'error','message'=>'At least one reference image is required']); exit; }
 
   if (trim($title) === '') {
-    $title = 'Cart customization - ' . $occasion . ' - ' . $deadline;
+    $title = 'Cart customization - ' . $deadline;
   }
 
   // Dynamically build INSERT statement based on existing columns

@@ -640,6 +640,40 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                     </>
                   )}
                   
+                  {/* Interactive Overlay Buttons */}
+                  <div className="artwork-overlay">
+                    <button
+                      className={`btn-icon ${wishlist.includes(String(artwork.id)) ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist(artwork.id);
+                      }}
+                      title={wishlist.includes(String(artwork.id)) ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                    >
+                      <LuHeart />
+                    </button>
+                    <button
+                      className="btn-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(artwork.id);
+                      }}
+                      title="Add to Cart"
+                    >
+                      <LuShoppingCart />
+                    </button>
+                    <button
+                      className="btn-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCustomizationRequest(artwork);
+                      }}
+                      title="Customize This Item"
+                    >
+                      <LuWand />
+                    </button>
+                  </div>
+                  
                   {/* Price Display - Always Visible */}
                   <div 
                     style={{
@@ -665,37 +699,6 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
                       console.log('Rendering price for:', artwork.title, 'Price:', artwork.price);
                       return ensureCurrencyText(artwork.price);
                     })()}
-                  </div>
-
-                  <div className="artwork-overlay">
-                    <button 
-                      className="btn-icon"
-                      onClick={() => setSelectedArtwork(artwork)}
-                      title="View Details"
-                    >
-                      <LuEye />
-                    </button>
-                    <button 
-                      className={`btn-icon ${wishlist.includes(String(artwork.id)) ? 'active' : ''}`}
-                      onClick={() => toggleWishlist(artwork.id)}
-                      title="Add to Wishlist"
-                    >
-                      <LuHeart />
-                    </button>
-                    <button 
-                      className="btn-icon"
-                      onClick={() => handleCustomizationRequest(artwork)}
-                      title="Request Customization"
-                    >
-                      <LuWand />
-                    </button>
-                    <button 
-                      className="btn-icon"
-                      onClick={() => addToCart(artwork.id)}
-                      title="Add to Cart"
-                    >
-                      <LuShoppingCart />
-                    </button>
                   </div>
                 </div>
                 <div className="artwork-info">
@@ -1013,6 +1016,23 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           cursor: pointer;
         }
 
+        /* Artwork Overlay - Interactive Buttons */
+        .artwork-overlay {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          gap: 12px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 20;
+        }
+
+        .artwork-card:hover .artwork-overlay {
+          opacity: 1;
+        }
+
         /* Price Overlay - Always Visible on Image - Using inline styles instead */
 
         /* Corner ribbon shown when item is on offer */
@@ -1032,45 +1052,41 @@ const ArtworkGallery = ({ onClose, onOpenWishlist, onOpenCart }) => {
           text-transform: uppercase;
         }
 
-        .artwork-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
-
-        .artwork-card:hover .artwork-overlay {
-          opacity: 1;
-        }
-
         .btn-icon {
-          background: white;
-          border: none;
+          background: rgba(255, 255, 255, 0.95);
+          border: 2px solid #93c5fd;
           border-radius: 50%;
-          width: 40px;
-          height: 40px;
+          width: 44px;
+          height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: all 0.2s ease;
+          color: #1e40af;
+          font-size: 18px;
+          box-shadow: 0 2px 8px rgba(147, 197, 253, 0.4);
+          backdrop-filter: blur(4px);
         }
 
         .btn-icon:hover {
           transform: scale(1.1);
+          background: #93c5fd;
+          color: white;
+          box-shadow: 0 4px 12px rgba(147, 197, 253, 0.6);
         }
 
         .btn-icon.active {
           background: #e74c3c;
+          border-color: #c0392b;
           color: white;
+          box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-icon.active:hover {
+          background: #c0392b;
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.6);
         }
 
         /* ISOLATED ARTWORK INFO STYLES - NO CONFLICTS */

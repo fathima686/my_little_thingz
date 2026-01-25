@@ -319,13 +319,9 @@ try {
     $source = isset($_POST['source']) && strtolower((string)$_POST['source']) === 'cart' ? 'cart' : 'form';
     
     if ($source === 'cart') {
-      // Cart customization: require description, occasion, date, and at least one image
+      // Cart customization: require description, date, and at least one image
       if (trim($description) === '') {
         echo json_encode(['status' => 'error', 'message' => 'Description is required for cart customization']);
-        exit;
-      }
-      if ($occasion === null || trim((string)$occasion) === '') {
-        echo json_encode(['status' => 'error', 'message' => 'Occasion is required for cart customization']);
         exit;
       }
       if ($deadline === null || trim((string)$deadline) === '') {

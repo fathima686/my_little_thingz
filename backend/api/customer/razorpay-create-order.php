@@ -1,10 +1,35 @@
 <?php
+// Comprehensive error handling to prevent HTML output in JSON responses
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+ini_set('log_errors', 1);
+ini_set('html_errors', 0);
+error_reporting(0); // Disable all error reporting to prevent HTML output
+
+// Set JSON header first
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { 
+    http_response_code(200);
+    exit(0); 
+}
+
+// Global error handler to ensure JSON output
+set_error_handler(function($severity, $message, $file, $line) {
+    error_log("PHP Error: $message in $file on line $line");
+    return true; // Don't execute PHP's internal error handler
+});
+
+// Global exception handler to ensure JSON output
+set_exception_handler(function($exception) {
+    error_log("Uncaught Exception: " . $exception->getMessage());
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Internal server error']);
+    exit;
+});
 
 require_once '../../config/database.php';
 $config = require __DIR__ . '/../../config/razorpay.php';

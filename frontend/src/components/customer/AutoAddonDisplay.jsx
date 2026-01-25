@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuGift, LuRibbon, LuFileText, LuPackage, LuStar, LuCheckCircle, LuInfo, LuShoppingCart, LuHeart } from 'react-icons/lu';
+import { LuGift, LuRibbon, LuFileText, LuPackage, LuStar, LuCheck, LuInfo, LuShoppingCart, LuHeart } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/auto-addon-display.css';
 
@@ -252,7 +252,7 @@ const AutoAddonDisplay = ({
                 )}
 
                 <div className="addon-reason">
-                  <LuCheckCircle className="reason-icon" />
+                  <LuCheck className="reason-icon" />
                   <span className="reason-text">{addon.reason}</span>
                 </div>
 
@@ -278,7 +278,7 @@ const AutoAddonDisplay = ({
               <div className="addon-card-footer">
                 <div className="selection-indicator">
                   {isSelected ? (
-                    <LuCheckCircle className="check-icon selected" />
+                    <LuCheck className="check-icon selected" />
                   ) : (
                     <div className="check-circle"></div>
                   )}

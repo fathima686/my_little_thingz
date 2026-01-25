@@ -6,8 +6,8 @@ import {
   LuTrendingUp, 
   LuTrash2, 
   LuSettings,
-  LuCheckCircle,
-  LuXCircle,
+  LuCheck,
+  LuX,
   LuClock,
   LuTrendingUp,
   LuActivity
@@ -182,7 +182,7 @@ const BPNNTrainingDashboard = () => {
   };
 
   const getStatusIcon = (isActive) => {
-    return isActive ? <LuCheckCircle className="status-icon active" /> : <LuXCircle className="status-icon inactive" />;
+    return isActive ? <LuCheck className="status-icon active" /> : <LuX className="status-icon inactive" />;
   };
 
   return (

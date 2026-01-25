@@ -276,8 +276,8 @@ try {
         }
     }
 
-    // For free plan, just activate without payment
-    if ($planCode === 'free' && $plan['price'] == 0) {
+    // For free plans (price = 0), just activate without payment
+    if ($plan['price'] == 0) {
         $currentStart = date('Y-m-d H:i:s');
         $currentEnd = date('Y-m-d H:i:s', strtotime('+365 days'));
         

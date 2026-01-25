@@ -192,7 +192,7 @@ try {
     
     // Process each image through simplified authenticity system
     $analysisResults = [];
-    $requiresReview = false;
+    $requiresReview = true; // Force all uploads to require admin review
     
     foreach ($uploadedFiles as $index => $file) {
         $imageId = $uploadId . '_' . $index;

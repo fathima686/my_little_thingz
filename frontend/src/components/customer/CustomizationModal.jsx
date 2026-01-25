@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
-import PriceCalculator from './PriceCalculator';
 import { LuX, LuUpload, LuImage, LuCalendar, LuDollarSign, LuMessageSquare } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 import { trimWhitespace, validateRequired } from '../../utils/validation';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
-const ALLOWED_OCCASIONS = ['wedding', 'birthday', 'anniversary', 'graduation', 'baby_shower', 'valentine', 'christmas', 'other'];
-
 const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChange }) => {
   const { auth } = useAuth();
   const [formData, setFormData] = useState({
     description: '',
-    occasion: '',
     deadline: ''
   });
   const [images, setImages] = useState([]);
@@ -30,10 +26,10 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const trimmedValue = name === 'description' ? trimWhitespace(value) : value;
+    // Don't trim whitespace during input - allow natural typing
     setFormData(prev => ({
       ...prev,
-      [name]: trimmedValue
+      [name]: value
     }));
     // Clear error when user starts typing
     if (errors[name]) {
@@ -103,13 +99,6 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
       newErrors.description = 'Description must be no more than 5000 characters';
     }
     
-    // Validate occasion - required, must be from allowed list
-    if (!formData.occasion || !formData.occasion.trim()) {
-      newErrors.occasion = 'Occasion is required';
-    } else if (!ALLOWED_OCCASIONS.includes(formData.occasion)) {
-      newErrors.occasion = 'Please select a valid occasion';
-    }
-    
     // Validate deadline - required, must be valid future date
     if (!formData.deadline) {
       newErrors.deadline = 'Date is required';
@@ -151,7 +140,6 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
       submitData.append('artwork_id', String(artwork.id));
       submitData.append('quantity', '1');
       submitData.append('description', trimWhitespace(formData.description));
-      submitData.append('occasion', formData.occasion);
       submitData.append('date', formData.deadline);
       submitData.append('source', 'cart');
 
@@ -205,7 +193,6 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
   const resetForm = () => {
     setFormData({
       description: '',
-      occasion: '',
       deadline: ''
     });
     setImages([]);
@@ -259,15 +246,6 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
 
           <form onSubmit={handleSubmit} className="customization-form">
             <div className="form-group">
-              <label>Customize and see price</label>
-              <PriceCalculator artwork={artwork} onChange={({ selectedOptions, total }) => {
-                setFormData(prev => ({ ...prev, selected_options: selectedOptions, computed_total: total }));
-                if (typeof onOptionsChange === 'function' && artwork?.id) {
-                  onOptionsChange(artwork.id, selectedOptions, total);
-                }
-              }} />
-            </div>
-            <div className="form-group">
               <label htmlFor="description">Description *</label>
               <textarea
                 id="description"
@@ -279,29 +257,6 @@ const CustomizationModal = ({ artwork, isOpen, onClose, onSuccess, onOptionsChan
                 className={errors.description ? 'error' : ''}
               />
               {errors.description && <span className="error-text">{errors.description}</span>}
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="occasion">Occasion *</label>
-                <select
-                  id="occasion"
-                  name="occasion"
-                  value={formData.occasion}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select occasion</option>
-                  <option value="wedding">Wedding</option>
-                  <option value="birthday">Birthday</option>
-                  <option value="anniversary">Anniversary</option>
-                  <option value="graduation">Graduation</option>
-                  <option value="baby_shower">Baby Shower</option>
-                  <option value="valentine">Valentine's Day</option>
-                  <option value="christmas">Christmas</option>
-                  <option value="other">Other</option>
-                </select>
-                {errors.occasion && <span className="error-text">{errors.occasion}</span>}
-              </div>
             </div>
 
             <div className="form-group">

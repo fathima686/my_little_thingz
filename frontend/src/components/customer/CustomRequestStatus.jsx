@@ -81,39 +81,43 @@ export default function CustomRequestStatus({ onClose }) {
     return statusMatch || designStatusMatch;
   });
 
-  const handlePayment = (request) => {
-    // Navigate to cart/checkout with customization data
-    // In a real app, this would add the item to cart and redirect to checkout
-    if (request.artwork_id && auth?.user_id) {
-      // Add to cart then redirect
-      fetch(`${API_BASE}/customer/cart.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': auth.user_id
-        },
-        body: JSON.stringify({
-          artwork_id: request.artwork_id,
-          quantity: 1,
-          customization_request_id: request.id
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Redirect to checkout
-          window.location.href = '/checkout';
-        } else {
-          alert('Failed to add to cart: ' + (data.message || 'Unknown error'));
+  const handlePayment = async (request) => {
+    // For completed designs, they should already be in the cart
+    // Just navigate to cart page
+    if (request.design_status === 'design_completed' || request.status === 'completed') {
+      // Check if item is in cart first
+      try {
+        const cartRes = await fetch(`${API_BASE}/customer/cart.php`, {
+          headers: { 'X-User-ID': auth?.user_id }
+        });
+        const cartData = await cartRes.json();
+        
+        if (cartData.status === 'success') {
+          // Look for custom design related to this request
+          const customItem = cartData.cart_items.find(item => 
+            item.title && (
+              item.title.includes('Custom Design') && 
+              item.title.includes(`Request #${request.id}`)
+            )
+          );
+          
+          if (customItem) {
+            // Item is already in cart, navigate to cart
+            window.location.href = '/cart';
+            return;
+          }
         }
-      })
-      .catch(err => {
-        console.error('Error proceeding to payment:', err);
-        alert('Error proceeding to payment');
-      });
-    } else {
-      alert('Please log in to proceed to payment');
+      } catch (err) {
+        console.error('Error checking cart:', err);
+      }
+      
+      // If not in cart, show message that design should be added automatically
+      alert('Your completed design should appear in your cart automatically. Please refresh your cart or contact support if you don\'t see it.');
+      return;
     }
+    
+    // For other statuses, show appropriate message
+    alert('Design is not yet completed. Please wait for admin to finish your design.');
   };
 
   return (
@@ -184,7 +188,7 @@ export default function CustomRequestStatus({ onClose }) {
                     {req.occasion && <span><strong>Occasion:</strong> {req.occasion}</span>}
                     {req.deadline && <span><strong>Deadline:</strong> {new Date(req.deadline).toLocaleDateString()}</span>}
                     {(req.budget_min || req.budget_max) && (
-                      <span><strong>Budget:</strong> {req.budget_min || req.budget_max}</span>
+                      <span><strong>Price:</strong> ₹{req.budget_min || req.budget_max}</span>
                     )}
                     {req.gift_tier && (
                       <span><strong>Tier:</strong> <span style={{textTransform: 'capitalize'}}>{req.gift_tier === 'premium' ? '✨ Premium' : '🎁 Budget-Friendly'}</span></span>
@@ -258,7 +262,7 @@ export default function CustomRequestStatus({ onClose }) {
                         <LuDownload /> Download PDF
                       </a>
                     )}
-                    {req.status === 'completed' && (
+                    {(req.design_status === 'design_completed' || req.status === 'completed') && (
                       <button 
                         className="btn" 
                         style={{
@@ -268,7 +272,33 @@ export default function CustomRequestStatus({ onClose }) {
                         }}
                         onClick={() => handlePayment(req)}
                       >
-                        💳 Proceed to Payment
+                        🛒 Go to Cart & Pay
+                      </button>
+                    )}
+                    {req.design_status === 'designing' && (
+                      <button 
+                        className="btn" 
+                        style={{
+                          background: '#f59e0b',
+                          color: '#fff',
+                          border: 'none'
+                        }}
+                        disabled
+                      >
+                        🎨 Design in Progress...
+                      </button>
+                    )}
+                    {(!req.design_status || req.design_status === 'pending') && req.status === 'pending' && (
+                      <button 
+                        className="btn" 
+                        style={{
+                          background: '#6b7280',
+                          color: '#fff',
+                          border: 'none'
+                        }}
+                        disabled
+                      >
+                        ⏳ Waiting for Admin
                       </button>
                     )}
                   </div>
@@ -313,7 +343,7 @@ export default function CustomRequestStatus({ onClose }) {
                 {selected.occasion && <p><strong>Occasion:</strong> {selected.occasion}</p>}
                 {selected.deadline && <p><strong>Deadline:</strong> {new Date(selected.deadline).toLocaleDateString()}</p>}
                 {(selected.budget_min || selected.budget_max) && (
-                  <p><strong>Budget:</strong> ₹{selected.budget_min || selected.budget_max}</p>
+                  <p><strong>Price:</strong> ₹{selected.budget_min || selected.budget_max}</p>
                 )}
                 {selected.gift_tier && (
                   <p><strong>Gift Tier:</strong> <span style={{textTransform: 'capitalize'}}>{selected.gift_tier === 'premium' ? '✨ Premium' : '🎁 Budget-Friendly'}</span></p>

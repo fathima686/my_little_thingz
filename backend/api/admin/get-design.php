@@ -55,15 +55,16 @@ try {
         }
     }
     
-    // Ensure custom_request_designs table exists
+    // Ensure custom_request_designs table exists (updated for file-based storage)
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS custom_request_designs (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             request_id INT UNSIGNED NOT NULL,
             template_id INT UNSIGNED,
-            canvas_width INT NOT NULL,
-            canvas_height INT NOT NULL,
+            canvas_width INT NOT NULL DEFAULT 800,
+            canvas_height INT NOT NULL DEFAULT 600,
             canvas_data LONGTEXT,
+            canvas_data_file VARCHAR(255),
             design_image_url VARCHAR(500),
             design_pdf_url VARCHAR(500),
             version INT DEFAULT 1,
@@ -109,6 +110,17 @@ try {
             $design["design_pdf_url"] = $baseUrl . ltrim($design["design_pdf_url"], '/');
         }
         
+        // Load canvas data from file if available
+        if ($design["canvas_data_file"] && !$design["canvas_data"]) {
+            $canvasDataPath = __DIR__ . "/../../uploads/designs/data/" . $design["canvas_data_file"];
+            if (file_exists($canvasDataPath)) {
+                $canvasDataContent = file_get_contents($canvasDataPath);
+                if ($canvasDataContent) {
+                    $design["canvas_data"] = $canvasDataContent;
+                }
+            }
+        }
+        
         echo json_encode([
             "status" => "success",
             "design" => $design
@@ -132,6 +144,17 @@ try {
             }
             if ($design["design_pdf_url"] && !preg_match('/^https?:\/\//', $design["design_pdf_url"])) {
                 $design["design_pdf_url"] = $baseUrl . ltrim($design["design_pdf_url"], '/');
+            }
+            
+            // Load canvas data from file if available
+            if ($design["canvas_data_file"] && !$design["canvas_data"]) {
+                $canvasDataPath = __DIR__ . "/../../uploads/designs/data/" . $design["canvas_data_file"];
+                if (file_exists($canvasDataPath)) {
+                    $canvasDataContent = file_get_contents($canvasDataPath);
+                    if ($canvasDataContent) {
+                        $design["canvas_data"] = $canvasDataContent;
+                    }
+                }
             }
         }
         

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuMail, LuCrown, LuArrowLeft, LuCalendar, LuTrendingUp, LuBookOpen, LuUpload } from 'react-icons/lu';
+import { LuMail, LuCrown, LuArrowLeft, LuCalendar, LuTrendingUp, LuBookOpen, LuUpload, LuPlay } from 'react-icons/lu';
 import { useTutorialAuth } from '../contexts/TutorialAuthContext';
 import '../styles/profile-edit.css';
 
@@ -175,6 +175,16 @@ export default function ProfileEdit() {
                     <div className="stat-info">
                       <span className="stat-number">{profile.stats.learning_hours}h</span>
                       <span className="stat-label">Learning Hours</span>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-card">
+                    <div className="stat-icon">
+                      <LuPlay size={24} />
+                    </div>
+                    <div className="stat-info">
+                      <span className="stat-number">{profile.stats.watched_tutorials || (profile.stats.completed_tutorials + (profile.stats.in_progress_tutorials || 0))}</span>
+                      <span className="stat-label">Watched Videos</span>
                     </div>
                   </div>
                   

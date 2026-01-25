@@ -226,36 +226,9 @@ if (count($uploadedFiles) > 0) {
             ");
             $progressStmt->execute([$userId, $tutorialId]);
             
-            // For demo purposes, auto-approve the upload for soudhame52@gmail.com
-            if ($userEmail === 'soudhame52@gmail.com') {
-                $approveStmt = $pdo->prepare("
-                    UPDATE practice_uploads 
-                    SET status = 'approved', 
-                        admin_feedback = 'Auto-approved for demo - Excellent work! Great attention to detail and creativity.',
-                        reviewed_date = NOW()
-                    WHERE id = ?
-                ");
-                $approveStmt->execute([$uploadId]);
-                
-                // Update progress with practice bonus (add 25% for approved practice)
-                $bonusStmt = $pdo->prepare("
-                    UPDATE learning_progress 
-                    SET completion_percentage = LEAST(100, GREATEST(completion_percentage, 75)),
-                        completed_at = CASE 
-                            WHEN GREATEST(completion_percentage, 75) >= 80 THEN NOW() 
-                            ELSE completed_at 
-                        END,
-                        last_accessed = NOW()
-                    WHERE user_id = ? AND tutorial_id = ?
-                ");
-                $bonusStmt->execute([$userId, $tutorialId]);
-                
-                $uploadStatus = 'approved';
-                $practiceBonus = 25;
-            } else {
-                $uploadStatus = 'pending';
-                $practiceBonus = 0;
-            }
+            // All practice uploads require manual admin review
+            $uploadStatus = 'pending';
+            $practiceBonus = 0;
         }
     } catch (Exception $e) {
         // Continue even if database fails
@@ -273,7 +246,7 @@ if (count($uploadedFiles) > 0) {
         'practice_status' => $uploadStatus ?? 'pending',
         'practice_bonus' => $practiceBonus ?? 0,
         'progress_updated' => true,
-        'auto_approved' => ($userEmail === 'soudhame52@gmail.com'),
+        'auto_approved' => false,
         'ai_analysis' => [
             'message' => 'AI analysis completed for your uploaded images',
             'analysis_results' => $analysisResults,
@@ -287,9 +260,7 @@ if (count($uploadedFiles) > 0) {
                     : 0
             ]
         ],
-        'message_detail' => $userEmail === 'soudhame52@gmail.com' ? 
-            'Upload successful and auto-approved with AI analysis! Your progress has been updated with a +25% bonus.' :
-            'Upload successful with AI analysis! Your practice work is pending review.'
+        'message_detail' => 'Upload successful with AI analysis! Your practice work is pending admin review.'
     ]);
 } else {
     echo json_encode([

@@ -5,11 +5,12 @@ import TemplateGallery from './TemplateGallery';
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
 export default function DesignEditorModal({ requestId, isOpen, onClose, onComplete, inline = false, customerImages = null }) {
-  const [showTemplateSelection, setShowTemplateSelection] = useState(true);
+  const [showFrameSelection, setShowFrameSelection] = useState(true); // Show frame selection first
   const [templates, setTemplates] = useState([]);
   const [groupedTemplates, setGroupedTemplates] = useState({});
   const [selectedCategory, setSelectedCategory] = useState('Frame'); // Default to Frame category
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [selectedFrameLayout, setSelectedFrameLayout] = useState(null); // Selected frame layout like '2x2', '4x4'
   const [templateLayout, setTemplateLayout] = useState(null); // Grid layout: '1x1', '2x2', '3x3', etc.
   const [canvas, setCanvas] = useState(null);
   const [fabricCanvas, setFabricCanvas] = useState(null);
@@ -17,6 +18,11 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
   const [loading, setLoading] = useState(false);
   const [activeTool, setActiveTool] = useState(null);
   const [templateImageSlots, setTemplateImageSlots] = useState({}); // Store images for each grid slot
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionData, setCompletionData] = useState({
+    finalPrice: '',
+    adminNotes: ''
+  });
 
   // Undo / Redo history for Fabric canvas
   const historyRef = useRef([]);
@@ -26,17 +32,33 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
   const MAX_HISTORY = 50;
 
   useEffect(() => {
-    if (isOpen && showTemplateSelection) {
-      loadTemplates();
-    }
-  }, [isOpen, showTemplateSelection]);
-
-  useEffect(() => {
-    if (isOpen && !showTemplateSelection && selectedTemplate && !fabricCanvas) {
-      console.log('useEffect: Initializing canvas, customerImages:', customerImages?.length || 0);
+    if (isOpen && !showFrameSelection && selectedTemplate && !fabricCanvas) {
+      console.log('useEffect: Initializing canvas after frame selection, customerImages:', customerImages?.length || 0);
       initializeCanvas();
     }
-  }, [isOpen, showTemplateSelection, selectedTemplate, customerImages]);
+  }, [isOpen, showFrameSelection, selectedTemplate, customerImages]);
+
+  const selectFrameLayout = (layout) => {
+    setSelectedFrameLayout(layout);
+    setTemplateLayout(layout);
+    
+    // Create a template based on the selected frame layout
+    const [rows, cols] = layout.split('×').map(Number);
+    const canvasWidth = 800;
+    const canvasHeight = 600;
+    
+    setSelectedTemplate({
+      width: canvasWidth,
+      height: canvasHeight,
+      background_color: '#ffffff',
+      layout: layout,
+      rows: rows,
+      cols: cols
+    });
+    
+    setShowFrameSelection(false);
+    console.log('Frame layout selected:', layout);
+  };
 
   const loadTemplates = async () => {
     try {
@@ -121,6 +143,134 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
       reader.readAsDataURL(file);
     };
     input.click();
+  };
+
+  // Frame Layout Selector Component
+  const FrameSelector = () => {
+    const frameLayouts = [
+      { layout: '1×1', label: 'Single Frame', description: 'One large image' },
+      { layout: '2×1', label: '2×1 Layout', description: 'Two images side by side' },
+      { layout: '1×2', label: '1×2 Layout', description: 'Two images stacked' },
+      { layout: '2×2', label: '2×2 Grid', description: 'Four images in a grid' },
+      { layout: '3×2', label: '3×2 Grid', description: 'Six images in a grid' },
+      { layout: '2×3', label: '2×3 Grid', description: 'Six images in a grid' },
+      { layout: '3×3', label: '3×3 Grid', description: 'Nine images in a grid' },
+      { layout: '4×4', label: '4×4 Grid', description: 'Sixteen images in a grid' }
+    ];
+
+    return (
+      <div style={{ padding: 20 }}>
+        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+          <h3 style={{ margin: 0, marginBottom: 8 }}>Select Frame Layout</h3>
+          <p style={{ color: '#666', margin: 0 }}>Choose how many photos you want to arrange in your frame</p>
+        </div>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 20,
+          maxWidth: 800,
+          margin: '0 auto'
+        }}>
+          {frameLayouts.map(frame => {
+            const [rows, cols] = frame.layout.split('×').map(Number);
+            return (
+              <div
+                key={frame.layout}
+                onClick={() => selectFrameLayout(frame.layout)}
+                style={{
+                  border: '2px solid #ddd',
+                  borderRadius: 12,
+                  padding: 20,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.2s',
+                  background: 'white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#2196f3';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#ddd';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                }}
+              >
+                {/* Visual Grid Preview */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                  gridTemplateRows: `repeat(${rows}, 1fr)`,
+                  gap: 4,
+                  width: 120,
+                  height: 90,
+                  margin: '0 auto 16px',
+                  border: '2px solid #333',
+                  borderRadius: 8,
+                  padding: 8,
+                  background: '#f9f9f9'
+                }}>
+                  {Array(rows * cols).fill(0).map((_, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        background: '#e0e0e0',
+                        borderRadius: 2,
+                        minHeight: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 8,
+                        color: '#999'
+                      }}
+                    >
+                      📷
+                    </div>
+                  ))}
+                </div>
+                
+                <div style={{ fontWeight: 'bold', marginBottom: 4, fontSize: 16 }}>
+                  {frame.label}
+                </div>
+                <div style={{ fontSize: 12, color: '#666' }}>
+                  {frame.description}
+                </div>
+                <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                  {rows * cols} photo{rows * cols > 1 ? 's' : ''}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div style={{ textAlign: 'center', marginTop: 30 }}>
+          <button 
+            onClick={() => {
+              // Skip frame selection and go with blank canvas
+              setSelectedTemplate({
+                width: 800,
+                height: 600,
+                background_color: '#ffffff'
+              });
+              setShowFrameSelection(false);
+            }}
+            style={{
+              background: 'none',
+              border: '1px solid #ddd',
+              padding: '8px 16px',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: '#666'
+            }}
+          >
+            Skip - Use Blank Canvas
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Grid Template Preview Component
@@ -221,18 +371,27 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
 
     // Wait a bit for canvas to be fully initialized
     setTimeout(() => {
+      // If we have a selected frame layout, create grid guides
+      if (selectedTemplate.layout && selectedTemplate.rows && selectedTemplate.cols) {
+        createGridGuides(fc, selectedTemplate.rows, selectedTemplate.cols);
+      }
+      
       // Load existing design if available
       loadExistingDesign(fc).then((hasDesign) => {
         if (!hasDesign) {
           console.log('No existing design found, loading images...');
           
-          // If we have a grid layout with image slots, load those first
-          if (templateLayout && Object.keys(templateImageSlots).length > 0) {
+          // If we have a grid layout, load customer images into grid slots
+          if (selectedTemplate.layout && customerImages && customerImages.length > 0) {
+            setTimeout(() => {
+              loadCustomerImagesIntoGrid(fc, customerImages, selectedTemplate.rows, selectedTemplate.cols);
+            }, 300);
+          } else if (templateLayout && Object.keys(templateImageSlots).length > 0) {
             setTimeout(() => {
               loadGridLayoutImages(fc);
             }, 300);
           } else {
-            // Otherwise, load customer reference images
+            // Otherwise, load customer reference images normally
             setTimeout(() => {
               loadCustomerImagesWithData(fc, customerImages);
             }, 300);
@@ -248,6 +407,255 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
         }
       });
     }, 100);
+  };
+
+  const createGridGuides = (fc, rows, cols) => {
+    if (!fc) return;
+    
+    const fabric = window.fabric;
+    const canvasWidth = fc.width;
+    const canvasHeight = fc.height;
+    const cellWidth = canvasWidth / cols;
+    const cellHeight = canvasHeight / rows;
+    const padding = 5;
+    
+    // Create interactive grid slots with plus buttons
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const slotIndex = row * cols + col;
+        const cellLeft = col * cellWidth + padding;
+        const cellTop = row * cellHeight + padding;
+        const cellW = cellWidth - (padding * 2);
+        const cellH = cellHeight - (padding * 2);
+        
+        // Create slot background
+        const slotBg = new fabric.Rect({
+          left: cellLeft,
+          top: cellTop,
+          width: cellW,
+          height: cellH,
+          fill: '#f8f9fa',
+          stroke: '#dee2e6',
+          strokeWidth: 2,
+          strokeDashArray: [5, 5],
+          selectable: false,
+          evented: false,
+          excludeFromExport: true,
+          name: `gridSlot_${slotIndex}`
+        });
+        
+        // Create plus icon text
+        const plusIcon = new fabric.Text('+', {
+          left: cellLeft + cellW / 2,
+          top: cellTop + cellH / 2,
+          fontSize: Math.min(cellW, cellH) * 0.3,
+          fill: '#6c757d',
+          fontFamily: 'Arial',
+          textAlign: 'center',
+          originX: 'center',
+          originY: 'center',
+          selectable: false,
+          evented: true,
+          excludeFromExport: true,
+          name: `gridPlus_${slotIndex}`,
+          hoverCursor: 'pointer'
+        });
+        
+        // Create invisible clickable area
+        const clickArea = new fabric.Rect({
+          left: cellLeft,
+          top: cellTop,
+          width: cellW,
+          height: cellH,
+          fill: 'transparent',
+          selectable: false,
+          evented: true,
+          excludeFromExport: true,
+          name: `gridClick_${slotIndex}`,
+          hoverCursor: 'pointer'
+        });
+        
+        // Add click handler for this slot
+        clickArea.on('mousedown', () => {
+          handleGridSlotClick(slotIndex, row, col, fc);
+        });
+        
+        plusIcon.on('mousedown', () => {
+          handleGridSlotClick(slotIndex, row, col, fc);
+        });
+        
+        fc.add(slotBg);
+        fc.add(plusIcon);
+        fc.add(clickArea);
+      }
+    }
+    
+    fc.renderAll();
+    console.log(`Created ${rows}×${cols} interactive grid slots`);
+  };
+
+  const handleGridSlotClick = (slotIndex, row, col, fc) => {
+    console.log(`Clicked grid slot ${slotIndex} at position (${row}, ${col})`);
+    
+    // Create file input for image selection
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        addImageToGridSlot(event.target.result, slotIndex, row, col, fc);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const addImageToGridSlot = (imageUrl, slotIndex, row, col, fc) => {
+    if (!fc) return;
+    
+    const fabric = window.fabric;
+    const canvasWidth = fc.width;
+    const canvasHeight = fc.height;
+    const cols = selectedTemplate.cols || 2;
+    const cellWidth = canvasWidth / cols;
+    const cellHeight = canvasHeight / selectedTemplate.rows;
+    const padding = 5;
+    
+    fabric.Image.fromURL(imageUrl, (fabricImg) => {
+      if (!fabricImg) return;
+      
+      // Calculate position and size for this grid cell
+      const cellLeft = col * cellWidth + padding;
+      const cellTop = row * cellHeight + padding;
+      const maxWidth = cellWidth - (padding * 2);
+      const maxHeight = cellHeight - (padding * 2);
+      
+      // Scale image to fit within the cell
+      const scale = Math.min(maxWidth / fabricImg.width, maxHeight / fabricImg.height, 1);
+      
+      fabricImg.set({
+        left: cellLeft + (maxWidth - fabricImg.width * scale) / 2,
+        top: cellTop + (maxHeight - fabricImg.height * scale) / 2,
+        scaleX: scale,
+        scaleY: scale,
+        selectable: true,
+        evented: true,
+        hasControls: true,
+        hasBorders: true,
+        name: `gridImage_${slotIndex}`
+      });
+      
+      // Remove the plus icon for this slot
+      const plusIcon = fc.getObjects().find(obj => obj.name === `gridPlus_${slotIndex}`);
+      if (plusIcon) {
+        fc.remove(plusIcon);
+      }
+      
+      fc.add(fabricImg);
+      fc.setActiveObject(fabricImg);
+      fc.renderAll();
+      
+      console.log(`Added image to grid slot ${slotIndex} at position (${row}, ${col})`);
+    }, { crossOrigin: 'anonymous' });
+  };
+
+  const loadCustomerImagesIntoGrid = (fc, images, rows, cols) => {
+    if (!fc || !images || images.length === 0) return;
+    
+    console.log(`Auto-loading ${images.length} customer images into ${rows}×${cols} grid`);
+    
+    // Process images to load
+    const imagesToLoad = images
+      .filter(img => {
+        const url = typeof img === 'string' ? img : (img.url || img.image_url || img.image_path || '');
+        return url;
+      })
+      .map(img => ({
+        url: typeof img === 'string' ? img : (img.url || img.image_url || img.image_path || ''),
+        filename: typeof img === 'string' ? 'image' : (img.filename || img.original_filename || img.original_name || 'image')
+      }));
+    
+    // Load images into grid slots automatically
+    imagesToLoad.forEach((img, index) => {
+      if (index >= rows * cols) return; // Don't exceed grid capacity
+      
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      
+      setTimeout(() => {
+        addImageToGridSlot(img.url, index, row, col, fc);
+      }, index * 200); // Stagger loading for better UX
+    });
+  };
+
+  const clearGridSlot = (slotIndex, fc) => {
+    if (!fc) return;
+    
+    // Remove image from this slot
+    const imageToRemove = fc.getObjects().find(obj => obj.name === `gridImage_${slotIndex}`);
+    if (imageToRemove) {
+      fc.remove(imageToRemove);
+    }
+    
+    // Re-add plus icon for this slot
+    const rows = selectedTemplate.rows || 2;
+    const cols = selectedTemplate.cols || 2;
+    const row = Math.floor(slotIndex / cols);
+    const col = slotIndex % cols;
+    
+    const canvasWidth = fc.width;
+    const canvasHeight = fc.height;
+    const cellWidth = canvasWidth / cols;
+    const cellHeight = canvasHeight / rows;
+    const padding = 5;
+    
+    const cellLeft = col * cellWidth + padding;
+    const cellTop = row * cellHeight + padding;
+    const cellW = cellWidth - (padding * 2);
+    const cellH = cellHeight - (padding * 2);
+    
+    const fabric = window.fabric;
+    const plusIcon = new fabric.Text('+', {
+      left: cellLeft + cellW / 2,
+      top: cellTop + cellH / 2,
+      fontSize: Math.min(cellW, cellH) * 0.3,
+      fill: '#6c757d',
+      fontFamily: 'Arial',
+      textAlign: 'center',
+      originX: 'center',
+      originY: 'center',
+      selectable: false,
+      evented: true,
+      excludeFromExport: true,
+      name: `gridPlus_${slotIndex}`,
+      hoverCursor: 'pointer'
+    });
+    
+    plusIcon.on('mousedown', () => {
+      handleGridSlotClick(slotIndex, row, col, fc);
+    });
+    
+    fc.add(plusIcon);
+    fc.renderAll();
+  };
+
+  const resetGrid = () => {
+    if (!fabricCanvas || !selectedTemplate.layout) return;
+    
+    const rows = selectedTemplate.rows || 2;
+    const cols = selectedTemplate.cols || 2;
+    const totalSlots = rows * cols;
+    
+    // Remove all grid images
+    for (let i = 0; i < totalSlots; i++) {
+      clearGridSlot(i, fabricCanvas);
+    }
+    
+    console.log('Grid reset - all slots cleared');
   };
 
   const saveSnapshot = (fc) => {
@@ -683,38 +1091,101 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
     fabricCanvas.renderAll();
   };
 
-  const saveDesign = async (finalStatus = 'designing') => {
+  const saveDesign = async (finalStatus = 'designing', finalPrice = null, adminNotes = '') => {
     if (!fabricCanvas || !selectedTemplate) return;
     setLoading(true);
     
     try {
-      const canvasData = fabricCanvas.toJSON();
-      const previewImage = fabricCanvas.toDataURL({ format: 'png', quality: 0.8 });
-      const exportImage = fabricCanvas.toDataURL({ format: 'png', quality: 1.0 });
+      console.log('Saving design with status:', finalStatus);
       
-      const res = await fetch(`${API_BASE}/admin/save-design.php`, {
+      // Get canvas data but exclude embedded images to reduce size
+      const canvasData = fabricCanvas.toJSON(['selectable', 'evented', 'hasControls', 'hasBorders']);
+      
+      // Remove base64 image data from canvas JSON to reduce size
+      const cleanCanvasData = JSON.parse(JSON.stringify(canvasData));
+      if (cleanCanvasData.objects) {
+        cleanCanvasData.objects.forEach(obj => {
+          if (obj.type === 'image' && obj.src && obj.src.startsWith('data:')) {
+            // Replace base64 data with a placeholder - we'll save images separately
+            obj.src = 'placeholder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            obj._originalSrc = 'removed_for_size'; // Mark as removed
+          }
+        });
+      }
+      
+      console.log('Original canvas data size:', JSON.stringify(canvasData).length, 'characters');
+      console.log('Cleaned canvas data size:', JSON.stringify(cleanCanvasData).length, 'characters');
+      
+      // Generate images with lower quality to reduce size
+      const previewImage = fabricCanvas.toDataURL({ format: 'jpeg', quality: 0.6 });
+      const exportImage = fabricCanvas.toDataURL({ format: 'jpeg', quality: 0.8 });
+      
+      console.log('Preview image size:', previewImage.length, 'characters');
+      console.log('Export image size:', exportImage.length, 'characters');
+      
+      console.log('Canvas data prepared, making API call...');
+      
+      const requestBody = {
+        request_id: requestId,
+        design_id: designId,
+        canvas_data: cleanCanvasData, // Use cleaned data
+        preview_image: previewImage,
+        export_image: exportImage,
+        status: finalStatus,
+        final_price: finalPrice,
+        admin_notes: adminNotes
+      };
+      
+      const requestBodySize = JSON.stringify(requestBody).length;
+      console.log('Total request body size:', requestBodySize, 'characters');
+      
+      // Check if still too large
+      if (requestBodySize > 50000000) { // 50MB limit for chunked approach
+        throw new Error('Design is extremely large. Please reduce the number of images or use smaller images.');
+      }
+      
+      const res = await fetch(`${API_BASE}/admin/save-design-chunked.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: requestId,
-          design_id: designId,
-          canvas_data: canvasData,
-          preview_image: previewImage,
-          export_image: exportImage,
-          status: finalStatus
-        })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
       });
       
-      const data = await res.json();
+      console.log('API response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('API error response:', errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 200)}`);
+      }
+      
+      const responseText = await res.text();
+      console.log('Raw API response:', responseText.substring(0, 500));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.error('Response text:', responseText);
+        throw new Error('Server returned invalid JSON. Check server logs for PHP errors.');
+      }
+      
       if (data.status === 'success') {
-        if (finalStatus === 'design_completed' && onComplete) {
-          onComplete();
+        console.log('✓ Design saved successfully:', data);
+        if (finalStatus === 'design_completed') {
+          alert('🎉 Design completed successfully!\n\nThe completed design has been automatically added to the customer\'s cart. They can now proceed with payment.');
+          // Don't call onComplete here - it will be called from handleCompletionSubmit
+        } else {
+          alert(`Design saved successfully! ${data.canvas_data_file ? '(File-based storage)' : ''}`);
         }
-        alert('Design saved successfully!');
       } else {
         throw new Error(data.message || 'Failed to save design');
       }
     } catch (err) {
+      console.error('Save design error:', err);
       alert('Error saving design: ' + err.message);
     } finally {
       setLoading(false);
@@ -722,9 +1193,29 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
   };
 
   const completeDesign = () => {
-    if (confirm('Mark this design as completed? This will update the request status.')) {
-      saveDesign('design_completed');
+    setShowCompletionModal(true);
+  };
+
+  const handleCompletionSubmit = () => {
+    if (!completionData.finalPrice || parseFloat(completionData.finalPrice) <= 0) {
+      alert('Please enter a valid final price for the completed design.');
+      return;
     }
+    
+    if (confirm(`Complete this design with final price ₹${completionData.finalPrice}?\n\nThis will add the item to customer's cart and they can proceed with payment.`)) {
+      saveDesign('design_completed', completionData.finalPrice, completionData.adminNotes);
+      setShowCompletionModal(false);
+      
+      // Call onComplete callback AFTER the design is saved with price
+      if (onComplete) {
+        onComplete();
+      }
+    }
+  };
+
+  const handleCompletionCancel = () => {
+    setShowCompletionModal(false);
+    setCompletionData({ finalPrice: '', adminNotes: '' });
   };
 
   const downloadImage = () => {
@@ -760,7 +1251,7 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
           background: '#f9f9f9',
           flexShrink: 0
         }}>
-          <h3 style={{ margin: 0 }}>{showTemplateSelection ? 'Select Template' : 'Design Editor'}</h3>
+          <h3 style={{ margin: 0 }}>{showFrameSelection ? 'Select Frame Layout' : 'Design Editor'}</h3>
           {requestId && (
             <div style={{ fontSize: 14, color: '#666' }}>
               Request ID: <strong>#{requestId}</strong>
@@ -768,54 +1259,10 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
           )}
         </div>
 
-        {/* Template Selection - Using Canva-style TemplateGallery */}
-        {showTemplateSelection ? (
-          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <TemplateGallery
-              inline={true}
-              onSelectTemplate={async (template) => {
-                try {
-                  // Use template-gallery.php API to track usage
-                  const res = await fetch(`${API_BASE}/admin/template-gallery.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      action: 'use',
-                      template_id: template.id,
-                      request_id: requestId
-                    })
-                  });
-                  const data = await res.json();
-
-                  // Map template to format expected by editor
-                  const mappedTemplate = {
-                    ...template,
-                    width: template.canvas_width || 800,
-                    height: template.canvas_height || 600,
-                    background_color: template.template_data?.background?.color || 
-                                     (template.template_data?.background?.colors?.[0]) || 
-                                     '#ffffff'
-                  };
-
-                  setSelectedTemplate(mappedTemplate);
-                  if (data.status === 'success' && data.design_id) {
-                    setDesignId(data.design_id);
-                  }
-                  setShowTemplateSelection(false);
-                } catch (e) {
-                  alert('Error selecting template: ' + e.message);
-                }
-              }}
-              onCreateNew={() => {
-                // "Create blank" option
-                setSelectedTemplate({
-                  width: 800,
-                  height: 600,
-                  background_color: '#ffffff'
-                });
-                setShowTemplateSelection(false);
-              }}
-            />
+        {/* Frame Selection */}
+        {showFrameSelection ? (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <FrameSelector />
           </div>
         ) : (
           <>
@@ -856,6 +1303,11 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
                 <button onClick={deleteSelected} className="btn btn-outline btn-sm">
                   🗑️ Delete
                 </button>
+                {selectedTemplate.layout && (
+                  <button onClick={resetGrid} className="btn btn-outline btn-sm">
+                    🔄 Reset Grid
+                  </button>
+                )}
                 <button onClick={undo} className="btn btn-outline btn-sm">
                   <LuUndo /> Undo
                 </button>
@@ -865,13 +1317,15 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
               </div>
               <div style={{ flex: 1, minWidth: 20 }} />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button onClick={saveDesign} className="btn btn-primary btn-sm" disabled={loading}>
-                  <LuSave /> Save
-                </button>
                 <button onClick={downloadImage} className="btn btn-outline btn-sm">
                   <LuDownload /> Download
                 </button>
-                <button onClick={completeDesign} className="btn btn-success btn-sm" disabled={loading}>
+                <button 
+                  onClick={completeDesign}
+                  className="btn btn-success btn-sm" 
+                  disabled={loading}
+                  type="button"
+                >
                   ✓ Complete Design
                 </button>
               </div>
@@ -942,8 +1396,8 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
         borderRadius: 8,
         maxWidth: '95%',
         maxHeight: '95%',
-        width: showTemplateSelection ? 800 : 1200,
-        height: showTemplateSelection ? 600 : 800,
+        width: showFrameSelection ? 800 : 1200,
+        height: showFrameSelection ? 600 : 800,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'
@@ -956,62 +1410,16 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h3>{showTemplateSelection ? 'Select Template' : 'Design Editor'}</h3>
+          <h3>{showFrameSelection ? 'Select Frame Layout' : 'Design Editor'}</h3>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 24 }}>
             <LuX />
           </button>
         </div>
 
-        {/* Template Selection */}
-        {showTemplateSelection ? (
-          <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: 20
-            }}>
-              {templates.map(template => (
-                <div
-                  key={template.id}
-                  onClick={() => selectTemplate(template)}
-                  style={{
-                    border: '2px solid #ddd',
-                    borderRadius: 8,
-                    padding: 16,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.2s',
-                    background: selectedTemplate?.id === template.id ? '#e3f2fd' : 'white'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#2196f3'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#ddd'}
-                >
-                  <div style={{
-                    width: '100%',
-                    height: 120,
-                    border: '1px solid #ddd',
-                    background: template.background_color || '#fff',
-                    marginBottom: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 12,
-                    color: '#666'
-                  }}>
-                    {template.orientation === 'portrait' ? '📄' : template.orientation === 'landscape' ? '📰' : '⬜'}
-                  </div>
-                  <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{template.name}</div>
-                  <div style={{ fontSize: 12, color: '#666' }}>
-                    {template.width} × {template.height}px
-                  </div>
-                  {template.description && (
-                    <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
-                      {template.description}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+        {/* Frame Selection */}
+        {showFrameSelection ? (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <FrameSelector />
           </div>
         ) : (
           <>
@@ -1048,6 +1456,11 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
               <button onClick={deleteSelected} className="btn btn-outline btn-sm">
                 🗑️ Delete
               </button>
+              {selectedTemplate.layout && (
+                <button onClick={resetGrid} className="btn btn-outline btn-sm">
+                  🔄 Reset Grid
+                </button>
+              )}
               <button onClick={undo} className="btn btn-outline btn-sm">
                 <LuUndo /> Undo
               </button>
@@ -1055,13 +1468,15 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
                 <LuRedo /> Redo
               </button>
               <div style={{ flex: 1 }} />
-              <button onClick={saveDesign} className="btn btn-primary btn-sm" disabled={loading}>
-                <LuSave /> Save
-              </button>
               <button onClick={downloadImage} className="btn btn-outline btn-sm">
                 <LuDownload /> Download
               </button>
-              <button onClick={completeDesign} className="btn btn-success btn-sm" disabled={loading}>
+              <button 
+                onClick={completeDesign}
+                className="btn btn-success btn-sm" 
+                disabled={loading}
+                type="button"
+              >
                 ✓ Complete Design
               </button>
             </div>
@@ -1098,6 +1513,109 @@ export default function DesignEditorModal({ requestId, isOpen, onClose, onComple
           </div>
         )}
       </div>
+
+      {/* Design Completion Modal */}
+      {showCompletionModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            padding: 24,
+            width: '90%',
+            maxWidth: 500,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', color: '#2c3e50' }}>Complete Design</h3>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: '#2c3e50' }}>
+                Final Price (₹) *
+              </label>
+              <input
+                type="number"
+                value={completionData.finalPrice}
+                onChange={(e) => setCompletionData(prev => ({ ...prev, finalPrice: e.target.value }))}
+                placeholder="Enter final price for this design"
+                min="1"
+                step="0.01"
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  fontSize: 14
+                }}
+                required
+                autoFocus
+              />
+              <small style={{ color: '#666', fontSize: 12 }}>
+                This will be the price charged to the customer
+              </small>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: '#2c3e50' }}>
+                Admin Notes (Optional)
+              </label>
+              <textarea
+                value={completionData.adminNotes}
+                onChange={(e) => setCompletionData(prev => ({ ...prev, adminNotes: e.target.value }))}
+                placeholder="Add any notes about the completed design..."
+                rows="3"
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleCompletionCancel}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  background: 'white',
+                  color: '#666',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompletionSubmit}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: 6,
+                  background: '#27ae60',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}
+              >
+                ✓ Complete Design
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

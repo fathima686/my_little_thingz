@@ -89,7 +89,7 @@ try {
             }
         }
 
-        $query = "SELECT $selectCols
+        $query = "SELECT $selectCols, a.category
                   FROM cart c
                   JOIN artworks a ON c.artwork_id = a.id
                   LEFT JOIN users u ON a.artist_id = u.id
@@ -99,6 +99,46 @@ try {
         $stmt = $db->prepare($query);
         $stmt->execute([$user_id]);
         $cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // For custom designs, get the final_price from custom_requests table
+        foreach ($cart_items as &$item) {
+            // Check if this is a custom design
+            $isCustomDesign = (
+                (isset($item['category']) && $item['category'] === 'custom') ||
+                (isset($item['title']) && strpos($item['title'], 'Custom Design') !== false)
+            );
+            
+            if ($isCustomDesign) {
+                // Extract request ID from artwork description or title
+                $requestId = null;
+                
+                // Try to get the full artwork record to check description
+                $artworkStmt = $db->prepare("SELECT description FROM artworks WHERE id = ?");
+                $artworkStmt->execute([$item['artwork_id']]);
+                $artworkData = $artworkStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($artworkData && preg_match('/Request #(\d+)/', $artworkData['description'], $matches)) {
+                    $requestId = $matches[1];
+                } elseif (preg_match('/Request #(\d+)/', $item['title'], $matches)) {
+                    $requestId = $matches[1];
+                }
+                
+                // If we found a request ID, get the final_price
+                if ($requestId) {
+                    $requestStmt = $db->prepare("SELECT final_price FROM custom_requests WHERE id = ? AND final_price IS NOT NULL");
+                    $requestStmt->execute([$requestId]);
+                    $requestData = $requestStmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($requestData && $requestData['final_price']) {
+                        // Override the artwork price with the custom request final_price
+                        $item['price'] = $requestData['final_price'];
+                        $item['original_artwork_price'] = $item['price']; // Keep track of original
+                        $item['is_custom_design'] = true;
+                        $item['custom_request_id'] = $requestId;
+                    }
+                }
+            }
+        }
 
         // Compute effective prices and totals
         $now = new DateTime('now');

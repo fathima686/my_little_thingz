@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuDownload, LuImage, LuFileText, LuCheckCircle, LuClock, LuX } from 'react-icons/lu';
+import { LuDownload, LuImage, LuFileText, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";

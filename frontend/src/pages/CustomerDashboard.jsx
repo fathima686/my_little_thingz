@@ -8,7 +8,6 @@ import { useAuth } from "../contexts/AuthContext";
 import ArtworkGallery from "../components/customer/ArtworkGallery";
 import CustomGiftRequest from "../components/customer/CustomGiftRequest";
 import OrderTracking from "../components/customer/OrderTracking";
-const CustomRequestStatus = React.lazy(() => import("../components/customer/CustomRequestStatus"));
 import WishlistManager from "../components/customer/WishlistManager";
 import CartDrawer from "../components/customer/CartDrawer";
 import CustomizationModal from "../components/customer/CustomizationModal";
@@ -330,7 +329,6 @@ export default function CustomerDashboard() {
             <button type="button" className="nav-item" onClick={() => openModal('gallery')}><LuGift /> Browse</button>
             <button type="button" className="nav-item" onClick={() => navigate('/cart')}><LuPackage /> Cart</button>
             <button type="button" className="nav-item" onClick={() => openModal('orders')}><LuPackage /> Orders</button>
-            <button type="button" className="nav-item" onClick={() => openModal('custom-requests')}><LuPackage /> Requests</button>
             <button type="button" className="nav-item" onClick={() => openModal('wishlist')}><LuHeart /> Wishlist</button>
             <button type="button" className="nav-item" onClick={() => navigate('/profile')}><LuUser /> Profile</button>
             <button type="button" className="btn btn-soft small" onClick={handleLogout}><LuLogOut /> Logout</button>
@@ -688,11 +686,6 @@ export default function CustomerDashboard() {
       )}
       {activeModal === 'custom-request' && <CustomGiftRequest onClose={closeModal} />}
       {activeModal === 'orders' && <OrderTracking onClose={closeModal} />}
-      {activeModal === 'custom-requests' && (
-        <React.Suspense fallback={<div className="modal-overlay"><div className="modal-content"><div>Loading requests...</div></div></div>}>
-          <CustomRequestStatus onClose={closeModal} />
-        </React.Suspense>
-      )}
       {activeModal === 'wishlist' && <WishlistManager onClose={closeModal} />}
 
       {/* Cart Drawer */}

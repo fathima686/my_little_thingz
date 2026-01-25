@@ -56,7 +56,7 @@ try {
                 FROM artworks a
                 LEFT JOIN users u ON a.artist_id = u.id
                 LEFT JOIN categories c ON a.category_id = c.id
-                WHERE a.status = 'active'";
+                WHERE a.status = 'active' AND (a.category != 'custom' OR a.category IS NULL)";
 
         $params = [];
 

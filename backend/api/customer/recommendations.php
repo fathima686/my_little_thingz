@@ -49,14 +49,14 @@ try {
     // - Else if user_id provided: recommend recent/popular items in user's preferred categories (from wishlist or orders if available)
     // - Else: return recent active artworks
 
-    $baseWhere = "a.status = 'active'";
+    $baseWhere = "a.status = 'active' AND (a.category != 'custom' OR a.category IS NULL)";
     $params = [];
 
     if ($artworkId > 0) {
         // Fetch the anchor artwork
         $stmt = $db->prepare("SELECT a.id, a.category_id, a.price, a.title, c.name AS category_name
                                FROM artworks a LEFT JOIN categories c ON a.category_id = c.id
-                               WHERE a.id = :id AND a.status='active' LIMIT 1");
+                               WHERE a.id = :id AND a.status='active' AND (a.category != 'custom' OR a.category IS NULL) LIMIT 1");
         $stmt->bindValue(':id', $artworkId, PDO::PARAM_INT);
         $stmt->execute();
         $anchor = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import CustomizationRequests from "../components/admin/CustomizationRequests";
 import CreateLiveSessionModal from "../components/live-teaching/CreateLiveSessionModal";
 import DesignEditorModal from "../components/admin/DesignEditorModal";
+import UnboxingVideoReview from "../components/admin/UnboxingVideoReview";
 import { LuVideo, LuPlus, LuPencil, LuTrash2, LuCalendar, LuClock, LuUsers, LuExternalLink, LuImage, LuX } from "react-icons/lu";
 import "../styles/admin.css";
 
@@ -60,7 +61,14 @@ export default function AdminDashboard() {
   const [reviewsReplyDraft, setReviewsReplyDraft] = useState({});
   const [reviewsSentiments, setReviewsSentiments] = useState({});
 
-  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | design-editor | ai-image-generator | artworks | requirements | orders | tutorials | live-sessions | settings
+  const [activeSection, setActiveSection] = useState('overview'); // overview | suppliers | supplier-products | supplier-inventory | custom-requests | design-editor | ai-image-generator | artworks | requirements | orders | tutorials | live-sessions | practice-uploads | settings
+
+  // Practice Uploads management state
+  const [practiceUploads, setPracticeUploads] = useState([]);
+  const [practiceFilter, setPracticeFilter] = useState('pending'); // pending, approved, rejected, all
+  const [practiceLoading, setPracticeLoading] = useState(false);
+  const [reviewingUpload, setReviewingUpload] = useState(null);
+  const [reviewFeedback, setReviewFeedback] = useState('');
 
   // Live Sessions management state
   const [liveSessions, setLiveSessions] = useState([]);
@@ -190,6 +198,9 @@ export default function AdminDashboard() {
           break;
         case 'live-sessions':
           await Promise.all([fetchLiveSessions(), fetchLiveSubjects()]);
+          break;
+        case 'practice-uploads':
+          await fetchPracticeUploads();
           break;
         default:
           // Refresh all data for unknown sections
@@ -724,6 +735,63 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       console.error('Failed to load tutorial categories:', e);
+    }
+  };
+
+  // Practice Uploads management functions
+  const fetchPracticeUploads = async () => {
+    try {
+      setPracticeLoading(true);
+      const url = `${API_BASE}/admin/pro-learners.php?action=pending_uploads&status=${practiceFilter}`;
+      const res = await fetch(url, { 
+        headers: { 
+          ...adminHeader,
+          'X-Admin-Token': 'admin_secret_token'
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        // The API returns 'pending_uploads' key (which now contains all filtered uploads)
+        setPracticeUploads(data.pending_uploads || []);
+        console.log(`Loaded ${data.total_count || 0} practice uploads with filter: ${data.filter_status}`);
+      } else {
+        console.error('Failed to load practice uploads:', data.message);
+        setPracticeUploads([]);
+      }
+    } catch (e) {
+      console.error('Failed to load practice uploads:', e);
+      setPracticeUploads([]);
+    } finally {
+      setPracticeLoading(false);
+    }
+  };
+
+  const reviewPracticeUpload = async (uploadId, status, feedback = '') => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/pro-learners.php`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          ...adminHeader,
+          'X-Admin-Token': 'admin_secret_token'
+        },
+        body: JSON.stringify({
+          upload_id: uploadId,
+          status: status,
+          admin_feedback: feedback
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        alert(`Practice upload ${status} successfully!`);
+        setReviewingUpload(null);
+        setReviewFeedback('');
+        await fetchPracticeUploads(); // Refresh the list
+      } else {
+        alert(data.message || `Failed to ${status} practice upload`);
+      }
+    } catch (e) {
+      alert('Network error reviewing practice upload');
     }
   };
 
@@ -1344,6 +1412,8 @@ export default function AdminDashboard() {
           <button className={activeSection === 'reviews' ? 'active' : ''} onClick={() => { setActiveSection('reviews'); fetchReviews(); }} title="Customer Reviews">Customer Reviews</button>
           <button className={activeSection === 'tutorials' ? 'active' : ''} onClick={() => { setActiveSection('tutorials'); fetchTutorials(); fetchTutorialCategories(); }} title="Tutorial Videos Management">Tutorials</button>
           <button className={activeSection === 'live-sessions' ? 'active' : ''} onClick={() => { setActiveSection('live-sessions'); fetchLiveSessions(); fetchLiveSubjects(); }} title="Live Teaching Sessions">Live Sessions</button>
+          <button className={activeSection === 'practice-uploads' ? 'active' : ''} onClick={() => { setActiveSection('practice-uploads'); fetchPracticeUploads(); }} title="Practice Upload Review">📝 Practice Uploads</button>
+          <button className={activeSection === 'unboxing-review' ? 'active' : ''} onClick={() => { setActiveSection('unboxing-review'); }} title="Unboxing Video Review">📹 Unboxing Review</button>
           {/* Promotional Offers removed as requested */}
           <div className="cart-mini" style={{marginTop:12, padding:'10px 8px', background:'#f8f7ff', borderRadius:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -2954,10 +3024,6 @@ export default function AdminDashboard() {
                                     <LuClock size={14} />
                                     <span>{session.duration_minutes} minutes</span>
                                   </div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <LuUsers size={14} />
-                                    <span>{session.registered_count || 0} / {session.max_participants} registered</span>
-                                  </div>
                                 </div>
                                 <div style={{ marginTop: 12 }}>
                                   <a 
@@ -3003,6 +3069,174 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
+              </section>
+            )}
+
+            {activeSection === 'practice-uploads' && (
+              <section id="practice-uploads" className="widget" style={{ marginTop: 12 }}>
+                <div className="widget-head">
+                  <h3>Practice Upload Review</h3>
+                  <div className="filter-controls">
+                    <select 
+                      value={practiceFilter} 
+                      onChange={(e) => {
+                        setPracticeFilter(e.target.value);
+                        fetchPracticeUploads();
+                      }}
+                      className="filter-select"
+                    >
+                      <option value="pending">Pending Review</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="all">All Uploads</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="widget-body">
+                  {practiceLoading ? (
+                    <div className="loading-state">Loading practice uploads...</div>
+                  ) : practiceUploads.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No practice uploads found for the selected filter.</p>
+                    </div>
+                  ) : (
+                    <div className="practice-uploads-grid">
+                      {practiceUploads.map((upload) => (
+                        <div key={upload.id} className="practice-upload-card">
+                          <div className="upload-header">
+                            <div className="upload-info">
+                              <h4>{upload.tutorial_title}</h4>
+                              <p className="student-info">
+                                {upload.first_name} {upload.last_name} ({upload.email})
+                              </p>
+                              <p className="upload-date">
+                                Uploaded: {new Date(upload.upload_date).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className={`status-badge status-${upload.status}`}>
+                              {upload.status.charAt(0).toUpperCase() + upload.status.slice(1)}
+                            </div>
+                          </div>
+
+                          {upload.description && (
+                            <div className="upload-description">
+                              <strong>Description:</strong>
+                              <p>{upload.description}</p>
+                            </div>
+                          )}
+
+                          {upload.images && (
+                            <div className="upload-images">
+                              <strong>Submitted Images:</strong>
+                              <div className="images-grid">
+                                {JSON.parse(upload.images).map((image, idx) => (
+                                  <div key={idx} className="image-preview">
+                                    <img 
+                                      src={`${UPLOADS_BASE}/uploads/practice/${image.stored_name}`}
+                                      alt={`Practice work ${idx + 1}`}
+                                      onClick={() => {
+                                        setLightboxUrl(`${UPLOADS_BASE}/uploads/practice/${image.stored_name}`);
+                                        setLightboxAlt(`Practice work by ${upload.first_name} ${upload.last_name}`);
+                                      }}
+                                    />
+                                    <span className="image-name">{image.original_name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {upload.admin_feedback && (
+                            <div className="admin-feedback">
+                              <strong>Admin Feedback:</strong>
+                              <p>{upload.admin_feedback}</p>
+                            </div>
+                          )}
+
+                          {upload.status === 'pending' && (
+                            <div className="review-actions">
+                              <button 
+                                className="btn-approve"
+                                onClick={() => setReviewingUpload(upload)}
+                              >
+                                Review Upload
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Review Modal */}
+                {reviewingUpload && (
+                  <div className="modal-overlay" onClick={() => setReviewingUpload(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                      <div className="modal-header">
+                        <h3>Review Practice Upload</h3>
+                        <button className="close-btn" onClick={() => setReviewingUpload(null)}>
+                          <LuX size={20} />
+                        </button>
+                      </div>
+                      
+                      <div className="modal-body">
+                        <div className="upload-summary">
+                          <h4>{reviewingUpload.tutorial_title}</h4>
+                          <p>Student: {reviewingUpload.first_name} {reviewingUpload.last_name}</p>
+                          <p>Email: {reviewingUpload.email}</p>
+                          <p>Uploaded: {new Date(reviewingUpload.upload_date).toLocaleDateString()}</p>
+                        </div>
+
+                        {reviewingUpload.description && (
+                          <div className="description-section">
+                            <strong>Student Description:</strong>
+                            <p>{reviewingUpload.description}</p>
+                          </div>
+                        )}
+
+                        <div className="feedback-section">
+                          <label htmlFor="review-feedback">Admin Feedback:</label>
+                          <textarea
+                            id="review-feedback"
+                            value={reviewFeedback}
+                            onChange={(e) => setReviewFeedback(e.target.value)}
+                            placeholder="Provide feedback to the student..."
+                            rows={4}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="modal-actions">
+                        <button 
+                          className="btn-approve"
+                          onClick={() => reviewPracticeUpload(reviewingUpload.id, 'approved', reviewFeedback)}
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          className="btn-reject"
+                          onClick={() => reviewPracticeUpload(reviewingUpload.id, 'rejected', reviewFeedback)}
+                        >
+                          Reject
+                        </button>
+                        <button 
+                          className="btn-cancel"
+                          onClick={() => setReviewingUpload(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeSection === 'unboxing-review' && (
+              <section id="unboxing-review" className="widget" style={{ marginTop: 12 }}>
+                <UnboxingVideoReview adminHeader={adminHeader} />
               </section>
             )}
 

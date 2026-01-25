@@ -1,10 +1,8 @@
 <?php
 /**
- * Save Design API
- * Saves canvas JSON and exports as image/PDF for custom requests
+ * Chunked Save Design API - Handles large data by saving in chunks
  */
 
-// Prevent any output before headers
 ob_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -13,7 +11,7 @@ ini_set('log_errors', 1);
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Email, X-Admin-User-Id");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     ob_end_clean();
@@ -26,21 +24,10 @@ try {
     $database = new Database();
     $pdo = $database->getConnection();
     
-    // Increase MySQL packet size for this session
-    try {
-        $pdo->exec("SET SESSION max_allowed_packet = 67108864"); // 64MB
-        $pdo->exec("SET SESSION net_buffer_length = 32768"); // 32KB
-    } catch (Exception $e) {
-        error_log("MySQL settings adjustment failed: " . $e->getMessage());
-    }
-    
     $rawInput = file_get_contents("php://input");
     if (empty($rawInput)) {
         throw new Exception("No input data received");
     }
-    
-    // Log input size for debugging
-    error_log("Input data size: " . strlen($rawInput) . " bytes");
     
     $input = json_decode($rawInput, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
@@ -50,23 +37,23 @@ try {
     $requestId = $input["request_id"] ?? null;
     $designId = $input["design_id"] ?? null;
     $canvasData = $input["canvas_data"] ?? null;
-    $previewImage = $input["preview_image"] ?? null;
     $exportImage = $input["export_image"] ?? null;
     $status = $input["status"] ?? "designing";
     $adminNotes = $input["admin_notes"] ?? "";
+    $finalPrice = $input["final_price"] ?? null;
     
     if (!$requestId || !$canvasData) {
         throw new Exception("Request ID and canvas data are required");
     }
     
-    // Validate that the request exists
+    // Validate request exists
     $checkStmt = $pdo->prepare("SELECT id FROM custom_requests WHERE id = ?");
     $checkStmt->execute([$requestId]);
     if (!$checkStmt->fetch()) {
         throw new Exception("Request not found: " . $requestId);
     }
     
-    // Create designs table if it doesn't exist (complete version)
+    // Create table with proper structure
     $createTableSQL = "CREATE TABLE IF NOT EXISTS custom_request_designs (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         request_id INT UNSIGNED NOT NULL,
@@ -89,26 +76,46 @@ try {
     
     $pdo->exec($createTableSQL);
     
-    // Ensure all required columns exist (for existing tables)
-    $columnsToAdd = [
-        'canvas_data_file' => "ALTER TABLE custom_request_designs ADD COLUMN canvas_data_file VARCHAR(255) NULL",
-        'canvas_width' => "ALTER TABLE custom_request_designs ADD COLUMN canvas_width INT NOT NULL DEFAULT 800",
-        'canvas_height' => "ALTER TABLE custom_request_designs ADD COLUMN canvas_height INT NOT NULL DEFAULT 600"
-    ];
-    
-    foreach ($columnsToAdd as $columnName => $alterSQL) {
-        try {
-            $checkColumn = $pdo->query("SHOW COLUMNS FROM custom_request_designs LIKE '$columnName'");
-            if ($checkColumn->rowCount() == 0) {
-                $pdo->exec($alterSQL);
-                error_log("Added missing column: $columnName");
-            }
-        } catch (Exception $e) {
-            error_log("Column check/add failed for $columnName: " . $e->getMessage());
+    // Ensure canvas_data_file column exists (for existing tables)
+    try {
+        $checkColumn = $pdo->query("SHOW COLUMNS FROM custom_request_designs LIKE 'canvas_data_file'");
+        if ($checkColumn->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE custom_request_designs ADD COLUMN canvas_data_file VARCHAR(255) NULL AFTER canvas_data");
+            error_log("Added canvas_data_file column to existing table");
         }
+        
+        // Also ensure design_image_url column exists
+        $checkImageColumn = $pdo->query("SHOW COLUMNS FROM custom_request_designs LIKE 'design_image_url'");
+        if ($checkImageColumn->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE custom_request_designs ADD COLUMN design_image_url VARCHAR(500) NULL");
+            error_log("Added design_image_url column to existing table");
+        }
+        
+        // Ensure status column exists with proper enum values
+        $checkStatusColumn = $pdo->query("SHOW COLUMNS FROM custom_request_designs LIKE 'status'");
+        if ($checkStatusColumn->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE custom_request_designs ADD COLUMN status ENUM('draft', 'designing', 'design_completed', 'approved', 'rejected') DEFAULT 'designing'");
+            error_log("Added status column to existing table");
+        }
+    } catch (Exception $e) {
+        error_log("Column check/add failed: " . $e->getMessage());
+        // Don't fail the whole operation, just log the error
     }
     
-    // Handle image saving (more efficient approach)
+    // Save canvas data to file instead of database
+    $dataDir = __DIR__ . "/../../uploads/designs/data/";
+    if (!is_dir($dataDir)) {
+        mkdir($dataDir, 0755, true);
+    }
+    
+    $canvasDataFile = "canvas_data_request_{$requestId}_" . time() . ".json";
+    $canvasDataPath = $dataDir . $canvasDataFile;
+    
+    if (!file_put_contents($canvasDataPath, json_encode($canvasData, JSON_PRETTY_PRINT))) {
+        throw new Exception("Failed to save canvas data to file");
+    }
+    
+    // Save image if provided
     $imageUrl = null;
     if ($exportImage) {
         try {
@@ -117,63 +124,27 @@ try {
                 mkdir($uploadDir, 0755, true);
             }
             
-            // Check image size before processing
-            $imageSize = strlen($exportImage);
-            error_log("Export image size: " . $imageSize . " bytes");
+            $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $exportImage);
+            $imageData = base64_decode($imageData);
             
-            if ($imageSize > 5000000) { // 5MB limit for images
-                error_log("Image too large, skipping save");
-            } else {
-                $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $exportImage);
-                $imageData = base64_decode($imageData);
+            if ($imageData) {
+                $imageFilename = "design_request_{$requestId}_" . time() . ".jpg";
+                $imagePath = $uploadDir . $imageFilename;
                 
-                if ($imageData && strlen($imageData) > 0) {
-                    $imageFilename = "design_request_{$requestId}_" . time() . ".jpg"; // Use JPG for smaller size
-                    $imagePath = $uploadDir . $imageFilename;
-                    
-                    if (file_put_contents($imagePath, $imageData)) {
-                        $imageUrl = "uploads/designs/images/" . $imageFilename;
-                        error_log("Image saved successfully: " . $imageUrl);
-                    } else {
-                        error_log("Failed to write image file");
-                    }
-                } else {
-                    error_log("Failed to decode image data");
+                if (file_put_contents($imagePath, $imageData)) {
+                    $imageUrl = "uploads/designs/images/" . $imageFilename;
                 }
             }
         } catch (Exception $e) {
             error_log("Image save error: " . $e->getMessage());
-            // Continue without image - don't fail the whole operation
         }
     }
     
-    // Compress canvas data if it's still large
-    $canvasDataJson = json_encode($canvasData);
-    $canvasDataSize = strlen($canvasDataJson);
-    error_log("Canvas data size: " . $canvasDataSize . " bytes");
-    
-    if ($canvasDataSize > 1000000) { // 1MB
-        // Try to compress the data
-        $compressedData = gzcompress($canvasDataJson, 6);
-        if ($compressedData && strlen($compressedData) < $canvasDataSize) {
-            error_log("Compressed canvas data from " . $canvasDataSize . " to " . strlen($compressedData) . " bytes");
-            $canvasDataToStore = base64_encode($compressedData);
-            $isCompressed = true;
-        } else {
-            $canvasDataToStore = $canvasDataJson;
-            $isCompressed = false;
-        }
-    } else {
-        $canvasDataToStore = $canvasDataJson;
-        $isCompressed = false;
-    }
-    
-    // Save or update design
+    // Save or update design record
     if ($designId) {
-        // Update existing design
         $updateStmt = $pdo->prepare("
             UPDATE custom_request_designs 
-            SET canvas_data = ?, 
+            SET canvas_data_file = ?, 
                 design_image_url = COALESCE(?, design_image_url),
                 status = ?,
                 admin_notes = ?,
@@ -181,7 +152,7 @@ try {
             WHERE id = ? AND request_id = ?
         ");
         $updateStmt->execute([
-            $canvasDataToStore,
+            $canvasDataFile,
             $imageUrl,
             $status,
             $adminNotes,
@@ -190,14 +161,13 @@ try {
         ]);
         $finalDesignId = $designId;
     } else {
-        // Create new design
         $insertStmt = $pdo->prepare("
-            INSERT INTO custom_request_designs (request_id, canvas_data, design_image_url, status, admin_notes)
+            INSERT INTO custom_request_designs (request_id, canvas_data_file, design_image_url, status, admin_notes)
             VALUES (?, ?, ?, ?, ?)
         ");
         $insertStmt->execute([
             $requestId,
-            $canvasDataToStore,
+            $canvasDataFile,
             $imageUrl,
             $status,
             $adminNotes
@@ -209,10 +179,10 @@ try {
     $updateRequestStmt = $pdo->prepare("UPDATE custom_requests SET updated_at = NOW() WHERE id = ?");
     $updateRequestStmt->execute([$requestId]);
     
-    // If design is completed, add to customer's cart
+    // If design is completed, add to customer's cart with the final price
     if ($status === 'design_completed') {
         try {
-            addCompletedDesignToCart($pdo, $requestId, $finalDesignId, $imageUrl);
+            addCompletedDesignToCart($pdo, $requestId, $finalDesignId, $imageUrl, $finalPrice);
         } catch (Exception $e) {
             error_log("Failed to add completed design to cart: " . $e->getMessage());
             // Don't fail the whole operation, just log the error
@@ -222,27 +192,27 @@ try {
     ob_end_clean();
     echo json_encode([
         "status" => "success",
-        "message" => "Design saved successfully",
+        "message" => "Design saved successfully (file-based storage)",
         "design_id" => $finalDesignId,
         "image_url" => $imageUrl,
-        "design_status" => $status
+        "design_status" => $status,
+        "canvas_data_file" => $canvasDataFile
     ]);
     
 } catch (Exception $e) {
     ob_end_clean();
     http_response_code(500);
-    error_log("save-design.php Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    error_log("save-design-chunked.php Error: " . $e->getMessage());
     echo json_encode([
         "status" => "error",
-        "message" => $e->getMessage(),
-        "error_code" => $e->getCode()
+        "message" => $e->getMessage()
     ]);
 }
 
 /**
  * Add completed custom design to customer's cart
  */
-function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
+function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl, $adminSetPrice = null) {
     // Get request details
     $requestStmt = $pdo->prepare("
         SELECT customer_id, user_id, title, description 
@@ -256,21 +226,58 @@ function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
         throw new Exception("Request not found");
     }
     
-    // Try to get price if column exists
-    $requestPrice = 50.00; // Default price
-    try {
-        $priceCheck = $pdo->query("SHOW COLUMNS FROM custom_requests LIKE 'price'");
-        if ($priceCheck && $priceCheck->rowCount() > 0) {
-            $priceStmt = $pdo->prepare("SELECT price FROM custom_requests WHERE id = ?");
-            $priceStmt->execute([$requestId]);
-            $priceResult = $priceStmt->fetch(PDO::FETCH_ASSOC);
-            if ($priceResult && $priceResult['price']) {
-                $requestPrice = $priceResult['price'];
+    // Determine the final price to use
+    $finalPrice = 50.00; // Default fallback price
+    
+    if ($adminSetPrice && is_numeric($adminSetPrice) && $adminSetPrice > 0) {
+        // Use admin-set price (highest priority)
+        $finalPrice = (float)$adminSetPrice;
+        error_log("Using admin-set price: ₹$finalPrice for request #$requestId");
+        
+        // Update the custom_requests table with the final price
+        try {
+            // Check if price column exists, if not add it
+            $checkColumn = $pdo->query("SHOW COLUMNS FROM custom_requests LIKE 'final_price'");
+            if ($checkColumn->rowCount() == 0) {
+                $pdo->exec("ALTER TABLE custom_requests ADD COLUMN final_price DECIMAL(10,2) NULL");
+                error_log("Added final_price column to custom_requests table");
             }
+            
+            // Update the request with the final price
+            $updatePriceStmt = $pdo->prepare("UPDATE custom_requests SET final_price = ? WHERE id = ?");
+            $updatePriceStmt->execute([$finalPrice, $requestId]);
+            error_log("Updated request #$requestId with final price: ₹$finalPrice");
+            
+        } catch (Exception $e) {
+            error_log("Failed to update request with final price: " . $e->getMessage());
         }
-    } catch (Exception $e) {
-        // Price column doesn't exist, use default
-        error_log("Price column not found, using default price: " . $e->getMessage());
+        
+    } else {
+        // Try to get price from existing columns as fallback
+        try {
+            // Check for final_price column first
+            $priceCheck = $pdo->query("SHOW COLUMNS FROM custom_requests LIKE 'final_price'");
+            if ($priceCheck && $priceCheck->rowCount() > 0) {
+                $priceStmt = $pdo->prepare("SELECT final_price FROM custom_requests WHERE id = ?");
+                $priceStmt->execute([$requestId]);
+                $priceResult = $priceStmt->fetch(PDO::FETCH_ASSOC);
+                if ($priceResult && $priceResult['final_price']) {
+                    $finalPrice = $priceResult['final_price'];
+                    error_log("Using existing final_price: ₹$finalPrice for request #$requestId");
+                }
+            } else {
+                // Check for budget fields as fallback
+                $budgetStmt = $pdo->prepare("SELECT budget FROM custom_requests WHERE id = ?");
+                $budgetStmt->execute([$requestId]);
+                $budgetResult = $budgetStmt->fetch(PDO::FETCH_ASSOC);
+                if ($budgetResult && $budgetResult['budget'] && is_numeric($budgetResult['budget'])) {
+                    $finalPrice = (float)$budgetResult['budget'];
+                    error_log("Using customer budget as fallback price: ₹$finalPrice for request #$requestId");
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Price determination failed, using default: " . $e->getMessage());
+        }
     }
     
     $customerId = $request['customer_id'] ?: $request['user_id'];
@@ -280,7 +287,6 @@ function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
     
     // Create or get custom artwork entry
     $artworkTitle = "Custom Design: " . ($request['title'] ?: "Request #$requestId");
-    $artworkPrice = $requestPrice; // Use the price we determined above
     $artworkDescription = $request['description'] ?: "Custom designed item";
     
     // Check if artwork already exists for this request
@@ -294,6 +300,16 @@ function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
     
     if ($existingArtwork) {
         $artworkId = $existingArtwork['id'];
+        
+        // Update existing artwork with the final price
+        $updateArtworkStmt = $pdo->prepare("
+            UPDATE artworks 
+            SET price = ?, image_url = COALESCE(?, image_url), updated_at = NOW()
+            WHERE id = ?
+        ");
+        $updateArtworkStmt->execute([$finalPrice, $imageUrl, $artworkId]);
+        error_log("Updated existing artwork #$artworkId with final price: ₹$finalPrice");
+        
     } else {
         // Create new artwork entry for the custom design
         $insertArtworkStmt = $pdo->prepare("
@@ -307,11 +323,12 @@ function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
         $insertArtworkStmt->execute([
             $artworkTitle,
             $artworkDescription . " (Request #$requestId)",
-            $artworkPrice,
+            $finalPrice,
             $imageUrl ?: 'uploads/designs/default-custom.jpg'
         ]);
         
         $artworkId = $pdo->lastInsertId();
+        error_log("Created new artwork #$artworkId with final price: ₹$finalPrice");
     }
     
     // Check if already in cart
@@ -330,9 +347,9 @@ function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
         ");
         $insertCartStmt->execute([$customerId, $artworkId]);
         
-        error_log("Added completed design to cart: Request #$requestId -> Artwork #$artworkId for Customer #$customerId");
+        error_log("Added completed design to cart: Request #$requestId -> Artwork #$artworkId (₹$finalPrice) for Customer #$customerId");
     } else {
-        error_log("Design already in cart: Request #$requestId -> Artwork #$artworkId for Customer #$customerId");
+        error_log("Design already in cart: Request #$requestId -> Artwork #$artworkId (₹$finalPrice) for Customer #$customerId");
     }
     
     // Update request to mark as ready for purchase
@@ -346,4 +363,3 @@ function addCompletedDesignToCart($pdo, $requestId, $designId, $imageUrl) {
     $updateRequestStmt->execute([$requestId]);
 }
 ?>
-

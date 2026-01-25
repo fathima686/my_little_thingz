@@ -101,3 +101,375 @@ body { background: var(--bg); color: var(--text); }
   .admin-shell { grid-template-columns: 1fr; }
   .admin-sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
 }
+/* Practice Uploads Section */
+.practice-uploads-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}
+
+.practice-upload-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.practice-upload-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 45px rgba(15,23,42,.15);
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.upload-info h4 {
+  margin: 0 0 8px 0;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.student-info {
+  margin: 0 0 4px 0;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.upload-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.upload-description {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent);
+}
+
+.upload-description strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.upload-description p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.upload-images {
+  margin-bottom: 15px;
+}
+
+.upload-images strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.image-preview {
+  text-align: center;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid var(--line);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.image-preview img:hover {
+  transform: scale(1.05);
+  border-color: var(--primary);
+}
+
+.image-name {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.admin-feedback {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+}
+
+.admin-feedback strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.admin-feedback p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.review-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-approve {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-approve:hover {
+  background: #059669;
+}
+
+.btn-reject {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-reject:hover {
+  background: #dc2626;
+}
+
+.btn-cancel {
+  background: #6b7280;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #4b5563;
+}
+
+/* Review Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.2rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f3f4f6;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.upload-summary {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.upload-summary h4 {
+  margin: 0 0 10px 0;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.upload-summary p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.description-section {
+  margin-bottom: 20px;
+}
+
+.description-section strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.description-section p {
+  margin: 0;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.feedback-section {
+  margin-bottom: 20px;
+}
+
+.feedback-section label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.feedback-section textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.feedback-section textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.filter-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
+}

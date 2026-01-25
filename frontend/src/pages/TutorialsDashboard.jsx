@@ -1150,7 +1150,7 @@ export default function TutorialsDashboard() {
     if (isPro && profileStats) {
       // Use real learning data for Pro users
       return {
-        purchasedCount: profileStats.completed_tutorials + (profileStats.in_progress_tutorials || 0), // Total watched
+        purchasedCount: profileStats.watched_tutorials || profileStats.completed_tutorials + (profileStats.in_progress_tutorials || 0), // Total watched
         completedCount: profileStats.completed_tutorials,
         totalHours: profileStats.learning_hours || 0
       };

@@ -6,7 +6,7 @@ ini_set('log_errors', 1);
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID, X-Admin-Token');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-User-ID, X-Admin-Token, X-Admin-User-Id, X-Admin-Email');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -127,24 +127,35 @@ try {
             ]);
 
         } elseif ($action === 'pending_uploads') {
-            // Get all pending practice uploads for review
+            // Get practice uploads for review (support status filtering)
+            // Admin should be able to review all uploads regardless of subscription status
+            $status = $_GET['status'] ?? 'pending';
+            
+            $whereClause = "";
+            if ($status !== 'all') {
+                $whereClause = "WHERE pu.status = :status";
+            }
+            
             $stmt = $db->prepare("
                 SELECT pu.*, u.first_name, u.last_name, u.email, t.title as tutorial_title
                 FROM practice_uploads pu
                 JOIN users u ON pu.user_id = u.id
-                JOIN tutorials t ON pu.tutorial_id = t.id
-                JOIN subscriptions s ON u.id = s.user_id
-                JOIN subscription_plans sp ON s.plan_id = sp.id
-                WHERE pu.status = 'pending' 
-                AND sp.plan_code = 'pro'
-                ORDER BY pu.upload_date ASC
+                LEFT JOIN tutorials t ON pu.tutorial_id = t.id
+                $whereClause
+                ORDER BY pu.upload_date DESC
             ");
+            
+            if ($status !== 'all') {
+                $stmt->bindParam(':status', $status);
+            }
             $stmt->execute();
-            $pendingUploads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $uploads = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             echo json_encode([
                 'status' => 'success',
-                'pending_uploads' => $pendingUploads
+                'pending_uploads' => $uploads,
+                'total_count' => count($uploads),
+                'filter_status' => $status
             ]);
         }
 
@@ -154,7 +165,7 @@ try {
         
         $uploadId = $data['upload_id'] ?? null;
         $status = $data['status'] ?? null; // 'approved' or 'rejected'
-        $feedback = $data['feedback'] ?? '';
+        $feedback = $data['admin_feedback'] ?? ''; // Match frontend parameter name
         $adminId = $data['admin_id'] ?? 1; // You should get this from admin session
 
         if (!$uploadId || !in_array($status, ['approved', 'rejected'])) {
@@ -166,10 +177,10 @@ try {
         // Update practice upload
         $updateStmt = $db->prepare("
             UPDATE practice_uploads 
-            SET status = ?, admin_feedback = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+            SET status = ?, admin_feedback = ?, reviewed_date = CURRENT_TIMESTAMP
             WHERE id = ?
         ");
-        $updateStmt->execute([$status, $feedback, $adminId, $uploadId]);
+        $updateStmt->execute([$status, $feedback, $uploadId]);
 
         // Update learning progress if approved
         if ($status === 'approved') {
@@ -178,12 +189,29 @@ try {
             $upload = $uploadStmt->fetch(PDO::FETCH_ASSOC);
 
             if ($upload) {
-                $progressStmt = $db->prepare("
-                    UPDATE learning_progress 
-                    SET practice_approved = 1 
+                // Check if learning progress record exists, if not create it
+                $checkProgressStmt = $db->prepare("
+                    SELECT id FROM learning_progress 
                     WHERE user_id = ? AND tutorial_id = ?
                 ");
-                $progressStmt->execute([$upload['user_id'], $upload['tutorial_id']]);
+                $checkProgressStmt->execute([$upload['user_id'], $upload['tutorial_id']]);
+                
+                if ($checkProgressStmt->fetch()) {
+                    // Update existing record
+                    $progressStmt = $db->prepare("
+                        UPDATE learning_progress 
+                        SET practice_uploaded = 1 
+                        WHERE user_id = ? AND tutorial_id = ?
+                    ");
+                    $progressStmt->execute([$upload['user_id'], $upload['tutorial_id']]);
+                } else {
+                    // Create new record
+                    $progressStmt = $db->prepare("
+                        INSERT INTO learning_progress (user_id, tutorial_id, practice_uploaded, last_accessed, created_at)
+                        VALUES (?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ");
+                    $progressStmt->execute([$upload['user_id'], $upload['tutorial_id']]);
+                }
             }
         }
 

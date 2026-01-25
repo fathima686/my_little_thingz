@@ -53,13 +53,12 @@ try {
             $quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : 1;
 
             if (trim($description) === '') { echo json_encode(['status'=>'error','message'=>'Description is required']); exit; }
-            if (trim($occasion) === '') { echo json_encode(['status'=>'error','message'=>'Occasion is required']); exit; }
             if (trim($deadline) === '') { echo json_encode(['status'=>'error','message'=>'Date is required']); exit; }
             
             // Set title before building SQL
             $title = $_POST['title'] ?? '';
             if (trim($title) === '') {
-                $title = 'Cart customization - ' . $occasion . ' - ' . $deadline;
+                $title = 'Cart customization - ' . $deadline;
             }
 
             $hasImage = !empty($_FILES['reference_images']) && (
@@ -124,7 +123,7 @@ try {
             if ($colChecks['occasion']) {
                 $columns[] = 'occasion';
                 $placeholders[] = '?';
-                $executeValues[] = $occasion;
+                $executeValues[] = $occasion ?: 'Not specified'; // Use default value if empty
             }
             
             if ($colChecks['budget_min']) {

@@ -47,26 +47,31 @@ try {
     
     $userId = $user['id'];
     
-    // Simple Pro check - allow soudhame52@gmail.com or check subscription
+    // Check subscription status for feature access
     $isPro = ($userEmail === 'soudhame52@gmail.com');
+    $planCode = 'basic'; // Default plan
     
     if (!$isPro) {
-        // Check subscription
-        $subStmt = $pdo->prepare("SELECT plan_code FROM subscriptions WHERE email = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1");
-        $subStmt->execute([$userEmail]);
+        // Check subscription with proper JOIN to get plan_code
+        $subStmt = $pdo->prepare("
+            SELECT sp.plan_code 
+            FROM subscriptions s 
+            JOIN subscription_plans sp ON s.plan_id = sp.id 
+            WHERE s.user_id = ? AND s.status = 'active' 
+            ORDER BY s.created_at DESC LIMIT 1
+        ");
+        $subStmt->execute([$userId]);
         $sub = $subStmt->fetch(PDO::FETCH_ASSOC);
-        $isPro = ($sub && $sub['plan_code'] === 'pro');
+        if ($sub) {
+            $planCode = $sub['plan_code'];
+            $isPro = ($planCode === 'pro');
+        }
+    } else {
+        $planCode = 'pro';
     }
     
-    if (!$isPro) {
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Progress tracking requires Pro subscription',
-            'current_plan' => 'basic',
-            'upgrade_required' => true
-        ]);
-        exit;
-    }
+    // Allow all users to access progress tracking, but with different features
+    // No longer exit for non-Pro users - they get basic features
     
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Create learning_progress table if it doesn't exist
@@ -147,7 +152,10 @@ try {
         // A tutorial is considered completed if:
         // 1. completion_percentage >= 80, OR
         // 2. practice_status = 'approved'
+        // A tutorial is considered watched if:
+        // 1. completion_percentage > 0
         $completedTutorials = 0;
+        $watchedTutorials = 0;
         $tutorialProgress = [];
         
         foreach ($allTutorials as $tutorial) {
@@ -156,6 +164,9 @@ try {
             
             // Determine if tutorial is completed
             $isCompleted = ($completionPercentage >= 80) || ($practiceStatus === 'approved');
+            
+            // Determine if tutorial is watched (any progress > 0)
+            $isWatched = $completionPercentage > 0;
             
             // Determine status indicator (no percentages for individual tutorials)
             $status = 'In Progress';
@@ -171,6 +182,9 @@ try {
             
             if ($isCompleted) {
                 $completedTutorials++;
+            }
+            if ($isWatched) {
+                $watchedTutorials++;
             }
             
             // Build tutorial progress without completion_percentage
@@ -189,21 +203,32 @@ try {
         
         // Calculate overall course completion percentage
         $overallProgress = $totalTutorials > 0 ? (($completedTutorials / $totalTutorials) * 100) : 0;
-        $certificateEligible = $overallProgress >= 80;
+        $certificateEligible = $overallProgress >= 80 && $isPro; // Certificates only for Pro users
+
+        // Define features based on plan
+        $features = ['basic_tutorials'];
+        if ($isPro || $planCode === 'premium') {
+            $features = array_merge($features, ['certificates', 'practice_uploads', 'live_workshops']);
+        }
+        if ($planCode === 'premium') {
+            $features = array_merge($features, ['hd_videos', 'unlimited_tutorials']);
+        }
 
         echo json_encode([
             'status' => 'success',
             'overall_progress' => [
                 'total_tutorials' => $totalTutorials,
                 'completed_tutorials' => $completedTutorials,
+                'watched_tutorials' => $watchedTutorials,
                 'completion_percentage' => round($overallProgress, 2),
                 'certificate_eligible' => $certificateEligible
             ],
             'tutorial_progress' => $tutorialProgress,
             'certificate_eligible' => $certificateEligible,
             'access_summary' => [
-                'current_plan' => 'pro',
-                'features' => ['certificates', 'practice_uploads', 'live_workshops']
+                'current_plan' => $planCode,
+                'features' => $features,
+                'is_pro' => $isPro
             ]
         ]);
 

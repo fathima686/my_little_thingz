@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuGift, LuRibbon, LuFileText, LuPackage, LuStar, LuCheckCircle, LuInfo } from 'react-icons/lu';
+import { LuGift, LuRibbon, LuFileText, LuPackage, LuStar, LuCheck, LuInfo } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/addon-recommendations.css';
 
@@ -232,7 +232,7 @@ const AddonRecommendations = ({
                 <div className="addon-price">₹{addon.price}</div>
                 
                 <div className="addon-reason">
-                  <LuCheckCircle className="reason-icon" />
+                  <LuCheck className="reason-icon" />
                   <span className="reason-text">{addon.reason}</span>
                 </div>
               </div>

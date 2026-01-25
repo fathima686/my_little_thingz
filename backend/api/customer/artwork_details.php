@@ -44,6 +44,7 @@ try {
             a.price,
             a.image_url,
             a.category_id,
+            a.category,
             a.availability,
             a.created_at,
             a.offer_price,
@@ -54,7 +55,7 @@ try {
             c.name as category_name
         FROM artworks a
         LEFT JOIN categories c ON a.category_id = c.id
-        WHERE a.id = :artwork_id AND a.status = 'active'
+        WHERE a.id = :artwork_id AND a.status = 'active' AND (a.category != 'custom' OR a.category IS NULL)
     ");
     $stmt->bindValue(':artwork_id', $artworkId, PDO::PARAM_INT);
     $stmt->execute();

@@ -11,8 +11,7 @@ const CustomGiftRequest = ({ onClose }) => {
     title: '',
     description: '',
     occasion: '',
-    budget_min: '',
-    budget_max: '',
+    fixed_price: '',
     deadline: '',
     gift_tier: 'budget', // Default to budget
     special_instructions: '',
@@ -33,15 +32,184 @@ const CustomGiftRequest = ({ onClose }) => {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [errors, setErrors] = useState({});
 
+  const handlePriceKeyDown = (e) => {
+    // Prevent typing negative sign, plus sign, and 'e' (scientific notation)
+    if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+      e.preventDefault();
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const trimmedValue = name === 'title' || name === 'description' || name === 'special_instructions' 
-      ? trimWhitespace(value) 
-      : value;
+    
+    // Handle fixed price field with strict validation
+    if (name === 'fixed_price') {
+      // Only allow positive numbers, prevent negative values and zero
+      const numericValue = parseFloat(value);
+      if (value === '' || (numericValue > 0 && !isNaN(numericValue) && numericValue <= 100000)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+        
+        // Real-time price validation
+        if (value !== '') {
+          if (numericValue < 10) {
+            setErrors(prev => ({
+              ...prev,
+              [name]: 'Fixed price must be at least ₹10'
+            }));
+          } else if (numericValue > 100000) {
+            setErrors(prev => ({
+              ...prev,
+              [name]: 'Fixed price cannot exceed ₹1,00,000'
+            }));
+          } else {
+            setErrors(prev => ({
+              ...prev,
+              [name]: ''
+            }));
+          }
+        }
+      }
+      return;
+    }
+    
+    // Handle title with character restrictions
+    if (name === 'title') {
+      const processedValue = trimWhitespace(value);
+      // Allow only valid characters during typing
+      if (processedValue === '' || /^[a-zA-Z0-9\s\-.,!?&()]*$/.test(processedValue)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: processedValue
+        }));
+        
+        // Real-time title validation
+        if (processedValue.length > 0 && processedValue.length < 5) {
+          setErrors(prev => ({
+            ...prev,
+            title: 'Title must be at least 5 characters'
+          }));
+        } else if (processedValue.length > 100) {
+          setErrors(prev => ({
+            ...prev,
+            title: 'Title must be no more than 100 characters'
+          }));
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            title: ''
+          }));
+        }
+      }
+      return;
+    }
+    
+    // Handle description with word count validation
+    if (name === 'description') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      
+      // Real-time description validation
+      const trimmedDesc = trimWhitespace(value);
+      const wordCount = trimmedDesc.split(/\s+/).filter(word => word.length > 0).length;
+      
+      if (trimmedDesc.length > 0) {
+        if (trimmedDesc.length < 20) {
+          setErrors(prev => ({
+            ...prev,
+            description: 'Description must be at least 20 characters'
+          }));
+        } else if (trimmedDesc.length > 2000) {
+          setErrors(prev => ({
+            ...prev,
+            description: 'Description must be no more than 2000 characters'
+          }));
+        } else if (wordCount < 5) {
+          setErrors(prev => ({
+            ...prev,
+            description: 'Description must contain at least 5 words'
+          }));
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            description: ''
+          }));
+        }
+      }
+      return;
+    }
+    
+    // Handle deadline with real-time validation
+    if (name === 'deadline') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      
+      if (value) {
+        const deadlineDate = new Date(value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        deadlineDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = deadlineDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (deadlineDate < today) {
+          setErrors(prev => ({
+            ...prev,
+            deadline: 'Deadline cannot be in the past'
+          }));
+        } else if (diffDays < 3) {
+          setErrors(prev => ({
+            ...prev,
+            deadline: 'Please allow at least 3 days for custom gift creation'
+          }));
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            deadline: ''
+          }));
+        }
+      }
+      return;
+    }
+    
+    // Handle special instructions with character limit
+    if (name === 'special_instructions') {
+      if (value.length <= 1000) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+        
+        // Real-time validation for special instructions
+        const trimmedInstructions = trimWhitespace(value);
+        if (trimmedInstructions.length > 0 && trimmedInstructions.length < 10) {
+          setErrors(prev => ({
+            ...prev,
+            special_instructions: 'Special instructions must be at least 10 characters if provided'
+          }));
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            special_instructions: ''
+          }));
+        }
+      }
+      return;
+    }
+    
+    // Default handling for other fields
     setFormData(prev => ({
       ...prev,
-      [name]: trimmedValue
+      [name]: value
     }));
+    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -110,63 +278,110 @@ const CustomGiftRequest = ({ onClose }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    // Validate title - required, not empty/whitespace
+    // Validate title - required, not empty/whitespace, strict character limits
     const titleError = validateRequired(formData.title, 'Request title');
     if (titleError) {
       newErrors.title = titleError;
-    } else if (trimWhitespace(formData.title).length < 3) {
-      newErrors.title = 'Request title must be at least 3 characters';
-    } else if (trimWhitespace(formData.title).length > 255) {
-      newErrors.title = 'Request title must be no more than 255 characters';
+    } else {
+      const trimmedTitle = trimWhitespace(formData.title);
+      if (trimmedTitle.length < 5) {
+        newErrors.title = 'Request title must be at least 5 characters';
+      } else if (trimmedTitle.length > 100) {
+        newErrors.title = 'Request title must be no more than 100 characters';
+      } else if (!/^[a-zA-Z0-9\s\-.,!?&()]+$/.test(trimmedTitle)) {
+        newErrors.title = 'Request title contains invalid characters. Only letters, numbers, spaces, and basic punctuation allowed';
+      }
     }
     
-    // Validate description - required, not empty/whitespace
+    // Validate description - required, not empty/whitespace, strict length and content
     const descError = validateRequired(formData.description, 'Description');
     if (descError) {
       newErrors.description = descError;
-    } else if (trimWhitespace(formData.description).length < 10) {
-      newErrors.description = 'Description must be at least 10 characters';
-    } else if (trimWhitespace(formData.description).length > 5000) {
-      newErrors.description = 'Description must be no more than 5000 characters';
+    } else {
+      const trimmedDesc = trimWhitespace(formData.description);
+      if (trimmedDesc.length < 20) {
+        newErrors.description = 'Description must be at least 20 characters to provide adequate detail';
+      } else if (trimmedDesc.length > 2000) {
+        newErrors.description = 'Description must be no more than 2000 characters';
+      } else if (trimmedDesc.split(' ').length < 5) {
+        newErrors.description = 'Description must contain at least 5 words';
+      }
     }
     
-    // Validate occasion - if provided, must be from allowed list
+    // Validate occasion - if provided, must be from allowed list (strict validation)
     if (formData.occasion && !OCCASIONS.includes(formData.occasion)) {
-      newErrors.occasion = 'Please select a valid occasion';
+      newErrors.occasion = 'Please select a valid occasion from the dropdown list';
     }
     
-    // Validate budget - if provided, must be positive number
-    if (formData.budget_min || formData.budget_max) {
-      const minBudget = parseFloat(formData.budget_min) || 0;
-      const maxBudget = parseFloat(formData.budget_max) || 0;
+    // Strict fixed price validation - must be positive number, reasonable range
+    if (formData.fixed_price) {
+      const fixedPrice = parseFloat(formData.fixed_price) || 0;
       
-      if (formData.budget_min && (isNaN(minBudget) || minBudget < 0)) {
-        newErrors.budget_min = 'Minimum budget must be a positive number';
+      if (isNaN(fixedPrice) || fixedPrice <= 0) {
+        newErrors.fixed_price = 'Fixed price must be a positive number greater than 0';
+      } else if (fixedPrice < 10) {
+        newErrors.fixed_price = 'Fixed price must be at least ₹10';
+      } else if (fixedPrice > 100000) {
+        newErrors.fixed_price = 'Fixed price cannot exceed ₹1,00,000';
       }
-      if (formData.budget_max && (isNaN(maxBudget) || maxBudget < 0)) {
-        newErrors.budget_max = 'Maximum budget must be a positive number';
-      }
-      if (minBudget > 0 && maxBudget > 0 && minBudget > maxBudget) {
-        newErrors.budget_max = 'Maximum budget must be greater than or equal to minimum budget';
-      }
+    } else {
+      // Fixed price is required
+      newErrors.fixed_price = 'Fixed price is required. Please specify the price for your custom gift';
     }
     
-    // Validate deadline - if provided, must be valid future date
+    // Strict deadline validation - must be valid future date with reasonable timeframe
     if (formData.deadline) {
       const deadlineDate = new Date(formData.deadline);
       const today = new Date();
+      const maxDate = new Date();
+      maxDate.setFullYear(today.getFullYear() + 2); // Max 2 years in future
+      
       today.setHours(0, 0, 0, 0);
+      deadlineDate.setHours(0, 0, 0, 0);
       
       if (isNaN(deadlineDate.getTime())) {
         newErrors.deadline = 'Please enter a valid date';
       } else if (deadlineDate < today) {
         newErrors.deadline = 'Deadline cannot be in the past';
+      } else if (deadlineDate > maxDate) {
+        newErrors.deadline = 'Deadline cannot be more than 2 years in the future';
+      } else {
+        // Check if deadline is too soon (less than 3 days)
+        const diffTime = deadlineDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays < 3) {
+          newErrors.deadline = 'Please allow at least 3 days for custom gift creation';
+        }
       }
     }
     
-    // Validate gift tier
-    if (formData.gift_tier && !['budget', 'premium'].includes(formData.gift_tier)) {
-      newErrors.gift_tier = 'Please select a valid gift tier';
+    // Validate gift tier - strict validation
+    if (!formData.gift_tier || !['budget', 'premium'].includes(formData.gift_tier)) {
+      newErrors.gift_tier = 'Please select a valid gift tier (Budget-Friendly or Premium)';
+    }
+    
+    // Validate special instructions if provided
+    if (formData.special_instructions) {
+      const trimmedInstructions = trimWhitespace(formData.special_instructions);
+      if (trimmedInstructions.length > 1000) {
+        newErrors.special_instructions = 'Special instructions must be no more than 1000 characters';
+      } else if (trimmedInstructions.length > 0 && trimmedInstructions.length < 10) {
+        newErrors.special_instructions = 'Special instructions must be at least 10 characters if provided';
+      }
+    }
+    
+    // Validate images - strict file validation
+    if (imageFiles.length > 5) {
+      newErrors.images = 'Maximum 5 images allowed';
+    }
+    
+    // Additional validation: Check for duplicate image names
+    if (imageFiles.length > 1) {
+      const imageNames = imageFiles.map(file => file.name.toLowerCase());
+      const duplicates = imageNames.filter((name, index) => imageNames.indexOf(name) !== index);
+      if (duplicates.length > 0) {
+        newErrors.images = 'Duplicate image files detected. Please select different images';
+      }
     }
     
     setErrors(newErrors);
@@ -178,7 +393,49 @@ const CustomGiftRequest = ({ onClose }) => {
     
     // Validate form before submission
     if (!validateForm()) {
-      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Please fix the validation errors before submitting' } }));
+      // Count validation errors
+      const errorCount = Object.keys(errors).length;
+      const errorFields = Object.keys(errors).join(', ');
+      
+      window.dispatchEvent(new CustomEvent('toast', { 
+        detail: { 
+          type: 'error', 
+          message: `Please fix ${errorCount} validation error${errorCount > 1 ? 's' : ''} in: ${errorFields}` 
+        } 
+      }));
+      
+      // Scroll to first error field
+      const firstErrorField = document.querySelector('.form-group input.error, .form-group textarea.error, .form-group select.error');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstErrorField.focus();
+      }
+      
+      return;
+    }
+    
+    // Final validation check before submission
+    const trimmedTitle = trimWhitespace(formData.title);
+    const trimmedDesc = trimWhitespace(formData.description);
+    
+    if (trimmedTitle.length < 5 || trimmedDesc.length < 20) {
+      window.dispatchEvent(new CustomEvent('toast', { 
+        detail: { 
+          type: 'error', 
+          message: 'Please ensure all required fields meet the minimum length requirements' 
+        } 
+      }));
+      return;
+    }
+    
+    // Check fixed price requirement
+    if (!formData.fixed_price) {
+      window.dispatchEvent(new CustomEvent('toast', { 
+        detail: { 
+          type: 'error', 
+          message: 'Fixed price is required. Please specify the price for your custom gift.' 
+        } 
+      }));
       return;
     }
     
@@ -189,12 +446,12 @@ const CustomGiftRequest = ({ onClose }) => {
       const submitData = new FormData();
       
       // Add only the required fields with trimmed values
-      submitData.append('title', trimWhitespace(formData.title));
+      submitData.append('title', trimmedTitle);
       submitData.append('occasion', formData.occasion || '');
-      submitData.append('description', trimWhitespace(formData.description));
-      // Use single budget field
-      const budgetSingle = formData.budget_max || formData.budget_min || '';
-      submitData.append('budget', budgetSingle);
+      submitData.append('description', trimmedDesc);
+      // Use fixed price field
+      const fixedPrice = formData.fixed_price || '';
+      submitData.append('budget', fixedPrice);
       submitData.append('date', formData.deadline || '');
       submitData.append('gift_tier', formData.gift_tier || 'budget');
       
@@ -223,14 +480,29 @@ const CustomGiftRequest = ({ onClose }) => {
       const data = await response.json();
       
       if (data.status === 'success') {
-        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Custom gift request submitted successfully! We will contact you soon.' } }));
+        window.dispatchEvent(new CustomEvent('toast', { 
+          detail: { 
+            type: 'success', 
+            message: 'Custom gift request submitted successfully! We will contact you within 24 hours.' 
+          } 
+        }));
         onClose();
       } else {
-        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: data.message || 'Failed to submit request' } }));
+        window.dispatchEvent(new CustomEvent('toast', { 
+          detail: { 
+            type: 'error', 
+            message: data.message || 'Failed to submit request. Please try again.' 
+          } 
+        }));
       }
     } catch (error) {
       console.error('Error submitting request:', error);
-      window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Error submitting request. Please try again.' } }));
+      window.dispatchEvent(new CustomEvent('toast', { 
+        detail: { 
+          type: 'error', 
+          message: 'Network error occurred. Please check your connection and try again.' 
+        } 
+      }));
     } finally {
       setLoading(false);
     }
@@ -263,8 +535,14 @@ const CustomGiftRequest = ({ onClose }) => {
                 onKeyDown={createKeydownHandler(true)}
                 placeholder="e.g., Custom Wedding Anniversary Gift"
                 className={errors.title ? 'error' : ''}
+                maxLength="100"
                 required
               />
+              <div className="field-info">
+                <span className={`char-count ${formData.title.length > 90 ? 'warning' : ''}`}>
+                  {formData.title.length}/100 characters
+                </span>
+              </div>
               {errors.title && <span className="error-text">{errors.title}</span>}
             </div>
 
@@ -292,12 +570,20 @@ const CustomGiftRequest = ({ onClose }) => {
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                onKeyDown={createKeydownHandler(true)}
-                placeholder="Describe your custom gift idea in detail..."
+                placeholder="Describe your custom gift idea in detail... (minimum 20 characters, 5 words)"
                 rows="4"
                 className={errors.description ? 'error' : ''}
+                maxLength="2000"
                 required
               />
+              <div className="field-info">
+                <span className={`char-count ${formData.description.length > 1800 ? 'warning' : ''}`}>
+                  {formData.description.length}/2000 characters
+                </span>
+                <span className="word-count">
+                  {formData.description.trim().split(/\s+/).filter(word => word.length > 0).length} words
+                </span>
+              </div>
               {errors.description && <span className="error-text">{errors.description}</span>}
             </div>
           </div>
@@ -305,42 +591,27 @@ const CustomGiftRequest = ({ onClose }) => {
           <div className="form-section">
             <h3>Budget & Timeline</h3>
             
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="budget_min">
-                  <LuDollarSign /> Minimum Budget
-                </label>
-                <input
-                  type="number"
-                  id="budget_min"
-                  name="budget_min"
-                  value={formData.budget_min}
-                  onChange={handleInputChange}
-                  placeholder="0"
-                  min="0"
-                  step="0.01"
-                  className={errors.budget_min ? 'error' : ''}
-                />
-                {errors.budget_min && <span className="error-text">{errors.budget_min}</span>}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="budget_max">
-                  <LuDollarSign /> Maximum Budget
-                </label>
-                <input
-                  type="number"
-                  id="budget_max"
-                  name="budget_max"
-                  value={formData.budget_max}
-                  onChange={handleInputChange}
-                  placeholder="0"
-                  min="0"
-                  step="0.01"
-                  className={errors.budget_max ? 'error' : ''}
-                />
-                {errors.budget_max && <span className="error-text">{errors.budget_max}</span>}
-              </div>
+            <div className="form-group">
+              <label htmlFor="fixed_price">
+                <LuDollarSign /> Fixed Price *
+              </label>
+              <input
+                type="number"
+                id="fixed_price"
+                name="fixed_price"
+                value={formData.fixed_price}
+                onChange={handleInputChange}
+                onKeyDown={handlePriceKeyDown}
+                placeholder="Enter fixed price for your custom gift"
+                min="10"
+                step="0.01"
+                className={errors.fixed_price ? 'error' : ''}
+                required
+              />
+              <small style={{ marginTop: '0.5rem', display: 'block', color: '#666' }}>
+                Specify the exact price you want to pay for this custom gift (₹10 - ₹1,00,000)
+              </small>
+              {errors.fixed_price && <span className="error-text">{errors.fixed_price}</span>}
             </div>
 
             <div className="form-group">
@@ -392,10 +663,16 @@ const CustomGiftRequest = ({ onClose }) => {
                 name="special_instructions"
                 value={formData.special_instructions}
                 onChange={handleInputChange}
-                onKeyDown={createKeydownHandler(true)}
                 placeholder="Any special requirements, materials, colors, sizes, etc."
                 rows="3"
+                maxLength="1000"
               />
+              <div className="field-info">
+                <span className={`char-count ${formData.special_instructions.length > 900 ? 'warning' : ''}`}>
+                  {formData.special_instructions.length}/1000 characters
+                </span>
+              </div>
+              {errors.special_instructions && <span className="error-text">{errors.special_instructions}</span>}
             </div>
           </div>
 
@@ -573,11 +850,79 @@ const CustomGiftRequest = ({ onClose }) => {
           box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
         }
         
+        /* Budget field specific styling */
+        .form-group input[type="number"] {
+          -moz-appearance: textfield; /* Firefox */
+        }
+        
+        .form-group input[type="number"]::-webkit-outer-spin-button,
+        .form-group input[type="number"]::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        
+        /* Prevent negative value styling */
+        .form-group input[type="number"]:invalid {
+          border-color: #e74c3c;
+        }
+        
         .error-text {
           color: #e74c3c;
           font-size: 13px;
           margin-top: 4px;
           display: block;
+          font-weight: 500;
+        }
+        
+        .field-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 4px;
+          font-size: 12px;
+          color: #666;
+        }
+        
+        .char-count {
+          color: #666;
+        }
+        
+        .char-count.warning {
+          color: #f39c12;
+          font-weight: 500;
+        }
+        
+        .word-count {
+          color: #666;
+          font-style: italic;
+        }
+        
+        /* Enhanced validation styling */
+        .form-group input.error,
+        .form-group select.error,
+        .form-group textarea.error {
+          border-color: #e74c3c;
+          background-color: #fdf2f2;
+        }
+        
+        .form-group input.error:focus,
+        .form-group select.error:focus,
+        .form-group textarea.error:focus {
+          border-color: #e74c3c;
+          box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+          background-color: #fff;
+        }
+        
+        /* Success state styling */
+        .form-group input:valid:not(:placeholder-shown),
+        .form-group textarea:valid:not(:placeholder-shown) {
+          border-color: #27ae60;
+        }
+        
+        .form-group input:valid:not(:placeholder-shown):focus,
+        .form-group textarea:valid:not(:placeholder-shown):focus {
+          border-color: #27ae60;
+          box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
         }
 
         .form-help {

@@ -172,10 +172,6 @@ export default function LiveSessionsList({ auth, isTeacher = false }) {
                     <LuClock size={16} />
                     <span>{session.duration_minutes} minutes</span>
                   </div>
-                  <div className="detail-item">
-                    <LuUsers size={16} />
-                    <span>{session.registered_count || 0} / {session.max_participants} registered</span>
-                  </div>
                 </div>
 
                 <div className="session-actions">

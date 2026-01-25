@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { LuX, LuPackage, LuTruck, LuCheck, LuClock, LuMapPin, LuCalendar, LuDollarSign, LuEye, LuRefreshCw, LuExternalLink, LuDownload, LuStar } from 'react-icons/lu';
 import { useAuth } from '../../contexts/AuthContext';
 import RateOrders from './RateOrders';
+import UnboxingVideoRequest from './UnboxingVideoRequest';
+import UnboxingVideoRequestCard from './UnboxingVideoRequestCard';
+import RefundStatus from './RefundStatus';
 
 const API_BASE = "http://localhost/my_little_thingz/backend/api";
 
@@ -367,6 +370,16 @@ const OrderTracking = ({ onClose }) => {
                   </span>
                 )}
               </div>
+
+              {/* Unboxing Video Request Section for Delivered Orders */}
+              {order.status?.toLowerCase() === 'delivered' && (
+                <UnboxingVideoRequestCard auth={auth} order={order} />
+              )}
+
+              {/* Refund Status Section for Delivered Orders */}
+              {order.status?.toLowerCase() === 'delivered' && (
+                <RefundStatus auth={auth} order={order} />
+              )}
             </div>
           ))}
         </div>
@@ -608,6 +621,12 @@ const OrderTracking = ({ onClose }) => {
                     </div>
                   </div>
                 )}
+
+                {/* Unboxing Video Request Section */}
+                <UnboxingVideoRequest auth={auth} order={selectedOrder} />
+
+                {/* Refund Status Section */}
+                <RefundStatus auth={auth} order={selectedOrder} />
               </div>
             </div>
           </div>
