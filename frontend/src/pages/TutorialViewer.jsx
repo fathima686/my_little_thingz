@@ -208,7 +208,8 @@ export default function TutorialViewer() {
     });
 
     try {
-      const res = await fetch(`${API_BASE}/pro/practice-upload-direct.php`, {
+      // First try the craft validation API
+      let res = await fetch(`${API_BASE}/pro/practice-upload-craft-validation.php`, {
         method: 'POST',
         headers: {
           'X-Tutorial-Email': tutorialAuth?.email || ''
@@ -216,7 +217,57 @@ export default function TutorialViewer() {
         body: formData
       });
 
-      const data = await res.json();
+      // Check if response is JSON or HTML
+      const contentType = res.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          const text = await res.text();
+          console.error('Response text:', text);
+          throw new Error(`Invalid JSON response. Server returned: ${text.substring(0, 200)}...`);
+        }
+      } else {
+        // Response is HTML (likely a PHP error)
+        const text = await res.text();
+        console.error('HTML response received:', text);
+        throw new Error(`Server error: Expected JSON but received HTML. Check server logs for PHP errors.`);
+      }
+      
+      // If craft validation service is unavailable, fall back to simple upload
+      if (data.error_code === 'SERVICE_UNAVAILABLE' || 
+          (data.message && data.message.includes('Craft validation service unavailable'))) {
+        
+        console.log('Craft validation unavailable, using simple upload fallback');
+        
+        res = await fetch(`${API_BASE}/pro/practice-upload-simple.php`, {
+          method: 'POST',
+          headers: {
+            'X-Tutorial-Email': tutorialAuth?.email || ''
+          },
+          body: formData
+        });
+
+        // Handle fallback response
+        const fallbackContentType = res.headers.get('content-type');
+        if (fallbackContentType && fallbackContentType.includes('application/json')) {
+          try {
+            data = await res.json();
+          } catch (jsonError) {
+            console.error('Fallback JSON parsing error:', jsonError);
+            const text = await res.text();
+            console.error('Fallback response text:', text);
+            throw new Error(`Invalid JSON response from fallback. Server returned: ${text.substring(0, 200)}...`);
+          }
+        } else {
+          const text = await res.text();
+          console.error('Fallback HTML response received:', text);
+          throw new Error(`Fallback server error: Expected JSON but received HTML.`);
+        }
+      }
       
       if (data.status === 'success') {
         setUploadStatus('success');

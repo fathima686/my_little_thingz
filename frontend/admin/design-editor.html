@@ -3,296 +3,921 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Design Editor - Live Preview System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Design Editor - Canva Style</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .design-workspace {
-            background: #f8f9fa;
-            min-height: 100vh;
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --accent-color: #06b6d4;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --sidebar-width: 280px;
+            --properties-width: 320px;
         }
-        
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            overflow: hidden;
+        }
+
+        /* Main Layout */
+        .editor-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Left Sidebar - Templates */
+        .left-sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin: 0 0 16px 0;
+        }
+
+        .search-bar {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 12px 10px 40px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+        }
+
+        .category-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .category-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .category-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .category-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .templates-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .template-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .template-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .template-thumbnail {
+            width: 100%;
+            height: 120px;
+            background: var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-400);
+            font-size: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .template-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .template-info {
+            padding: 12px;
+        }
+
+        .template-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-800);
+            margin: 0;
+        }
+
+        .template-category {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin: 4px 0 0 0;
+        }
+
+        /* Center Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--gray-100);
+            overflow: hidden;
+        }
+
+        .canvas-toolbar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .toolbar-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .toolbar-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            background: white;
+        }
+
+        .zoom-btn {
+            padding: 4px 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .zoom-btn:hover {
+            background: var(--gray-100);
+        }
+
+        .zoom-display {
+            font-size: 14px;
+            color: var(--gray-600);
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .canvas-workspace {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: auto;
+        }
+
         .canvas-container {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .canvas-wrapper {
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 10px;
-            background: #fff;
             position: relative;
         }
-        
-        .tools-panel {
-            background: white;
+
+        .canvas-wrapper {
+            position: relative;
+            border: 2px dashed var(--gray-300);
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 10px;
+        }
+
+        .safe-area-guide {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            bottom: 30px;
+            border: 1px dashed var(--accent-color);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* Right Sidebar - Properties */
+        .right-sidebar {
+            width: var(--properties-width);
+            background: white;
+            border-left: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .properties-header {
             padding: 20px;
-            margin-bottom: 20px;
+            border-bottom: 1px solid var(--gray-200);
         }
-        
-        .tool-group {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
+
+        .properties-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin: 0;
         }
-        
-        .tool-group:last-child {
-            border-bottom: none;
+
+        .properties-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .property-group {
+            margin-bottom: 24px;
+        }
+
+        .property-group:last-child {
             margin-bottom: 0;
         }
-        
-        .tool-button {
-            margin: 5px;
-            min-width: 80px;
+
+        .property-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+            display: block;
         }
-        
+
+        .property-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .property-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .property-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .property-row .property-control {
+            flex: 1;
+        }
+
         .color-picker-wrapper {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
-        
+
         .color-preview {
-            width: 30px;
-            height: 30px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
             cursor: pointer;
         }
-        
-        .version-info {
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 0 8px 8px 0;
+
+        .font-style-buttons {
+            display: flex;
+            gap: 4px;
         }
-        
-        .status-badge {
-            font-size: 0.9em;
-            padding: 6px 12px;
-        }
-        
-        .customer-request {
-            background: #fff3e0;
-            border-left: 4px solid #ff9800;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 0 8px 8px 0;
-        }
-        
-        .design-history {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .history-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            font-size: 0.9em;
-        }
-        
-        .history-item:last-child {
-            border-bottom: none;
-        }
-        
-        .save-controls {
-            position: sticky;
-            bottom: 20px;
+
+        .font-style-btn {
+            padding: 8px;
+            border: 1px solid var(--gray-300);
             background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-        
-        #designCanvas {
-            border: 1px solid #ddd;
             border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        
+
+        .font-style-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .font-style-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .alignment-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .alignment-btn {
+            padding: 8px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alignment-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .alignment-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .range-control {
+            width: 100%;
+            margin: 8px 0;
+        }
+
+        .range-value {
+            font-size: 12px;
+            color: var(--gray-500);
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .action-button:hover {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .action-button.secondary {
+            background: white;
+            color: var(--primary-color);
+        }
+
+        .action-button.secondary:hover {
+            background: var(--gray-50);
+        }
+
+        .action-button.danger {
+            background: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .action-button.danger:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        /* Loading States */
         .loading-overlay {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255, 255, 255, 0.9);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
         }
-        
-        .font-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--gray-200);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        
-        .range-input {
-            width: 100px;
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: var(--gray-300);
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--gray-600);
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            margin: 0;
+        }
+
+        /* Order Info Panel */
+        .order-info-panel {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .status-badge {
+            font-size: 0.9em;
+            padding: 6px 12px;
+        }
+
+        .customer-request-panel {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            :root {
+                --sidebar-width: 240px;
+                --properties-width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .left-sidebar,
+            .right-sidebar {
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                z-index: 1000;
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .left-sidebar.open,
+            .right-sidebar.open {
+                transform: translateX(0);
+            }
+
+            .right-sidebar {
+                right: 0;
+                transform: translateX(100%);
+            }
+
+            .canvas-area {
+                width: 100%;
+            }
+        }
+
+        /* Custom Scrollbar */
+        .templates-grid::-webkit-scrollbar,
+        .properties-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .templates-grid::-webkit-scrollbar-track,
+        .properties-content::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+
+        .templates-grid::-webkit-scrollbar-thumb,
+        .properties-content::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        .templates-grid::-webkit-scrollbar-thumb:hover,
+        .properties-content::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
         }
     </style>
 </head>
 <body>
-    <div class="design-workspace">
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Left Sidebar - Tools and Info -->
-                <div class="col-md-3">
-                    <!-- Order Info -->
-                    <div class="version-info">
-                        <h6 class="mb-2">
-                            <i class="fas fa-info-circle"></i> Order #<span id="currentOrderId">-</span>
-                        </h6>
-                        <div class="mb-2">
-                            <span class="badge status-badge" id="currentStatus">Loading...</span>
-                        </div>
-                        <div class="small">
-                            Version: <strong id="currentVersion">-</strong><br>
-                            Last Updated: <span id="lastUpdated">-</span>
+    <div class="editor-container">
+        <!-- Left Sidebar - Templates -->
+        <div class="left-sidebar" id="leftSidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Templates</h2>
+                
+                <!-- Search Bar -->
+                <div class="search-bar">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Search templates..." id="templateSearch">
+                </div>
+                
+                <!-- Category Filters -->
+                <div class="category-filters">
+                    <button class="category-btn active" data-category="all">All</button>
+                    <button class="category-btn" data-category="birthday">Birthday</button>
+                    <button class="category-btn" data-category="anniversary">Anniversary</button>
+                    <button class="category-btn" data-category="wedding">Wedding</button>
+                    <button class="category-btn" data-category="christmas">Christmas</button>
+                    <button class="category-btn" data-category="diwali">Diwali</button>
+                    <button class="category-btn" data-category="new-year">New Year</button>
+                    <button class="category-btn" data-category="graduation">Graduation</button>
+                    <button class="category-btn" data-category="name-frame">Name Frame</button>
+                    <button class="category-btn" data-category="quotes">Quotes</button>
+                </div>
+            </div>
+            
+            <!-- Templates Grid - Directly under category filters, HIGHLIGHTED -->
+            <div class="templates-grid" id="templatesGrid" style="border-top: 3px solid var(--primary-color); background: linear-gradient(to bottom, #f0f4ff 0%, white 100px); padding-top: 12px;">
+                <!-- Templates will be loaded here -->
+                <div class="empty-state" id="templatesEmptyState">
+                    <i class="fas fa-images"></i>
+                    <h3>No Templates Found</h3>
+                    <p>Start by creating your first template or check your search filters.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Canvas Area -->
+        <div class="canvas-area">
+            <!-- Top Toolbar -->
+            <div class="canvas-toolbar">
+                <div class="toolbar-left">
+                    <button class="toolbar-btn" id="backBtn" title="Back to Admin Dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back</span>
+                    </button>
+                    <button class="toolbar-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+                        <i class="fas fa-undo"></i>
+                        <span>Undo</span>
+                    </button>
+                    <button class="toolbar-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+                        <i class="fas fa-redo"></i>
+                        <span>Redo</span>
+                    </button>
+                    
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span class="zoom-display" id="zoomDisplay">100%</span>
+                        <button class="zoom-btn" id="zoomInBtn" title="Zoom In">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="toolbar-right">
+                    <button class="toolbar-btn" id="orderDetailsBtn" title="View Order Details">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Order Details</span>
+                    </button>
+                    <button class="toolbar-btn" id="previewBtn">
+                        <i class="fas fa-eye"></i>
+                        <span>Preview</span>
+                    </button>
+                    <button class="toolbar-btn" id="saveDesignBtn">
+                        <i class="fas fa-download"></i>
+                        <span>Download Design</span>
+                    </button>
+                    <button class="toolbar-btn" id="completeDesignBtn" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Complete Design</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Canvas Workspace -->
+            <div class="canvas-workspace">
+                <div class="canvas-container" id="canvasContainer">
+                    <div class="canvas-wrapper">
+                        <div class="safe-area-guide" id="safeAreaGuide"></div>
+                        <canvas id="designCanvas" width="600" height="400"></canvas>
+                    </div>
+                    <div class="loading-overlay" id="canvasLoading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Properties -->
+        <div class="right-sidebar" id="rightSidebar">
+            <div class="properties-header">
+                <h3 class="properties-title" id="propertiesTitle">Properties</h3>
+            </div>
+            
+            <div class="properties-content" id="propertiesContent">
+                <!-- Default State - No Selection -->
+                <div id="noSelectionPanel">
+                    <div class="property-group">
+                        <label class="property-label">Canvas Background</label>
+                        <div class="color-picker-wrapper">
+                            <div class="color-preview" style="background: #ffffff;">
+                                <input type="color" class="color-input" id="canvasBackgroundColor" value="#ffffff">
+                            </div>
+                            <input type="text" class="property-control" id="canvasBackgroundHex" value="#ffffff" placeholder="#ffffff">
                         </div>
                     </div>
-
-                    <!-- Customer Request -->
-                    <div class="customer-request" id="customerRequest" style="display: none;">
-                        <h6><i class="fas fa-user"></i> Customer Request</h6>
-                        <div id="customerRequestContent"></div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Add Elements</label>
+                        <button class="action-button" id="addTextBtn">
+                            <i class="fas fa-font"></i>
+                            Add Text
+                        </button>
+                        <button class="action-button" id="uploadImageBtn">
+                            <i class="fas fa-image"></i>
+                            Add Image
+                        </button>
                     </div>
 
-                    <!-- Design Tools -->
-                    <div class="tools-panel">
-                        <h6><i class="fas fa-tools"></i> Design Tools</h6>
-                        
-                        <!-- Text Tools -->
-                        <div class="tool-group">
-                            <label class="form-label small fw-bold">Text</label>
-                            <div class="mb-2">
-                                <button class="btn btn-outline-primary btn-sm tool-button" id="addTextBtn">
-                                    <i class="fas fa-font"></i> Add Text
-                                </button>
-                            </div>
-                            <div class="font-controls">
-                                <select class="form-select form-select-sm" id="fontFamily">
-                                    <option value="Arial">Arial</option>
-                                    <option value="Times New Roman">Times</option>
-                                    <option value="Helvetica">Helvetica</option>
-                                    <option value="Georgia">Georgia</option>
-                                    <option value="Verdana">Verdana</option>
-                                </select>
-                                <input type="range" class="form-range range-input" id="fontSize" min="12" max="72" value="24">
-                                <span class="small" id="fontSizeDisplay">24px</span>
-                            </div>
-                            <div class="color-picker-wrapper mt-2">
-                                <input type="color" class="form-control form-control-color" id="textColor" value="#000000">
-                                <label class="small">Text Color</label>
-                            </div>
-                        </div>
-
-                        <!-- Image Tools -->
-                        <div class="tool-group">
-                            <label class="form-label small fw-bold">Images</label>
-                            <div class="mb-2">
-                                <input type="file" class="form-control form-control-sm" id="imageUpload" accept="image/*">
-                            </div>
-                            <button class="btn btn-outline-success btn-sm tool-button" id="uploadImageBtn">
-                                <i class="fas fa-image"></i> Add Image
-                            </button>
-                        </div>
-
-                        <!-- Object Controls -->
-                        <div class="tool-group">
-                            <label class="form-label small fw-bold">Object Controls</label>
-                            <div class="d-flex flex-wrap gap-1">
-                                <button class="btn btn-outline-secondary btn-sm" id="deleteObjectBtn">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" id="bringForwardBtn">
-                                    <i class="fas fa-arrow-up"></i> Forward
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" id="sendBackwardBtn">
-                                    <i class="fas fa-arrow-down"></i> Backward
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Canvas Controls -->
-                        <div class="tool-group">
-                            <label class="form-label small fw-bold">Canvas</label>
-                            <div class="d-flex flex-wrap gap-1">
-                                <button class="btn btn-outline-secondary btn-sm" id="undoBtn">
-                                    <i class="fas fa-undo"></i> Undo
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" id="redoBtn">
-                                    <i class="fas fa-redo"></i> Redo
-                                </button>
-                                <button class="btn btn-outline-warning btn-sm ms-1" id="clearCanvasBtn">
-                                    <i class="fas fa-eraser"></i> Clear All
-                                </button>
-                                <button class="btn btn-outline-info btn-sm" id="resetZoomBtn">
-                                    <i class="fas fa-search"></i> Reset Zoom
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Design History -->
-                    <div class="tools-panel">
-                        <h6><i class="fas fa-history"></i> Version History</h6>
-                        <div class="design-history" id="designHistory">
+                    <!-- Design History (moved from old sidebar) -->
+                    <div class="property-group">
+                        <label class="property-label">Version History</label>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 6px; padding: 10px;" id="designHistory">
                             <div class="text-center text-muted">Loading history...</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Main Canvas Area -->
-                <div class="col-md-9">
-                    <div class="canvas-container">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5><i class="fas fa-paint-brush"></i> Design Canvas</h5>
-                            <div>
-                                <button class="btn btn-outline-secondary btn-sm" id="previewBtn">
-                                    <i class="fas fa-eye"></i> Preview
-                                </button>
-                                <button class="btn btn-primary btn-sm" id="saveDesignBtn">
-                                    <i class="fas fa-save"></i> Save Design
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="canvas-wrapper">
-                            <canvas id="designCanvas" width="600" height="400"></canvas>
-                            <div class="loading-overlay" id="canvasLoading" style="display: none;">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Save Controls -->
-                    <div class="save-controls">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <label class="form-label small">Design Notes (Optional)</label>
-                                <textarea class="form-control form-control-sm" id="designNotes" rows="2" placeholder="Add notes about this design version..."></textarea>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <button class="btn btn-success" id="saveAndNotifyBtn">
-                                    <i class="fas fa-paper-plane"></i> Save & Notify Customer
-                                </button>
-                            </div>
-                        </div>
+                    <!-- Design Notes -->
+                    <div class="property-group">
+                        <label class="property-label">Design Notes</label>
+                        <textarea class="property-control" id="designNotes" rows="3" placeholder="Add notes about this design version..."></textarea>
                     </div>
                 </div>
+
+                <!-- Text Properties Panel -->
+                <div id="textPropertiesPanel" style="display: none;">
+                    <div class="property-group">
+                        <label class="property-label">Font Family</label>
+                        <select class="property-control" id="fontFamily">
+                            <option value="Arial">Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Verdana">Verdana</option>
+                            <option value="Impact">Impact</option>
+                            <option value="Comic Sans MS">Comic Sans MS</option>
+                        </select>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Font Size</label>
+                        <input type="range" class="range-control" id="fontSize" min="12" max="120" value="24">
+                        <div class="range-value" id="fontSizeValue">24px</div>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Font Style</label>
+                        <div class="font-style-buttons">
+                            <button class="font-style-btn" id="boldBtn" title="Bold">
+                                <i class="fas fa-bold"></i>
+                            </button>
+                            <button class="font-style-btn" id="italicBtn" title="Italic">
+                                <i class="fas fa-italic"></i>
+                            </button>
+                            <button class="font-style-btn" id="underlineBtn" title="Underline">
+                                <i class="fas fa-underline"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Text Color</label>
+                        <div class="color-picker-wrapper">
+                            <div class="color-preview" style="background: #000000;">
+                                <input type="color" class="color-input" id="textColor" value="#000000">
+                            </div>
+                            <input type="text" class="property-control" id="textColorHex" value="#000000" placeholder="#000000">
+                        </div>
+                    </div>
+                    
+                    <div class="property-group">
+                        <button class="action-button danger" id="deleteTextBtn">
+                            <i class="fas fa-trash"></i>
+                            Delete Text
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Image Properties Panel -->
+                <div id="imagePropertiesPanel" style="display: none;">
+                    <div class="property-group">
+                        <label class="property-label">Image Tools</label>
+                        <button class="action-button" id="removeBackgroundBtn">
+                            <i class="fas fa-magic"></i>
+                            Remove Background
+                        </button>
+                        <button class="action-button secondary" id="replaceImageBtn">
+                            <i class="fas fa-exchange-alt"></i>
+                            Replace Image
+                        </button>
+                    </div>
+                    
+                    <div class="property-group">
+                        <button class="action-button danger" id="deleteImageBtn">
+                            <i class="fas fa-trash"></i>
+                            Delete Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Object Controls (moved from old sidebar) -->
+                <div class="property-group" id="objectControlsPanel" style="display: none;">
+                    <label class="property-label">Object Controls</label>
+                    <button class="action-button secondary" id="bringForwardBtn">
+                        <i class="fas fa-arrow-up"></i> Bring Forward
+                    </button>
+                    <button class="action-button secondary" id="sendBackwardBtn">
+                        <i class="fas fa-arrow-down"></i> Send Backward
+                    </button>
+                    <button class="action-button danger" id="deleteObjectBtn">
+                        <i class="fas fa-trash"></i> Delete Object
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+    <input type="file" id="replaceImageUpload" accept="image/*" style="display: none;">
+
+    <!-- Order Details Modal -->
+    <div id="orderDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 20px; color: var(--gray-800);">
+                    <i class="fas fa-info-circle" style="color: var(--primary-color);"></i> Order Details
+                </h3>
+                <button id="closeOrderDetailsBtn" style="background: none; border: none; font-size: 24px; color: var(--gray-400); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Order Info -->
+            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <h6 style="margin: 0 0 12px 0; font-size: 14px; color: var(--gray-700);">
+                    <i class="fas fa-hashtag"></i> Order #<span id="modalOrderId">-</span>
+                </h6>
+                <div style="margin-bottom: 8px;">
+                    <strong style="font-size: 12px; color: var(--gray-600);">Status:</strong>
+                    <span class="badge status-badge" id="modalStatus" style="margin-left: 8px;">Loading...</span>
+                </div>
+                <div style="font-size: 13px; color: var(--gray-600);">
+                    <strong>Version:</strong> <span id="modalVersion">-</span><br>
+                    <strong>Last Updated:</strong> <span id="modalLastUpdated">-</span>
+                </div>
+            </div>
+            
+            <!-- Customer Request -->
+            <div id="modalCustomerRequest" style="display: none; background: #fff3e0; border-left: 4px solid #ff9800; padding: 16px; border-radius: 8px;">
+                <h6 style="margin: 0 0 12px 0; font-size: 14px; color: var(--gray-700);">
+                    <i class="fas fa-user"></i> Customer Request
+                </h6>
+                <div id="modalCustomerRequestContent" style="font-size: 13px; color: var(--gray-700);"></div>
             </div>
         </div>
     </div>
@@ -300,6 +925,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-    <script src="js/design-editor.js"></script>
+    <script src="js/design-editor.js?v=2.0"></script>
 </body>
 </html>

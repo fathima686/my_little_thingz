@@ -1,520 +1,499 @@
 <?php
-// Template Gallery Management API
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Email, X-Admin-User-Id");
+/**
+ * Template Gallery API
+ * Handles template management for the Canva-style editor
+ */
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(204);
-    exit;
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Admin-User-Id');
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
 }
 
-ini_set("display_errors", 0);
-error_reporting(0);
+require_once '../../config/database.php';
+require_once '../../config/env-loader.php';
 
-try {
-    require_once "../../config/database.php";
-    $database = new Database();
-    $pdo = $database->getConnection();
+class TemplateGalleryAPI {
+    private $db;
+    private $admin_user_id;
     
-    // Initialize tables if they don't exist
-    $schemaFile = __DIR__ . '/../../database/template-gallery-schema.sql';
-    if (file_exists($schemaFile)) {
-        $sql = file_get_contents($schemaFile);
-        $pdo->exec($sql);
-    }
-    
-    $method = $_SERVER["REQUEST_METHOD"];
-    $action = $_GET['action'] ?? '';
-    
-    switch ($method) {
-        case 'GET':
-            handleGet($pdo, $action);
-            break;
-        case 'POST':
-            handlePost($pdo);
-            break;
-        case 'PUT':
-            handlePut($pdo);
-            break;
-        case 'DELETE':
-            handleDelete($pdo);
-            break;
-        default:
-            http_response_code(405);
-            echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
+        $this->admin_user_id = $_SERVER['HTTP_X_ADMIN_USER_ID'] ?? 1;
     }
     
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()]);
-}
-
-function handleGet($pdo, $action) {
-    switch ($action) {
-        case 'categories':
-            getCategories($pdo);
-            break;
-        case 'templates':
-            getTemplates($pdo);
-            break;
-        case 'template':
-            getTemplate($pdo);
-            break;
-        case 'usage-stats':
-            getUsageStats($pdo);
-            break;
-        default:
-            getTemplateGallery($pdo);
-    }
-}
-
-function getCategories($pdo) {
-    try {
-        $stmt = $pdo->query("
-            SELECT c.*, 
-                   COUNT(t.id) as template_count
-            FROM template_categories c
-            LEFT JOIN design_templates t ON c.name = t.category AND t.is_public = 1
-            WHERE c.is_active = 1
-            GROUP BY c.id
-            ORDER BY c.sort_order, c.name
-        ");
-        $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo json_encode([
-            'status' => 'success',
-            'categories' => $categories
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-}
-
-function getTemplates($pdo) {
-    try {
-        $category = $_GET['category'] ?? '';
-        $search = $_GET['search'] ?? '';
-        $featured = $_GET['featured'] ?? '';
-        $limit = min((int)($_GET['limit'] ?? 50), 100);
-        $offset = max((int)($_GET['offset'] ?? 0), 0);
-        
-        $where = ["t.is_public = 1"];
-        $params = [];
-        
-        if ($category) {
-            $where[] = "t.category = ?";
-            $params[] = $category;
-        }
-        
-        if ($search) {
-            $where[] = "(t.name LIKE ? OR t.description LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-        }
-        
-        if ($featured === '1') {
-            $where[] = "t.is_featured = 1";
-        }
-        
-        $whereClause = implode(' AND ', $where);
-        
-        $stmt = $pdo->prepare("
-            SELECT t.*, 
-                   COALESCE(u.usage_count, 0) as usage_count
-            FROM design_templates t
-            LEFT JOIN (
-                SELECT template_id, COUNT(*) as usage_count 
-                FROM template_usage 
-                GROUP BY template_id
-            ) u ON t.id = u.template_id
-            WHERE $whereClause
-            ORDER BY t.is_featured DESC, t.usage_count DESC, t.created_at DESC
-            LIMIT ? OFFSET ?
-        ");
-        
-        $params[] = $limit;
-        $params[] = $offset;
-        $stmt->execute($params);
-        $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Parse JSON template_data for each template
-        foreach ($templates as &$template) {
-            $template['template_data'] = json_decode($template['template_data'], true);
-        }
-        
-        // Get total count
-        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM design_templates t WHERE $whereClause");
-        $countStmt->execute(array_slice($params, 0, -2));
-        $total = $countStmt->fetchColumn();
-        
-        echo json_encode([
-            'status' => 'success',
-            'templates' => $templates,
-            'total' => (int)$total,
-            'limit' => $limit,
-            'offset' => $offset
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-}
-
-function getTemplate($pdo) {
-    try {
-        $id = $_GET['id'] ?? '';
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Template ID required']);
-            return;
-        }
-        
-        $stmt = $pdo->prepare("
-            SELECT t.*, 
-                   COALESCE(u.usage_count, 0) as usage_count
-            FROM design_templates t
-            LEFT JOIN (
-                SELECT template_id, COUNT(*) as usage_count 
-                FROM template_usage 
-                GROUP BY template_id
-            ) u ON t.id = u.template_id
-            WHERE t.id = ? AND t.is_public = 1
-        ");
-        $stmt->execute([$id]);
-        $template = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$template) {
-            http_response_code(404);
-            echo json_encode(['status' => 'error', 'message' => 'Template not found']);
-            return;
-        }
-        
-        $template['template_data'] = json_decode($template['template_data'], true);
-        
-        echo json_encode([
-            'status' => 'success',
-            'template' => $template
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-}
-
-function getTemplateGallery($pdo) {
-    try {
-        $search = $_GET['search'] ?? '';
-        $category = $_GET['category'] ?? '';
-        
-        // Get categories with template counts
-        $categoriesStmt = $pdo->query("
-            SELECT c.*, COUNT(t.id) as template_count
-            FROM template_categories c
-            LEFT JOIN design_templates t ON c.name = t.category AND t.is_public = 1
-            WHERE c.is_active = 1
-            GROUP BY c.id
-            ORDER BY c.sort_order, c.name
-        ");
-        $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Get templates grouped by category
-        $where = ["t.is_public = 1"];
-        $params = [];
-        
-        if ($search) {
-            $where[] = "(t.name LIKE ? OR t.description LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-        }
-        
-        if ($category) {
-            $where[] = "t.category = ?";
-            $params[] = $category;
-        }
-        
-        $whereClause = implode(' AND ', $where);
-        
-        $templatesStmt = $pdo->prepare("
-            SELECT t.id, t.name, t.description, t.category, t.canvas_width, t.canvas_height,
-                   t.preview_image_url, t.thumbnail_url, t.is_featured, t.created_at,
-                   COALESCE(u.usage_count, 0) as usage_count
-            FROM design_templates t
-            LEFT JOIN (
-                SELECT template_id, COUNT(*) as usage_count 
-                FROM template_usage 
-                GROUP BY template_id
-            ) u ON t.id = u.template_id
-            WHERE $whereClause
-            ORDER BY t.category, t.is_featured DESC, t.usage_count DESC, t.name
-        ");
-        $templatesStmt->execute($params);
-        $templates = $templatesStmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Group templates by category
-        $grouped = [];
-        foreach ($templates as $template) {
-            $cat = $template['category'] ?: 'Other';
-            if (!isset($grouped[$cat])) {
-                $grouped[$cat] = [];
+    public function handleRequest() {
+        try {
+            $method = $_SERVER['REQUEST_METHOD'];
+            $action = $_GET['action'] ?? '';
+            
+            switch ($method) {
+                case 'GET':
+                    return $this->handleGet($action);
+                case 'POST':
+                    return $this->handlePost();
+                case 'PUT':
+                    return $this->handlePut();
+                case 'DELETE':
+                    return $this->handleDelete();
+                default:
+                    throw new Exception('Method not allowed');
             }
-            $grouped[$cat][] = $template;
+        } catch (Exception $e) {
+            return $this->errorResponse($e->getMessage());
         }
-        
-        echo json_encode([
-            'status' => 'success',
-            'categories' => $categories,
-            'templates' => $templates,
-            'grouped' => $grouped,
-            'search' => $search,
-            'selected_category' => $category
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
-}
-
-function handlePost($pdo) {
-    try {
+    
+    private function handleGet($action) {
+        switch ($action) {
+            case 'list':
+                return $this->getTemplates();
+            case 'template':
+                $id = $_GET['id'] ?? '';
+                return $this->getTemplate($id);
+            case 'categories':
+                return $this->getCategories();
+            default:
+                return $this->getTemplates();
+        }
+    }
+    
+    private function handlePost() {
         $input = json_decode(file_get_contents('php://input'), true);
         $action = $input['action'] ?? '';
         
         switch ($action) {
-            case 'create':
-                createTemplate($pdo, $input);
-                break;
-            case 'use':
-                useTemplate($pdo, $input);
-                break;
-            case 'duplicate':
-                duplicateTemplate($pdo, $input);
-                break;
+            case 'save_template':
+                return $this->saveTemplate($input);
+            case 'duplicate_template':
+                return $this->duplicateTemplate($input);
             default:
-                http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
+                throw new Exception('Invalid action');
         }
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
-}
-
-function createTemplate($pdo, $input) {
-    try {
-        $required = ['name', 'category', 'canvas_width', 'canvas_height', 'template_data'];
-        foreach ($required as $field) {
-            if (!isset($input[$field]) || empty($input[$field])) {
-                http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => "Field '$field' is required"]);
-                return;
+    
+    private function handlePut() {
+        $input = json_decode(file_get_contents('php://input'), true);
+        return $this->updateTemplate($input);
+    }
+    
+    private function handleDelete() {
+        $id = $_GET['id'] ?? '';
+        return $this->deleteTemplate($id);
+    }
+    
+    /**
+     * Get all templates with optional filtering
+     */
+    private function getTemplates() {
+        $category = $_GET['category'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $limit = intval($_GET['limit'] ?? 50);
+        $offset = intval($_GET['offset'] ?? 0);
+        
+        $sql = "SELECT 
+                    id,
+                    name,
+                    category,
+                    description,
+                    thumbnail_path,
+                    template_data,
+                    is_active,
+                    created_at,
+                    updated_at
+                FROM design_templates 
+                WHERE is_active = 1";
+        
+        $params = [];
+        
+        if (!empty($category) && $category !== 'all') {
+            $sql .= " AND category = ?";
+            $params[] = $category;
+        }
+        
+        if (!empty($search)) {
+            $sql .= " AND (name LIKE ? OR description LIKE ? OR category LIKE ?)";
+            $searchTerm = "%{$search}%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        $sql .= " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Process templates
+        foreach ($templates as &$template) {
+            $template['template_data'] = json_decode($template['template_data'], true);
+            
+            // Generate thumbnail URL if path exists
+            if ($template['thumbnail_path']) {
+                $template['thumbnail'] = $this->getFullUrl($template['thumbnail_path']);
+            } else {
+                $template['thumbnail'] = $this->generateDefaultThumbnail($template);
             }
         }
         
-        $stmt = $pdo->prepare("
-            INSERT INTO design_templates (
-                name, description, category, canvas_width, canvas_height, 
-                template_data, is_public, is_featured, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        
-        $stmt->execute([
-            $input['name'],
-            $input['description'] ?? '',
-            $input['category'],
-            $input['canvas_width'],
-            $input['canvas_height'],
-            json_encode($input['template_data']),
-            $input['is_public'] ?? true,
-            $input['is_featured'] ?? false,
-            $_SERVER['HTTP_X_ADMIN_USER_ID'] ?? null
+        return $this->successResponse([
+            'templates' => $templates,
+            'total' => $this->getTotalTemplatesCount($category, $search)
         ]);
-        
-        $templateId = $pdo->lastInsertId();
-        
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Template created successfully',
-            'template_id' => $templateId
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
-}
-
-function useTemplate($pdo, $input) {
-    try {
-        $templateId = $input['template_id'] ?? '';
-        $requestId = $input['request_id'] ?? '';
-        
-        if (!$templateId) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Template ID required']);
-            return;
+    
+    /**
+     * Get a specific template by ID
+     */
+    private function getTemplate($id) {
+        if (empty($id)) {
+            throw new Exception('Template ID is required');
         }
         
-        // Get template
-        $stmt = $pdo->prepare("SELECT * FROM design_templates WHERE id = ? AND is_public = 1");
-        $stmt->execute([$templateId]);
+        $sql = "SELECT 
+                    id,
+                    name,
+                    category,
+                    description,
+                    thumbnail_path,
+                    template_data,
+                    is_active,
+                    created_at,
+                    updated_at
+                FROM design_templates 
+                WHERE id = ? AND is_active = 1";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
         $template = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$template) {
-            http_response_code(404);
-            echo json_encode(['status' => 'error', 'message' => 'Template not found']);
-            return;
+            throw new Exception('Template not found');
         }
         
-        // Create design record if request_id provided
-        $designId = null;
-        if ($requestId) {
-            $designStmt = $pdo->prepare("
-                INSERT INTO custom_request_designs (
-                    request_id, template_id, design_data, created_by
-                ) VALUES (?, ?, ?, ?)
-            ");
-            $designStmt->execute([
-                $requestId,
-                $templateId,
-                $template['template_data'],
-                $_SERVER['HTTP_X_ADMIN_USER_ID'] ?? null
-            ]);
-            $designId = $pdo->lastInsertId();
+        $template['template_data'] = json_decode($template['template_data'], true);
+        
+        if ($template['thumbnail_path']) {
+            $template['thumbnail'] = $this->getFullUrl($template['thumbnail_path']);
         }
         
-        // Track usage
-        $usageStmt = $pdo->prepare("
-            INSERT INTO template_usage (template_id, request_id, user_id, user_type) 
-            VALUES (?, ?, ?, ?)
-        ");
-        $usageStmt->execute([
-            $templateId,
-            $requestId,
-            $_SERVER['HTTP_X_ADMIN_USER_ID'] ?? null,
-            'admin'
-        ]);
-        
-        // Update usage count
-        $pdo->prepare("UPDATE design_templates SET usage_count = usage_count + 1 WHERE id = ?")
-            ->execute([$templateId]);
-        
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Template applied successfully',
-            'design_id' => $designId,
-            'template' => [
-                'id' => $template['id'],
-                'name' => $template['name'],
-                'template_data' => json_decode($template['template_data'], true)
-            ]
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        return $this->successResponse(['template' => $template]);
     }
-}
-
-function handlePut($pdo) {
-    try {
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = $input['id'] ?? '';
+    
+    /**
+     * Get available categories
+     */
+    private function getCategories() {
+        $sql = "SELECT DISTINCT category, COUNT(*) as count 
+                FROM design_templates 
+                WHERE is_active = 1 
+                GROUP BY category 
+                ORDER BY category";
         
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Template ID required']);
-            return;
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return $this->successResponse(['categories' => $categories]);
+    }
+    
+    /**
+     * Save a new template
+     */
+    private function saveTemplate($data) {
+        $required = ['name', 'category', 'template_data'];
+        foreach ($required as $field) {
+            if (empty($data[$field])) {
+                throw new Exception("Field '{$field}' is required");
+            }
+        }
+        
+        // Validate category
+        $validCategories = ['birthday', 'name-frame', 'quotes', 'anniversary', 'other'];
+        if (!in_array($data['category'], $validCategories)) {
+            $data['category'] = 'other';
+        }
+        
+        // Save thumbnail if provided
+        $thumbnailPath = null;
+        if (!empty($data['thumbnail'])) {
+            $thumbnailPath = $this->saveThumbnail($data['thumbnail'], $data['name']);
+        }
+        
+        $sql = "INSERT INTO design_templates 
+                (name, category, description, thumbnail_path, template_data, created_by, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        
+        $stmt = $this->db->prepare($sql);
+        $success = $stmt->execute([
+            $data['name'],
+            $data['category'],
+            $data['description'] ?? '',
+            $thumbnailPath,
+            json_encode($data['template_data']),
+            $this->admin_user_id
+        ]);
+        
+        if (!$success) {
+            throw new Exception('Failed to save template');
+        }
+        
+        $templateId = $this->db->lastInsertId();
+        
+        return $this->successResponse([
+            'message' => 'Template saved successfully',
+            'template_id' => $templateId
+        ]);
+    }
+    
+    /**
+     * Update an existing template
+     */
+    private function updateTemplate($data) {
+        if (empty($data['id'])) {
+            throw new Exception('Template ID is required');
+        }
+        
+        // Check if template exists
+        $stmt = $this->db->prepare("SELECT id FROM design_templates WHERE id = ? AND is_active = 1");
+        $stmt->execute([$data['id']]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Template not found');
         }
         
         $updateFields = [];
         $params = [];
         
-        $allowedFields = ['name', 'description', 'category', 'template_data', 'is_public', 'is_featured'];
-        foreach ($allowedFields as $field) {
-            if (isset($input[$field])) {
-                $updateFields[] = "$field = ?";
-                $params[] = $field === 'template_data' ? json_encode($input[$field]) : $input[$field];
-            }
+        if (!empty($data['name'])) {
+            $updateFields[] = "name = ?";
+            $params[] = $data['name'];
+        }
+        
+        if (!empty($data['category'])) {
+            $updateFields[] = "category = ?";
+            $params[] = $data['category'];
+        }
+        
+        if (isset($data['description'])) {
+            $updateFields[] = "description = ?";
+            $params[] = $data['description'];
+        }
+        
+        if (!empty($data['template_data'])) {
+            $updateFields[] = "template_data = ?";
+            $params[] = json_encode($data['template_data']);
+        }
+        
+        if (!empty($data['thumbnail'])) {
+            $thumbnailPath = $this->saveThumbnail($data['thumbnail'], $data['name'] ?? 'template');
+            $updateFields[] = "thumbnail_path = ?";
+            $params[] = $thumbnailPath;
         }
         
         if (empty($updateFields)) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'No fields to update']);
-            return;
+            throw new Exception('No fields to update');
         }
         
-        $updateFields[] = "updated_at = CURRENT_TIMESTAMP";
-        $params[] = $id;
+        $updateFields[] = "updated_at = NOW()";
+        $params[] = $data['id'];
         
-        $stmt = $pdo->prepare("
-            UPDATE design_templates 
-            SET " . implode(', ', $updateFields) . "
-            WHERE id = ?
-        ");
+        $sql = "UPDATE design_templates SET " . implode(', ', $updateFields) . " WHERE id = ?";
+        
+        $stmt = $this->db->prepare($sql);
+        $success = $stmt->execute($params);
+        
+        if (!$success) {
+            throw new Exception('Failed to update template');
+        }
+        
+        return $this->successResponse(['message' => 'Template updated successfully']);
+    }
+    
+    /**
+     * Delete a template (soft delete)
+     */
+    private function deleteTemplate($id) {
+        if (empty($id)) {
+            throw new Exception('Template ID is required');
+        }
+        
+        $sql = "UPDATE design_templates SET is_active = 0, updated_at = NOW() WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $success = $stmt->execute([$id]);
+        
+        if (!$success) {
+            throw new Exception('Failed to delete template');
+        }
+        
+        return $this->successResponse(['message' => 'Template deleted successfully']);
+    }
+    
+    /**
+     * Duplicate a template
+     */
+    private function duplicateTemplate($data) {
+        if (empty($data['id'])) {
+            throw new Exception('Template ID is required');
+        }
+        
+        // Get original template
+        $stmt = $this->db->prepare("SELECT * FROM design_templates WHERE id = ? AND is_active = 1");
+        $stmt->execute([$data['id']]);
+        $original = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$original) {
+            throw new Exception('Template not found');
+        }
+        
+        // Create duplicate
+        $newName = $data['name'] ?? ($original['name'] . ' (Copy)');
+        
+        $sql = "INSERT INTO design_templates 
+                (name, category, description, thumbnail_path, template_data, created_by, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        
+        $stmt = $this->db->prepare($sql);
+        $success = $stmt->execute([
+            $newName,
+            $original['category'],
+            $original['description'],
+            $original['thumbnail_path'], // Could copy thumbnail file too
+            $original['template_data'],
+            $this->admin_user_id
+        ]);
+        
+        if (!$success) {
+            throw new Exception('Failed to duplicate template');
+        }
+        
+        $templateId = $this->db->lastInsertId();
+        
+        return $this->successResponse([
+            'message' => 'Template duplicated successfully',
+            'template_id' => $templateId
+        ]);
+    }
+    
+    /**
+     * Save thumbnail image to file system
+     */
+    private function saveThumbnail($base64Data, $templateName) {
+        // Extract base64 data
+        if (strpos($base64Data, 'data:image/') === 0) {
+            $data = explode(',', $base64Data);
+            $imageData = base64_decode($data[1]);
+            
+            // Get image type
+            $mimeType = explode(';', explode(':', $data[0])[1])[0];
+            $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
+        } else {
+            $imageData = base64_decode($base64Data);
+            $extension = 'png';
+        }
+        
+        // Create thumbnails directory if it doesn't exist
+        $uploadDir = '../../uploads/templates/thumbnails/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        // Generate unique filename
+        $filename = 'template_' . time() . '_' . uniqid() . '.' . $extension;
+        $filepath = $uploadDir . $filename;
+        
+        // Save file
+        if (file_put_contents($filepath, $imageData) === false) {
+            throw new Exception('Failed to save thumbnail');
+        }
+        
+        return 'uploads/templates/thumbnails/' . $filename;
+    }
+    
+    /**
+     * Generate default thumbnail for templates without custom thumbnails
+     */
+    private function generateDefaultThumbnail($template) {
+        // Return a data URL for a simple SVG placeholder
+        $category = ucfirst(str_replace('-', ' ', $template['category']));
+        $name = htmlspecialchars($template['name']);
+        
+        $svg = '<svg width="200" height="120" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100%" height="100%" fill="#f3f4f6"/>
+                    <text x="50%" y="40%" font-family="Arial" font-size="12" fill="#6b7280" text-anchor="middle" dy=".3em">' . $category . '</text>
+                    <text x="50%" y="65%" font-family="Arial" font-size="10" fill="#374151" text-anchor="middle" dy=".3em">' . $name . '</text>
+                </svg>';
+        
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+    
+    /**
+     * Get total count of templates for pagination
+     */
+    private function getTotalTemplatesCount($category = '', $search = '') {
+        $sql = "SELECT COUNT(*) FROM design_templates WHERE is_active = 1";
+        $params = [];
+        
+        if (!empty($category) && $category !== 'all') {
+            $sql .= " AND category = ?";
+            $params[] = $category;
+        }
+        
+        if (!empty($search)) {
+            $sql .= " AND (name LIKE ? OR description LIKE ? OR category LIKE ?)";
+            $searchTerm = "%{$search}%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        
-        echo json_encode([
+        return $stmt->fetchColumn();
+    }
+    
+    /**
+     * Get full URL for relative paths
+     */
+    private function getFullUrl($relativePath) {
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'];
+        $baseUrl = $protocol . '://' . $host . '/my_little_thingz/backend/';
+        return $baseUrl . $relativePath;
+    }
+    
+    /**
+     * Return success response
+     */
+    private function successResponse($data) {
+        return [
             'status' => 'success',
-            'message' => 'Template updated successfully'
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            'data' => $data
+        ];
+    }
+    
+    /**
+     * Return error response
+     */
+    private function errorResponse($message, $code = 400) {
+        http_response_code($code);
+        return [
+            'status' => 'error',
+            'message' => $message
+        ];
     }
 }
 
-function handleDelete($pdo) {
-    try {
-        $id = $_GET['id'] ?? '';
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Template ID required']);
-            return;
-        }
-        
-        $stmt = $pdo->prepare("DELETE FROM design_templates WHERE id = ?");
-        $stmt->execute([$id]);
-        
-        if ($stmt->rowCount() === 0) {
-            http_response_code(404);
-            echo json_encode(['status' => 'error', 'message' => 'Template not found']);
-            return;
-        }
-        
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Template deleted successfully'
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-}
+// Initialize and handle request
+$api = new TemplateGalleryAPI();
+$response = $api->handleRequest();
 
-function getUsageStats($pdo) {
-    try {
-        $stmt = $pdo->query("
-            SELECT 
-                t.category,
-                COUNT(DISTINCT t.id) as template_count,
-                COUNT(u.id) as total_usage,
-                AVG(t.usage_count) as avg_usage_per_template
-            FROM design_templates t
-            LEFT JOIN template_usage u ON t.id = u.template_id
-            WHERE t.is_public = 1
-            GROUP BY t.category
-            ORDER BY total_usage DESC
-        ");
-        $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo json_encode([
-            'status' => 'success',
-            'stats' => $stats
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-}
+echo json_encode($response);
 ?>

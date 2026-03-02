@@ -65,7 +65,7 @@ export default function AdminDashboard() {
 
   // Practice Uploads management state
   const [practiceUploads, setPracticeUploads] = useState([]);
-  const [practiceFilter, setPracticeFilter] = useState('pending'); // pending, approved, rejected, all
+  const [practiceFilter, setPracticeFilter] = useState('approved'); // approved, rejected, all
   const [practiceLoading, setPracticeLoading] = useState(false);
   const [reviewingUpload, setReviewingUpload] = useState(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
@@ -739,21 +739,28 @@ export default function AdminDashboard() {
   };
 
   // Practice Uploads management functions
-  const fetchPracticeUploads = async () => {
+  const fetchPracticeUploads = async (filterOverride = null) => {
     try {
       setPracticeLoading(true);
-      const url = `${API_BASE}/admin/pro-learners.php?action=pending_uploads&status=${practiceFilter}`;
+      // Use filterOverride if provided, otherwise use current practiceFilter
+      const currentFilter = filterOverride || practiceFilter;
+      
+      // Add cache-busting timestamp
+      const timestamp = new Date().getTime();
+      const url = `${API_BASE}/admin/pro-learners.php?action=pending_uploads&status=${currentFilter}&_t=${timestamp}`;
+      
       const res = await fetch(url, { 
         headers: { 
           ...adminHeader,
           'X-Admin-Token': 'admin_secret_token'
-        }
+        },
+        cache: 'no-cache' // Disable caching
       });
       const data = await res.json();
+      
       if (res.ok && data.status === 'success') {
-        // The API returns 'pending_uploads' key (which now contains all filtered uploads)
-        setPracticeUploads(data.pending_uploads || []);
-        console.log(`Loaded ${data.total_count || 0} practice uploads with filter: ${data.filter_status}`);
+        const uploads = data.pending_uploads || [];
+        setPracticeUploads(uploads);
       } else {
         console.error('Failed to load practice uploads:', data.message);
         setPracticeUploads([]);
@@ -792,6 +799,36 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       alert('Network error reviewing practice upload');
+    }
+  };
+
+  const removePracticeUpload = async (uploadId) => {
+    if (!confirm('Are you sure you want to remove this practice upload? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/pro-learners.php`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          ...adminHeader,
+          'X-Admin-Token': 'admin_secret_token'
+        },
+        body: JSON.stringify({
+          action: 'remove_practice_upload',
+          upload_id: uploadId
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        alert('Practice upload removed successfully!');
+        await fetchPracticeUploads(); // Refresh the list
+      } else {
+        alert(data.message || 'Failed to remove practice upload');
+      }
+    } catch (e) {
+      alert('Network error removing practice upload');
     }
   };
 
@@ -2039,7 +2076,6 @@ export default function AdminDashboard() {
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
-                    <option value="all">All</option>
                   </select>
                 </div>
               </div>
@@ -2056,12 +2092,13 @@ export default function AdminDashboard() {
                       <th>Budget</th>
                       <th>Deadline</th>
                       <th>Status</th>
-                      <th>Actions</th>
+                      {/* Hide Actions column for completed and cancelled requests */}
+                      {reqFilter !== 'completed' && reqFilter !== 'cancelled' && <th>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {requests.length === 0 ? (
-                      <tr><td colSpan={10} className="muted">No records</td></tr>
+                      <tr><td colSpan={reqFilter !== 'completed' && reqFilter !== 'cancelled' ? 10 : 9} className="muted">No records</td></tr>
                     ) : (
                       requests.map((r, index) => (
                         <tr key={r.id}>
@@ -2147,6 +2184,8 @@ export default function AdminDashboard() {
                           </td>
                           <td>{r.deadline || '-'}</td>
                           <td style={{ textTransform: 'capitalize' }}>{r.status}</td>
+                          {/* Hide Actions cell for completed and cancelled requests */}
+                          {reqFilter !== 'completed' && reqFilter !== 'cancelled' && (
                           <td>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               <button 
@@ -2168,10 +2207,12 @@ export default function AdminDashboard() {
                                       
                                       if (checkRes.ok && checkData.status === 'success' && checkData.requires_editor) {
                                         console.log('Opening design editor...');
-                                        setEditingRequestId(r.id);
-                                        setDesignEditorRequest({ id: r.id, title: checkData.title || r.title || `Request #${r.id}` });
-                                        setActiveSection('design-editor');
-                                        alert('Opening design editor...');
+                                        // Navigate to the Canva-style design editor with admin credentials
+                                        const adminEmail = auth?.email || 'admin@mylittlethingz.com';
+                                        const adminUserId = auth?.user_id || '1';
+                                        const editorUrl = `http://localhost/my_little_thingz/frontend/admin/design-editor.html?request_id=${r.id}&admin_email=${encodeURIComponent(adminEmail)}&admin_user_id=${encodeURIComponent(adminUserId)}`;
+                                        // Use window.location.href to bypass React Router
+                                        window.location.href = editorUrl;
                                       } else {
                                         alert('This request does not require design editing or could not be determined.');
                                       }
@@ -2199,22 +2240,28 @@ export default function AdminDashboard() {
                               >
                                 <LuImage /> View Images
                               </button>
-                              <button className="btn btn-soft tiny" onClick={() => updateRequestStatus(r.id, 'completed')} disabled={r.status==='completed'}>Complete</button>
-                              <button className="btn btn-danger tiny" onClick={() => updateRequestStatus(r.id, 'cancelled')} disabled={r.status==='cancelled'}>Cancel</button>
-                              <label className="btn btn-outline tiny">
-                                Upload
-                                <input type="file" accept="image/*" style={{ display: 'none' }}
-                                  onChange={async (e) => {
-                                    const f = e.target.files?.[0];
-                                    if (f) {
-                                      await uploadAdminRequestImage(r.id, f);
-                                      e.target.value = '';
-                                    }
-                                  }}
-                                />
-                              </label>
+                              {/* Hide Complete, Cancel, and Upload buttons for completed or cancelled requests */}
+                              {r.status !== 'completed' && r.status !== 'cancelled' && (
+                                <>
+                                  <button className="btn btn-soft tiny" onClick={() => updateRequestStatus(r.id, 'completed')} disabled={r.status==='completed'}>Complete</button>
+                                  <button className="btn btn-danger tiny" onClick={() => updateRequestStatus(r.id, 'cancelled')} disabled={r.status==='cancelled'}>Cancel</button>
+                                  <label className="btn btn-outline tiny">
+                                    Upload
+                                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                                      onChange={async (e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) {
+                                          await uploadAdminRequestImage(r.id, f);
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </>
+                              )}
                             </div>
                           </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -3080,12 +3127,12 @@ export default function AdminDashboard() {
                     <select 
                       value={practiceFilter} 
                       onChange={(e) => {
-                        setPracticeFilter(e.target.value);
-                        fetchPracticeUploads();
+                        const newFilter = e.target.value;
+                        setPracticeFilter(newFilter);
+                        fetchPracticeUploads(newFilter);
                       }}
                       className="filter-select"
                     >
-                      <option value="pending">Pending Review</option>
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
                       <option value="all">All Uploads</option>
@@ -3154,16 +3201,23 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
-                          {upload.status === 'pending' && (
-                            <div className="review-actions">
+                          <div className="upload-actions">
+                            {upload.status === 'pending' && (
                               <button 
                                 className="btn-approve"
                                 onClick={() => setReviewingUpload(upload)}
                               >
                                 Review Upload
                               </button>
-                            </div>
-                          )}
+                            )}
+                            <button 
+                              className="btn-remove"
+                              onClick={() => removePracticeUpload(upload.id)}
+                              title="Remove this practice upload"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -161,6 +161,46 @@
   color: #059669;
 }
 
+.certificate-name-input {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.certificate-name-input label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.certificate-name-input input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  transition: border-color 0.2s;
+}
+
+.certificate-name-input input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.certificate-name-input input:disabled {
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.certificate-name-input small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
 .existing-certificate {
   margin-bottom: 16px;
 }
@@ -206,6 +246,16 @@
   font-size: 12px;
   color: #94a3b8;
   margin-top: 8px;
+}
+
+/* Practice Feedback Section */
+.practice-feedback-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 40px;
 }
 
 /* Tutorial Progress Section */

@@ -5,6 +5,7 @@ import {
   LuArrowLeft, LuTrendingUp, LuDownload, 
   LuLock, LuAward, LuBookOpen, LuEye 
 } from 'react-icons/lu';
+import PracticeUploadFeedback from '../components/PracticeUploadFeedback';
 import '../styles/pro-dashboard.css';
 
 const API_BASE = 'http://localhost/my_little_thingz/backend/api';
@@ -247,6 +248,11 @@ export default function ProDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Practice Upload Feedback Section */}
+      <div className="practice-feedback-section">
+        <PracticeUploadFeedback userEmail={tutorialAuth?.email} />
       </div>
 
       {/* Tutorial Progress List */}

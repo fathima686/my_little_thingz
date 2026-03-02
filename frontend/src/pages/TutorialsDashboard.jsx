@@ -9,7 +9,7 @@ import NotificationDropdown from '../components/NotificationDropdown';
 import ProfileDropdown from '../components/ProfileDropdown';
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal';
 import ProgressTracker from '../components/ProgressTracker';
-import PracticeUpload from '../components/PracticeUpload';
+import PracticeUploadV3 from '../components/PracticeUploadV3';
 import handEmbroideryImg from '../assets/hand embroary.jpeg';
 import resinArtImg from '../assets/resin.jpeg';
 import giftMakingImg from '../assets/gift making.jpeg';

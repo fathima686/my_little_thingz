@@ -72,6 +72,12 @@ switch ($method) {
 }
 
 function handleGetRequests($pdo) {
+    // Check if requesting a single request
+    $requestId = $_GET['id'] ?? '';
+    if (!empty($requestId)) {
+        return handleGetSingleRequest($pdo, ['id' => $requestId]);
+    }
+    
     try {
         // Get filters from query parameters
         $status = $_GET['status'] ?? '';
@@ -163,49 +169,133 @@ function handleGetRequests($pdo) {
 function handleCreateRequest($pdo) {
     try {
         $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? 'create';
         
-        $requiredFields = ['customer_id', 'customer_name', 'customer_email', 'title', 'deadline'];
-        foreach ($requiredFields as $field) {
-            if (empty($input[$field])) {
+        switch ($action) {
+            case 'create':
+                return handleCreateNewRequest($pdo, $input);
+            case 'save_design':
+                return handleSaveDesign($pdo, $input);
+            case 'get':
+                return handleGetSingleRequest($pdo, $input);
+            default:
                 http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => "Field '$field' is required"]);
+                echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
                 return;
-            }
         }
         
-        // Generate unique order ID
-        $orderId = 'CR-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
-        
-        $stmt = $pdo->prepare("
-            INSERT INTO custom_requests (
-                order_id, customer_id, customer_name, customer_email, 
-                title, occasion, description, requirements, deadline, priority
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        
-        $stmt->execute([
-            $orderId,
-            $input['customer_id'],
-            $input['customer_name'],
-            $input['customer_email'],
-            $input['title'],
-            $input['occasion'] ?? '',
-            $input['description'] ?? '',
-            $input['requirements'] ?? '',
-            $input['deadline'],
-            $input['priority'] ?? 'medium'
-        ]);
-        
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Custom request created successfully',
-            'order_id' => $orderId,
-            'request_id' => $pdo->lastInsertId()
-        ]);
-        
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'Failed to create request']);
+        echo json_encode(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()]);
+    }
+}
+
+function handleCreateNewRequest($pdo, $input) {
+    $requiredFields = ['customer_id', 'customer_name', 'customer_email', 'title', 'deadline'];
+    foreach ($requiredFields as $field) {
+        if (empty($input[$field])) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => "Field '$field' is required"]);
+            return;
+        }
+    }
+    
+    // Generate unique order ID
+    $orderId = 'CR-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+    
+    $stmt = $pdo->prepare("
+        INSERT INTO custom_requests (
+            order_id, customer_id, customer_name, customer_email, 
+            title, occasion, description, requirements, deadline, priority
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    
+    $stmt->execute([
+        $orderId,
+        $input['customer_id'],
+        $input['customer_name'],
+        $input['customer_email'],
+        $input['title'],
+        $input['occasion'] ?? '',
+        $input['description'] ?? '',
+        $input['requirements'] ?? '',
+        $input['deadline'],
+        $input['priority'] ?? 'medium'
+    ]);
+    
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Custom request created successfully',
+        'order_id' => $orderId,
+        'request_id' => $pdo->lastInsertId()
+    ]);
+}
+
+function handleSaveDesign($pdo, $input) {
+    if (empty($input['request_id'])) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Request ID is required']);
+        return;
+    }
+    
+    // First, check if we need to add design_data column
+    try {
+        $pdo->exec("ALTER TABLE custom_requests ADD COLUMN design_data LONGTEXT NULL");
+    } catch (PDOException $e) {
+        // Column probably already exists, ignore error
+    }
+    
+    // Save the design data
+    $stmt = $pdo->prepare("
+        UPDATE custom_requests 
+        SET design_data = ?, 
+            design_url = ?, 
+            status = CASE WHEN status = 'submitted' THEN 'drafted_by_admin' ELSE status END,
+            updated_at = NOW()
+        WHERE id = ?
+    ");
+    
+    $stmt->execute([
+        $input['design_data'],
+        $input['preview_image'] ?? null,
+        $input['request_id']
+    ]);
+    
+    if ($stmt->rowCount() > 0) {
+        echo json_encode([
+            'status' => 'success', 
+            'message' => 'Design saved successfully'
+        ]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['status' => 'error', 'message' => 'Request not found']);
+    }
+}
+
+function handleGetSingleRequest($pdo, $input) {
+    $requestId = $_GET['id'] ?? $input['id'] ?? '';
+    
+    if (empty($requestId)) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Request ID is required']);
+        return;
+    }
+    
+    $stmt = $pdo->prepare("
+        SELECT cr.*, 
+               DATEDIFF(cr.deadline, CURDATE()) as days_until_deadline
+        FROM custom_requests cr 
+        WHERE cr.id = ?
+    ");
+    
+    $stmt->execute([$requestId]);
+    $request = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($request) {
+        echo json_encode($request);
+    } else {
+        http_response_code(404);
+        echo json_encode(['status' => 'error', 'message' => 'Request not found']);
     }
 }
 

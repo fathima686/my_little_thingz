@@ -1,5 +1,7 @@
-tensorflow>=2.15.0
-flask>=3.0.0
-pillow>=10.2.0
-numpy>=1.26.0
-werkzeug>=3.0.0
+flask>=2.0.0
+pillow>=9.0.0
+werkzeug>=2.0.0
+
+# Optional - for production with real AI
+# tensorflow>=2.10.0
+# numpy>=1.21.0

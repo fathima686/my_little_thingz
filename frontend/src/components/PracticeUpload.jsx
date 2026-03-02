@@ -52,7 +52,8 @@ const PracticeUpload = ({ tutorialId, tutorialTitle, userEmail, onUploadSuccess 
         formData.append(`images[${index}]`, file);
       });
 
-      const response = await fetch(`${API_BASE}/pro/practice-upload.php`, {
+      // First try the craft validation API
+      let response = await fetch(`${API_BASE}/pro/practice-upload-craft-validation.php`, {
         method: 'POST',
         headers: {
           'X-Tutorial-Email': userEmail
@@ -60,7 +61,24 @@ const PracticeUpload = ({ tutorialId, tutorialTitle, userEmail, onUploadSuccess 
         body: formData
       });
 
-      const result = await response.json();
+      let result = await response.json();
+      
+      // If craft validation service is unavailable, fall back to simple upload
+      if (result.error_code === 'SERVICE_UNAVAILABLE' || 
+          (result.message && result.message.includes('Craft validation service unavailable'))) {
+        
+        console.log('Craft validation unavailable, using simple upload fallback');
+        
+        response = await fetch(`${API_BASE}/pro/practice-upload-simple.php`, {
+          method: 'POST',
+          headers: {
+            'X-Tutorial-Email': userEmail
+          },
+          body: formData
+        });
+
+        result = await response.json();
+      }
 
       if (result.status === 'success') {
         setUploadStatus('success');

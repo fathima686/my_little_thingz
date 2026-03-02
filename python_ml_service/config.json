@@ -1,0 +1,27 @@
+{
+  "database": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "database": "my_little_thingz"
+  },
+  "upload_base_path": "../backend/uploads/",
+  "temp_dir": "/tmp/image_processing",
+  "api_endpoints": {
+    "backend_base": "http://localhost/my_little_thingz/backend/api",
+    "notification_webhook": "http://localhost/my_little_thingz/backend/api/admin/authenticity-notification.php"
+  },
+  "processing": {
+    "max_file_size": 10485760,
+    "supported_formats": ["image/jpeg", "image/png", "image/gif", "image/webp"],
+    "hash_size": 16,
+    "similarity_threshold": 0.85,
+    "batch_size": 10
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "image_authenticity.log",
+    "max_size": 10485760,
+    "backup_count": 5
+  }
+}

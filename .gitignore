@@ -1,1 +1,25 @@
+# Environment / secrets
+.env
+backend/.env
+
+# IDE
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Uploads
 backend/uploads/
+
+# Temporary / debug / tests
+debug*
+test*
+*.bat
+*.ps1
+
+# Node
+node_modules/

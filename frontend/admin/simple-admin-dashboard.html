@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .admin-main {
+            min-height: 100vh;
+        }
+        
+        .admin-topbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .topbar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .topbar-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .admin-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .widget {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .widget-head {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+        }
+        
+        .widget-head h4 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .muted {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+        }
+        
+        .widget-body {
+            padding: 0;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .table td {
+            font-size: 14px;
+        }
+        
+        .table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            margin: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-soft {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .btn-soft:hover {
+            background: #5855eb;
+            color: white;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #6366f1;
+            border: 1px solid #6366f1;
+        }
+        
+        .btn-outline:hover {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .tiny {
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        .status-pending {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-in_progress {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #ef4444;
+        }
+        
+        .success-message {
+            background: #dcfce7;
+            color: #166534;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #bbf7d0;
+        }
+    </style>
+</head>
+<body>
+    <main class="admin-main">
+        <div class="admin-topbar">
+            <div class="topbar-inner">
+                <div class="topbar-title">Admin Dashboard</div>
+                <div class="topbar-actions"></div>
+            </div>
+        </div>
+        
+        <div class="admin-content">
+            <div id="successMessage" class="success-message" style="display: none;">
+                ✅ Welcome back! Design editor navigation is working perfectly.
+            </div>
+            
+            <section id="custom-requests" class="widget">
+                <div class="widget-head">
+                    <h4>Custom Requests</h4>
+                    <div class="controls">
+                        <label class="muted">Status</label>
+                        <select class="select" id="statusFilter" onchange="filterRequests()">
+                            <option value="pending">Pending</option>
+                            <option value="in_progress" selected>In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="widget-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Sl. No.</th>
+                                <th>Image</th>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th>Occasion</th>
+                                <th>Category</th>
+                                <th>Budget</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsTable">
+                            <tr>
+                                <td colspan="10" class="loading">
+                                    🔄 Loading custom requests...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let allRequests = [];
+        
+        // Show success message if coming from design editor
+        if (document.referrer.includes('design-editor.html')) {
+            document.getElementById('successMessage').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('successMessage').style.display = 'none';
+            }, 5000);
+        }
+        
+        async function loadRequests() {
+            try {
+                const response = await fetch('../../backend/api/admin/custom-requests-database-only.php?status=all', {
+                    headers: {
+                        'X-Admin-Email': 'admin@mylittlethingz.com',
+                        'X-Admin-User-Id': '1'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    allRequests = data.requests || [];
+                    filterRequests();
+                } else {
+                    throw new Error(data.message || 'Failed to load requests');
+                }
+            } catch (error) {
+                console.error('Error loading requests:', error);
+                document.getElementById('requestsTable').innerHTML = `
+                    <tr>
+                        <td colspan="10" class="error">
+                            ❌ Error loading requests: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        function filterRequests() {
+            const status = document.getElementById('statusFilter').value;
+            let filteredRequests = allRequests;
+            
+            if (status !== 'all') {
+                filteredRequests = allRequests.filter(req => req.status === status);
+            }
+            
+            displayRequests(filteredRequests);
+        }
+        
+        function displayRequests(requests) {
+            const tbody = document.getElementById('requestsTable');
+            
+            if (requests.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="loading">
+                            📭 No requests found for the selected status
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = requests.map((req, index) => {
+                const imageUrl = req.images && req.images[0] ? req.images[0].url : 'https://via.placeholder.com/48x48/6366f1/white?text=IMG';
+                const budget = req.budget_min && req.budget_max ? 
+                    `From ${req.budget_min}` : 
+                    (req.budget_min ? `${req.budget_min}` : 'Not specified');
+                
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>
+                            <img src="${imageUrl}" 
+                                 alt="${req.title}" 
+                                 style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; cursor: zoom-in;"
+                                 onclick="viewImage('${imageUrl}')">
+                        </td>
+                        <td>${req.title || 'Untitled Request'}</td>
+                        <td>
+                            <div title="${req.description || ''}" 
+                                 style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${req.description || 'No description provided'}
+                            </div>
+                        </td>
+                        <td>${req.occasion || 'Not specified'}</td>
+                        <td>${req.category || 'Not specified'}</td>
+                        <td><span class="muted">${budget}</span></td>
+                        <td>${req.deadline || 'Not specified'}</td>
+                        <td><span class="status-badge status-${req.status}">${req.status}</span></td>
+                        <td>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <a href="design-editor.html?request_id=${req.id}" class="btn btn-soft tiny">
+                                    Open Editor
+                                </a>
+                                <button class="btn btn-outline tiny" onclick="viewImages(${req.id})" title="View Reference Images">
+                                    <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                                        <circle cx="9" cy="9" r="2"></circle>
+                                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                                    </svg>
+                                    View Images
+                                </button>
+                                <button class="btn btn-soft tiny" onclick="completeRequest(${req.id})" ${req.status === 'completed' ? 'disabled' : ''}>
+                                    Complete
+                                </button>
+                                <button class="btn btn-danger tiny" onclick="cancelRequest(${req.id})" ${req.status === 'cancelled' ? 'disabled' : ''}>
+                                    Cancel
+                                </button>
+                                <label class="btn btn-outline tiny">
+                                    Upload
+                                    <input type="file" accept="image/*" style="display: none;" onchange="uploadImage(${req.id}, this)">
+                                </label>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function viewImage(url) {
+            window.open(url, '_blank');
+        }
+        
+        function viewImages(requestId) {
+            alert(`View images for request #${requestId} - Feature coming soon!`);
+        }
+        
+        async function completeRequest(requestId) {
+            if (!confirm('Mark this request as completed?')) return;
+            
+            try {
+                const response = await fetch('../../backend/api/admin/custom-requests-database-only.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@mylittlethingz.com',
+                        'X-Admin-User-Id': '1'
+                    },
+                    body: JSON.stringify({
+                        request_id: requestId,
+                        status: 'completed'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Request marked as completed!');
+                    loadRequests(); // Reload the table
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to update status'));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+        
+        async function cancelRequest(requestId) {
+            if (!confirm('Cancel this request? This action cannot be undone.')) return;
+            
+            try {
+                const response = await fetch('../../backend/api/admin/custom-requests-database-only.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': 'admin@mylittlethingz.com',
+                        'X-Admin-User-Id': '1'
+                    },
+                    body: JSON.stringify({
+                        request_id: requestId,
+                        status: 'cancelled'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Request cancelled!');
+                    loadRequests(); // Reload the table
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to update status'));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+        
+        function uploadImage(requestId, input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            alert(`Upload image for request #${requestId} - Feature coming soon!`);
+            input.value = ''; // Reset input
+        }
+        
+        // Load requests when page loads
+        document.addEventListener('DOMContentLoaded', loadRequests);
+    </script>
+</body>
+</html>

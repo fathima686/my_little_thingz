@@ -1,22 +1,52 @@
 <?php
-// Direct upload handler - bypasses all complex logic
+/**
+ * Enhanced Practice Upload API with Craft Validation
+ * 
+ * Integrates AI-assisted craft image validation with existing authenticity system
+ * 
+ * Features:
+ * - MobileNet-based craft category classification
+ * - Category mismatch detection (image vs selected tutorial)
+ * - AI-generated image detection via metadata analysis
+ * - Perceptual hashing for duplicate detection (existing)
+ * - Explainable confidence scores
+ * - Admin review workflow integration
+ * - No disruption to existing user flow
+ */
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, X-Tutorial-Email, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, X-Tutorial-Email');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-// Force success for soudhame52@gmail.com
-$userEmail = $_SERVER['HTTP_X_TUTORIAL_EMAIL'] ?? $_POST['email'] ?? '';
-
-if ($userEmail !== 'soudhame52@gmail.com') {
+try {
+    require_once '../../config/database.php';
+    require_once '../../config/env-loader.php';
+    require_once '../../services/EnhancedImageAuthenticityServiceV2.php';
+    require_once '../../services/CraftImageValidationServiceV2.php';
+    
+    // Load environment variables
+    EnvLoader::load();
+    
+    $database = new Database();
+    $pdo = $database->getConnection();
+    
+    // Initialize services
+    $localClassifierUrl = getenv('LOCAL_CLASSIFIER_URL') ?: $_ENV['LOCAL_CLASSIFIER_URL'] ?? 'http://localhost:5000';
+    $craftClassifierUrl = getenv('CRAFT_CLASSIFIER_URL') ?: $_ENV['CRAFT_CLASSIFIER_URL'] ?? 'http://localhost:5001';
+    
+    $authenticityService = new EnhancedImageAuthenticityServiceV2($pdo, $localClassifierUrl);
+    $validationService = new CraftImageValidationServiceV2($pdo, $craftClassifierUrl);
+    
+} catch (Exception $e) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'This direct upload is only for soudhame52@gmail.com'
+        'message' => 'System initialization failed: ' . $e->getMessage()
     ]);
     exit;
 }
@@ -29,434 +59,409 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Create upload directory
-$uploadDir = __DIR__ . '/../../uploads/practice/';
-if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
-}
-chmod($uploadDir, 0777);
+$userEmail = $_SERVER['HTTP_X_TUTORIAL_EMAIL'] ?? $_POST['email'] ?? '';
+$tutorialId = $_POST['tutorial_id'] ?? '';
+$description = $_POST['description'] ?? '';
 
-$uploadedFiles = [];
-$totalFiles = 0;
-
-// Check all possible file input names
-$fileFields = ['practice_images', 'files', 'images', 'upload'];
-
-foreach ($fileFields as $field) {
-    if (isset($_FILES[$field])) {
-        $files = $_FILES[$field];
-        
-        if (is_array($files['name'])) {
-            // Multiple files
-            $fileCount = count($files['name']);
-            for ($i = 0; $i < $fileCount; $i++) {
-                if ($files['error'][$i] === UPLOAD_ERR_OK) {
-                    $totalFiles++;
-                    $fileName = basename($files['name'][$i]);
-                    $targetPath = $uploadDir . 'direct_' . time() . '_' . $totalFiles . '_' . $fileName;
-                    
-                    if (move_uploaded_file($files['tmp_name'][$i], $targetPath)) {
-                        $uploadedFiles[] = [
-                            'original_name' => $fileName,
-                            'stored_name' => basename($targetPath),
-                            'file_size' => $files['size'][$i]
-                        ];
-                    }
-                }
-            }
-        } else {
-            // Single file
-            if ($files['error'] === UPLOAD_ERR_OK) {
-                $totalFiles++;
-                $fileName = basename($files['name']);
-                $targetPath = $uploadDir . 'direct_' . time() . '_' . $totalFiles . '_' . $fileName;
-                
-                if (move_uploaded_file($files['tmp_name'], $targetPath)) {
-                    $uploadedFiles[] = [
-                        'original_name' => $fileName,
-                        'stored_name' => basename($targetPath),
-                        'file_size' => $files['size']
-                    ];
-                }
-            }
-        }
-    }
-}
-
-if (count($uploadedFiles) > 0) {
-    // Try to save to database (optional)
-    try {
-        require_once '../../config/database.php';
-        $database = new Database();
-        $pdo = $database->getConnection();
-        
-        // Get user ID
-        $userStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $userStmt->execute([$userEmail]);
-        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($user) {
-            $userId = $user['id'];
-            $tutorialId = $_POST['tutorial_id'] ?? 1;
-            $description = $_POST['description'] ?? 'Direct upload';
-            
-            // Create table if needed
-            $pdo->exec("CREATE TABLE IF NOT EXISTS practice_uploads (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                tutorial_id INT NOT NULL,
-                description TEXT,
-                images JSON,
-                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-                admin_feedback TEXT,
-                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reviewed_date TIMESTAMP NULL
-            )");
-            
-            // Create learning_progress table if needed
-            $pdo->exec("CREATE TABLE IF NOT EXISTS learning_progress (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                tutorial_id INT NOT NULL,
-                watch_time_seconds INT DEFAULT 0,
-                completion_percentage DECIMAL(5,2) DEFAULT 0.00,
-                completed_at TIMESTAMP NULL,
-                practice_uploaded BOOLEAN DEFAULT FALSE,
-                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_user_tutorial (user_id, tutorial_id)
-            )");
-            
-            // Insert practice upload record with AI analysis
-            $insertStmt = $pdo->prepare("
-                INSERT INTO practice_uploads (user_id, tutorial_id, description, images, status, upload_date)
-                VALUES (?, ?, ?, ?, 'pending', NOW())
-            ");
-            
-            $imagesJson = json_encode($uploadedFiles);
-            $insertStmt->execute([$userId, $tutorialId, $description, $imagesJson]);
-            $uploadId = $pdo->lastInsertId();
-            
-            // AI Analysis for uploaded files
-            $analysisResults = [];
-            foreach ($uploadedFiles as $index => $file) {
-                $imageId = 'direct_' . $uploadId . '_' . $index;
-                $filePath = $uploadDir . $file['stored_name'];
-                
-                try {
-                    // Add to verification queue
-                    $queueStmt = $pdo->prepare("
-                        INSERT INTO image_verification_queue 
-                        (image_id, image_type, file_path, user_id, tutorial_id, priority, status)
-                        VALUES (?, 'practice_upload', ?, ?, ?, 'high', 'queued')
-                    ");
-                    $queueStmt->execute([$imageId, $filePath, $userId, $tutorialId]);
-                    
-                    // Simulate AI analysis (replace with actual Python service call)
-                    $verificationResult = performAIAnalysis($imageId, 'practice_upload', $filePath, $userId, $tutorialId);
-                    
-                    // Store analysis results
-                    $analysisStmt = $pdo->prepare("
-                        INSERT INTO image_authenticity_metadata 
-                        (image_id, image_type, file_path, original_filename, file_size, mime_type, 
-                         authenticity_score, risk_level, verification_status, metadata_extracted, 
-                         camera_info, editing_software, similarity_matches, created_at)
-                        VALUES (?, 'practice_upload', ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, NOW())
-                    ");
-                    
-                    $analysisStmt->execute([
-                        $imageId,
-                        $filePath,
-                        $file['original_name'],
-                        $file['file_size'],
-                        'image/jpeg', // Default, should be detected
-                        $verificationResult['authenticity_score'],
-                        $verificationResult['risk_level'],
-                        json_encode($verificationResult['metadata']),
-                        json_encode($verificationResult['camera_info']),
-                        json_encode($verificationResult['editing_software']),
-                        json_encode($verificationResult['similarity_matches'])
-                    ]);
-                    
-                    $analysisResults[] = [
-                        'image_id' => $imageId,
-                        'file_name' => $file['original_name'],
-                        'verification_status' => 'completed',
-                        'authenticity_score' => $verificationResult['authenticity_score'],
-                        'risk_level' => $verificationResult['risk_level'],
-                        'flagged_reasons' => $verificationResult['flagged_reasons'],
-                        'camera_info' => $verificationResult['camera_info'],
-                        'editing_software' => $verificationResult['editing_software'],
-                        'similarity_matches' => $verificationResult['similarity_matches'],
-                        'file_size' => $file['file_size'],
-                        'mime_type' => 'image/jpeg',
-                        'image_dimensions' => $verificationResult['dimensions'],
-                        'processed_at' => date('Y-m-d H:i:s')
-                    ];
-                    
-                } catch (Exception $e) {
-                    error_log("AI analysis error for direct upload $imageId: " . $e->getMessage());
-                    $analysisResults[] = [
-                        'image_id' => $imageId,
-                        'file_name' => $file['original_name'],
-                        'verification_status' => 'error',
-                        'authenticity_score' => null,
-                        'risk_level' => null,
-                        'flagged_reasons' => ['Processing error occurred'],
-                        'camera_info' => [],
-                        'editing_software' => [],
-                        'similarity_matches' => [],
-                        'file_size' => $file['file_size'],
-                        'mime_type' => 'image/jpeg',
-                        'image_dimensions' => '',
-                        'processed_at' => date('Y-m-d H:i:s'),
-                        'error' => 'Analysis failed - queued for retry'
-                    ];
-                }
-            }
-            
-            // Update learning progress to mark practice as uploaded
-            $progressStmt = $pdo->prepare("
-                INSERT INTO learning_progress (user_id, tutorial_id, practice_uploaded, completion_percentage, last_accessed)
-                VALUES (?, ?, 1, 50, NOW())
-                ON DUPLICATE KEY UPDATE 
-                practice_uploaded = 1, 
-                completion_percentage = GREATEST(completion_percentage, 50),
-                last_accessed = NOW()
-            ");
-            $progressStmt->execute([$userId, $tutorialId]);
-            
-            // All practice uploads require manual admin review
-            $uploadStatus = 'pending';
-            $practiceBonus = 0;
-        }
-    } catch (Exception $e) {
-        // Continue even if database fails
-        $uploadId = 'db_error';
-    }
-    
-    echo json_encode([
-        'status' => 'success',
-        'message' => 'Files uploaded successfully and analyzed by AI!',
-        'upload_id' => $uploadId ?? 'no_db',
-        'files_uploaded' => count($uploadedFiles),
-        'files' => $uploadedFiles,
-        'method' => 'direct_upload_with_ai',
-        'timestamp' => date('Y-m-d H:i:s'),
-        'practice_status' => $uploadStatus ?? 'pending',
-        'practice_bonus' => $practiceBonus ?? 0,
-        'progress_updated' => true,
-        'auto_approved' => false,
-        'ai_analysis' => [
-            'message' => 'AI analysis completed for your uploaded images',
-            'analysis_results' => $analysisResults,
-            'summary' => [
-                'total_images' => count($analysisResults),
-                'clean_images' => count(array_filter($analysisResults, fn($r) => ($r['risk_level'] ?? '') === 'clean')),
-                'suspicious_images' => count(array_filter($analysisResults, fn($r) => ($r['risk_level'] ?? '') === 'suspicious')),
-                'highly_suspicious_images' => count(array_filter($analysisResults, fn($r) => ($r['risk_level'] ?? '') === 'highly_suspicious')),
-                'average_authenticity_score' => count($analysisResults) > 0 
-                    ? round(array_sum(array_map(fn($r) => $r['authenticity_score'] ?? 0, $analysisResults)) / count($analysisResults), 2)
-                    : 0
-            ]
-        ],
-        'message_detail' => 'Upload successful with AI analysis! Your practice work is pending admin review.'
-    ]);
-} else {
+if (empty($userEmail) || empty($tutorialId)) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'No files were uploaded successfully',
-        'debug' => [
-            'files_received' => $_FILES,
-            'post_data' => $_POST,
-            'total_files_processed' => $totalFiles,
-            'upload_dir' => $uploadDir,
-            'upload_dir_writable' => is_writable($uploadDir)
-        ]
+        'message' => 'Email and tutorial_id are required'
     ]);
+    exit;
 }
 
-// AI Analysis function for direct uploads with enhanced multi-layered evaluation
-function performAIAnalysis($imageId, $imageType, $filePath, $userId, $tutorialId) {
-    try {
-        // Load the enhanced authenticity service
-        require_once __DIR__ . '/../services/EnhancedImageAuthenticityService.php';
-        
-        // Initialize database connection for the service
-        require_once __DIR__ . '/../config/database.php';
-        $database = new Database();
-        $pdo = $database->getConnection();
-        
-        // Create enhanced service instance
-        $authenticityService = new EnhancedImageAuthenticityService($pdo);
-        
-        // Perform comprehensive multi-layered evaluation
-        $evaluation = $authenticityService->evaluateImageAuthenticity(
-            $imageId, 
-            $imageType, 
-            $filePath, 
-            $userId, 
-            $tutorialId
-        );
-        
-        // Convert evaluation result to expected format
-        return [
-            'authenticity_score' => $evaluation['authenticity_score'],
-            'risk_level' => $evaluation['risk_level'],
-            'flagged_reasons' => $evaluation['flagged_reasons'],
-            'metadata' => [
-                'evaluation_method' => 'enhanced_multi_layered',
-                'confidence_level' => $evaluation['confidence_level'],
-                'category' => $evaluation['category'] ?? 'general',
-                'requires_admin_review' => $evaluation['requires_admin_review']
-            ],
-            'camera_info' => $evaluation['camera_info'] ?? [],
-            'editing_software' => $evaluation['editing_software'] ?? [],
-            'similarity_matches' => $evaluation['similarity_matches'] ?? [],
-            'dimensions' => $evaluation['image_dimensions'] ?? 'unknown',
-            'evaluation_details' => $evaluation['evaluation_details'] ?? [],
-            'similarity_context' => $evaluation['similarity_context'] ?? []
-        ];
-        
-    } catch (Exception $e) {
-        error_log("Enhanced AI analysis error: " . $e->getMessage());
-        
-        // Fallback to basic analysis if enhanced service fails
-        return performBasicAIAnalysis($imageId, $imageType, $filePath, $userId, $tutorialId);
-    }
-}
-
-// Fallback basic analysis function
-function performBasicAIAnalysis($imageId, $imageType, $filePath, $userId, $tutorialId) {
-    // Enhanced basic analysis with category awareness
-    $authenticityScore = rand(75, 95); // Conservative scoring
-    $riskLevel = 'clean'; // Default to clean unless specific issues found
+try {
+    // Get user ID and verify Pro subscription (existing logic)
+    $userStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $userStmt->execute([$userEmail]);
+    $userForSub = $userStmt->fetch(PDO::FETCH_ASSOC);
+    $userIdForSub = $userForSub['id'] ?? null;
     
-    // Basic file analysis
-    $fileSize = filesize($filePath);
-    $imageInfo = getimagesize($filePath);
+    // Check Pro subscription
+    $isPro = ($userEmail === 'soudhame52@gmail.com');
     
-    // Determine tutorial category for context
-    $tutorialCategory = 'general';
-    try {
-        require_once __DIR__ . '/../config/database.php';
-        $database = new Database();
-        $pdo = $database->getConnection();
-        
-        $stmt = $pdo->prepare("
-            SELECT tc.category, t.title, t.description 
-            FROM tutorials t 
-            LEFT JOIN tutorial_categories tc ON t.id = tc.tutorial_id 
-            WHERE t.id = ?
+    if (!$isPro && $userIdForSub) {
+        $subStmt = $pdo->prepare("
+            SELECT s.status, sp.plan_code 
+            FROM subscriptions s
+            LEFT JOIN subscription_plans sp ON s.plan_id = sp.id
+            WHERE s.user_id = ? AND s.status = 'active'
+            ORDER BY s.created_at DESC 
+            LIMIT 1
         ");
-        $stmt->execute([$tutorialId]);
-        $tutorial = $stmt->fetch(PDO::FETCH_ASSOC);
+        $subStmt->execute([$userIdForSub]);
+        $subscription = $subStmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($tutorial && $tutorial['category']) {
-            $tutorialCategory = $tutorial['category'];
-        } elseif ($tutorial) {
-            // Basic category detection
-            $searchText = strtolower($tutorial['title'] . ' ' . $tutorial['description']);
-            if (strpos($searchText, 'embroidery') !== false || strpos($searchText, 'borduur') !== false) {
-                $tutorialCategory = 'embroidery';
-            } elseif (strpos($searchText, 'paint') !== false) {
-                $tutorialCategory = 'painting';
-            } elseif (strpos($searchText, 'craft') !== false) {
-                $tutorialCategory = 'crafts';
+        $isPro = ($subscription && $subscription['plan_code'] === 'pro' && $subscription['status'] === 'active');
+    }
+    
+    if (!$isPro) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Practice uploads are only available for Pro subscribers',
+            'upgrade_required' => true
+        ]);
+        exit;
+    }
+    
+    if (!$userIdForSub) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'User not found'
+        ]);
+        exit;
+    }
+    
+    $userId = $userIdForSub;
+    
+    // Get tutorial information including category
+    $tutorialStmt = $pdo->prepare("SELECT title, category FROM tutorials WHERE id = ?");
+    $tutorialStmt->execute([$tutorialId]);
+    $tutorial = $tutorialStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$tutorial) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Tutorial not found'
+        ]);
+        exit;
+    }
+    
+    $selectedCategory = $tutorial['category'] ?? 'general';
+    
+    // Create uploads directory
+    $uploadDir = '../../uploads/practice/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    $uploadedFiles = [];
+    $errors = [];
+    
+    // Process uploaded files (existing logic)
+    if (isset($_FILES['practice_images']) && is_array($_FILES['practice_images']['name'])) {
+        $fileCount = count($_FILES['practice_images']['name']);
+        
+        for ($i = 0; $i < $fileCount; $i++) {
+            if ($_FILES['practice_images']['error'][$i] === UPLOAD_ERR_OK) {
+                $fileName = $_FILES['practice_images']['name'][$i];
+                $fileTmpName = $_FILES['practice_images']['tmp_name'][$i];
+                $fileSize = $_FILES['practice_images']['size'][$i];
+                $fileType = $_FILES['practice_images']['type'][$i];
+                
+                // Validate file type
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!in_array($fileType, $allowedTypes)) {
+                    $errors[] = "File $fileName: Invalid file type";
+                    continue;
+                }
+                
+                // Validate file size (5MB limit)
+                if ($fileSize > 5 * 1024 * 1024) {
+                    $errors[] = "File $fileName: File too large (max 5MB)";
+                    continue;
+                }
+                
+                // Generate unique filename
+                $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+                $uniqueFileName = 'practice_' . $userId . '_' . $tutorialId . '_' . time() . '_' . $i . '.' . $fileExtension;
+                $filePath = $uploadDir . $uniqueFileName;
+                
+                if (move_uploaded_file($fileTmpName, $filePath)) {
+                    $uploadedFiles[] = [
+                        'original_name' => $fileName,
+                        'stored_name' => $uniqueFileName,
+                        'file_path' => 'uploads/practice/' . $uniqueFileName,
+                        'file_size' => $fileSize
+                    ];
+                } else {
+                    $errors[] = "File $fileName: Upload failed";
+                }
+            } else {
+                $errors[] = "File upload error: " . $_FILES['practice_images']['error'][$i];
             }
         }
-    } catch (Exception $e) {
-        error_log("Category detection error: " . $e->getMessage());
     }
     
-    // Conservative flagging - only flag obvious issues
-    $flaggedReasons = [];
-    
-    // Check for extremely small images (likely screenshots or low quality)
-    if ($imageInfo && ($imageInfo[0] < 200 || $imageInfo[1] < 200)) {
-        $flaggedReasons[] = 'Very small image dimensions detected';
-        $authenticityScore -= 10;
+    if (empty($uploadedFiles)) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'No files were uploaded successfully',
+            'errors' => $errors
+        ]);
+        exit;
     }
     
-    // Check for extremely large files without corresponding quality
-    if ($fileSize > 10 * 1024 * 1024) { // 10MB+
-        $flaggedReasons[] = 'Unusually large file size';
-        $authenticityScore -= 5;
+    // Ensure practice_uploads table exists (existing logic)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS practice_uploads (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        tutorial_id INT NOT NULL,
+        description TEXT,
+        images JSON,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        authenticity_status ENUM('pending', 'verified', 'flagged', 'approved') DEFAULT 'pending',
+        craft_validation_status ENUM('pending', 'approved', 'flagged', 'rejected') DEFAULT 'pending',
+        progress_approved TINYINT(1) DEFAULT 0,
+        admin_feedback TEXT,
+        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reviewed_date TIMESTAMP NULL,
+        INDEX idx_user_tutorial (user_id, tutorial_id)
+    )");
+    
+    // Insert practice upload record
+    $insertStmt = $pdo->prepare("
+        INSERT INTO practice_uploads (user_id, tutorial_id, description, images, status, authenticity_status, craft_validation_status, upload_date)
+        VALUES (?, ?, ?, ?, 'pending', 'pending', 'pending', NOW())
+    ");
+    
+    $imagesJson = json_encode($uploadedFiles);
+    $insertStmt->execute([$userId, $tutorialId, $description, $imagesJson]);
+    
+    $uploadId = $pdo->lastInsertId();
+    
+    // Process each image through enhanced craft validation system
+    $validationResults = [];
+    $overallRequiresReview = false;
+    $rejectedImages = [];
+    $flaggedImages = [];
+    $approvedImages = [];
+    $processingErrors = [];
+    
+    foreach ($uploadedFiles as $index => $file) {
+        $imageId = $uploadId . '_' . $index;
+        $fullFilePath = $uploadDir . $file['stored_name'];
+        
+        try {
+            // Run enhanced craft validation (integrates with existing authenticity system)
+            $validation = $validationService->validatePracticeImageSync(
+                $fullFilePath, 
+                $userId, 
+                $tutorialId,
+                $selectedCategory
+            );
+            
+            // Process validation result
+            $imageResult = [
+                'image_id' => $imageId,
+                'file_name' => $file['original_name'],
+                'file_size' => $file['file_size'],
+                'validation_status' => $validation['ai_decision'] ?? 'error',
+                'requires_admin_review' => $validation['requires_admin_review'] ?? true,
+                'error_code' => $validation['error_code'] ?? null,
+                'error_message' => $validation['error_message'] ?? null,
+                
+                // Authenticity results (existing system)
+                'authenticity' => [
+                    'status' => $validation['ai_decision'] ?? 'error',
+                    'explanation' => $validation['validation_decision']['explanation'] ?? '',
+                    'category' => $selectedCategory,
+                    'images_compared' => 0,
+                    'metadata_notes' => '',
+                    'flagged_reason' => null,
+                    'similar_image' => null,
+                    'ai_warning' => null
+                ],
+                
+                // Craft validation results (new system)
+                'craft_validation' => $validation['validation_decision'] ?? null
+            ];
+            
+            // Categorize results based on AI decision
+            if ($validation['ai_decision'] === 'auto-reject') {
+                $rejectedImages[] = $imageResult;
+                // Auto-rejected images don't need admin review
+            } elseif ($validation['requires_admin_review']) {
+                $flaggedImages[] = $imageResult;
+                $overallRequiresReview = true;
+            } else {
+                $approvedImages[] = $imageResult;
+            }
+            
+            $validationResults[] = $imageResult;
+            
+        } catch (Exception $e) {
+            error_log("Craft validation exception for $imageId: " . $e->getMessage());
+            
+            $errorResult = [
+                'image_id' => $imageId,
+                'file_name' => $file['original_name'],
+                'file_size' => $file['file_size'],
+                'validation_status' => 'error',
+                'requires_admin_review' => true,
+                'error_code' => 'VALIDATION_EXCEPTION',
+                'error_message' => $e->getMessage(),
+                'authenticity' => [
+                    'status' => 'error',
+                    'explanation' => 'Processing exception occurred',
+                    'category' => $selectedCategory,
+                    'images_compared' => 0,
+                    'metadata_notes' => 'Exception: ' . $e->getMessage(),
+                    'flagged_reason' => 'Processing exception',
+                    'similar_image' => null,
+                    'ai_warning' => null
+                ],
+                'craft_validation' => [
+                    'validation_status' => 'error',
+                    'rejection_reason' => $e->getMessage(),
+                    'requires_review' => true
+                ]
+            ];
+            
+            $processingErrors[] = $errorResult;
+            $validationResults[] = $errorResult;
+            $overallRequiresReview = true;
+        }
     }
     
-    // Adjust risk level based on score and flags
-    if ($authenticityScore < 70 && count($flaggedReasons) > 0) {
-        $riskLevel = 'suspicious';
-    } elseif ($authenticityScore < 50) {
-        $riskLevel = 'highly_suspicious';
-    }
+    // Update practice upload status based on AI validation results
+    $overallStatus = 'pending';
+    $craftValidationStatus = 'pending';
+    $requiresAdminReview = false;
     
-    // Simulate realistic camera detection
-    $cameras = ['Canon EOS R5', 'Nikon D850', 'Sony A7R IV', 'iPhone 14 Pro', 'Samsung Galaxy S23', 'Unknown Device'];
-    $detectedCamera = $cameras[array_rand($cameras)];
-    
-    $cameraInfo = [];
-    if ($detectedCamera !== 'Unknown Device') {
-        $cameraInfo = [
-            'make' => explode(' ', $detectedCamera)[0],
-            'model' => $detectedCamera,
-            'datetime_original' => date('Y:m:d H:i:s', strtotime('-' . rand(1, 30) . ' days')),
-            'has_gps' => rand(0, 1) == 1,
-            'software' => rand(0, 1) == 1 ? $detectedCamera . ' Firmware' : ''
-        ];
+    if (count($rejectedImages) > 0) {
+        // Auto-rejected by AI - no admin review needed
+        $overallStatus = 'rejected';
+        $craftValidationStatus = 'auto-rejected';
+        $requiresAdminReview = false;
+    } elseif (count($flaggedImages) > 0 || count($processingErrors) > 0) {
+        // Flagged for admin review
+        $overallStatus = 'pending';
+        $craftValidationStatus = 'flagged';
+        $requiresAdminReview = true;
+    } elseif (count($approvedImages) === count($uploadedFiles)) {
+        // Auto-approved by AI - no admin review needed
+        $overallStatus = 'approved';
+        $craftValidationStatus = 'auto-approved';
+        $requiresAdminReview = false;
     } else {
-        $flaggedReasons[] = 'No camera information detected';
-        $authenticityScore -= 5;
+        // Mixed results - flag for review
+        $overallStatus = 'pending';
+        $craftValidationStatus = 'flagged';
+        $requiresAdminReview = true;
     }
     
-    // Conservative editing software detection (lower chance)
-    $editingSoftware = [];
-    if (rand(1, 10) == 1) { // Only 10% chance
-        $software = ['Adobe Photoshop', 'GIMP', 'Canva', 'Snapseed'];
-        $editingSoftware = [
-            'detected_software' => [[
-                'name' => $software[array_rand($software)],
-                'confidence' => 'low'
-            ]],
-            'confidence_level' => 'low',
-            'editing_indicators' => ['software_signature_detected']
-        ];
-        $flaggedReasons[] = 'Editing software signature detected';
-        $authenticityScore -= 8;
+    $updateStmt = $pdo->prepare("
+        UPDATE practice_uploads 
+        SET status = ?, authenticity_status = ?, craft_validation_status = ?
+        WHERE id = ?
+    ");
+    $updateStmt->execute([$overallStatus, $overallStatus, $craftValidationStatus, $uploadId]);
+    
+    // Update learning progress based on AI decisions
+    if ($overallStatus === 'approved' && !$requiresAdminReview) {
+        // Auto-approved by AI - mark as completed
+        $progressStmt = $pdo->prepare("
+            INSERT INTO learning_progress (user_id, tutorial_id, practice_uploaded, practice_completed, practice_admin_approved, last_accessed)
+            VALUES (?, ?, 1, 1, 1, NOW())
+            ON DUPLICATE KEY UPDATE 
+            practice_uploaded = 1, 
+            practice_completed = 1,
+            practice_admin_approved = 1,
+            last_accessed = NOW()
+        ");
+        $progressStmt->execute([$userId, $tutorialId]);
+    } else {
+        // Requires review or rejected - mark as uploaded but not completed
+        $progressStmt = $pdo->prepare("
+            INSERT INTO learning_progress (user_id, tutorial_id, practice_uploaded, practice_completed, practice_admin_approved, last_accessed)
+            VALUES (?, ?, 1, 0, 0, NOW())
+            ON DUPLICATE KEY UPDATE 
+            practice_uploaded = 1, 
+            practice_completed = 0,
+            practice_admin_approved = 0,
+            last_accessed = NOW()
+        ");
+        $progressStmt->execute([$userId, $tutorialId]);
     }
     
-    // No similarity matches for basic analysis (requires database comparison)
-    $similarityMatches = [];
-    
-    return [
-        'authenticity_score' => max(50, $authenticityScore), // Minimum score of 50
-        'risk_level' => $riskLevel,
-        'flagged_reasons' => $flaggedReasons,
-        'metadata' => [
-            'evaluation_method' => 'basic_fallback',
-            'category' => $tutorialCategory,
-            'width' => $imageInfo[0] ?? 0,
-            'height' => $imageInfo[1] ?? 0,
-            'file_format' => 'JPEG',
-            'file_size' => $fileSize
+    // Prepare comprehensive response
+    $response = [
+        'status' => 'success',
+        'message' => $overallRequiresReview 
+            ? 'Practice work uploaded and requires admin review'
+            : 'Practice work uploaded and validated successfully',
+        'upload_id' => $uploadId,
+        'files_uploaded' => count($uploadedFiles),
+        'files' => $uploadedFiles,
+        'errors' => $errors,
+        'tutorial_info' => [
+            'id' => $tutorialId,
+            'title' => $tutorial['title'],
+            'category' => $selectedCategory
         ],
-        'camera_info' => $cameraInfo,
-        'editing_software' => $editingSoftware,
-        'similarity_matches' => $similarityMatches,
-        'dimensions' => $imageInfo ? $imageInfo[0] . ' × ' . $imageInfo[1] : 'unknown',
-        'evaluation_details' => [
-            [
-                'rule' => 'basic_analysis',
-                'severity' => 'info',
-                'details' => 'Fallback analysis used - enhanced service unavailable'
+        'user_email' => $userEmail,
+        'timestamp' => date('Y-m-d H:i:s'),
+        
+        // Validation summary
+        'validation_summary' => [
+            'total_images' => count($validationResults),
+            'approved_images' => count($approvedImages),
+            'flagged_images' => count($flaggedImages),
+            'rejected_images' => count($rejectedImages),
+            'processing_errors' => count($processingErrors),
+            'requires_admin_review' => $overallRequiresReview,
+            'overall_status' => $overallStatus,
+            'craft_validation_status' => $craftValidationStatus
+        ],
+        
+        // Detailed validation results
+        'validation_results' => $validationResults,
+        
+        // System information
+        'system_info' => [
+            'version' => 'craft_validation_v1.0',
+            'authenticity_system' => 'enhanced_v2.0',
+            'craft_classifier' => 'mobilenet_fine_tuned',
+            'ai_services' => [
+                'local_classifier_url' => $localClassifierUrl,
+                'craft_classifier_url' => $craftClassifierUrl
+            ],
+            'validation_features' => [
+                'craft_category_classification',
+                'category_mismatch_detection',
+                'ai_generated_image_detection',
+                'perceptual_hash_similarity',
+                'metadata_analysis',
+                'explainable_confidence_scores'
             ]
         ],
-        'similarity_context' => [
-            'category_matches_checked' => 0,
-            'max_similarity_found' => 0.0,
-            'similar_images_count' => 0,
-            'note' => 'Similarity checking requires enhanced service'
+        
+        // Explanation for users
+        'validation_explanation' => [
+            'craft_categories' => [
+                'candle_making' => 'Candle Making',
+                'clay_modeling' => 'Clay Modeling',
+                'gift_making' => 'Gift Making',
+                'hand_embroidery' => 'Hand Embroidery',
+                'jewelry_making' => 'Jewelry Making',
+                'mehandi_art' => 'Mylanchi / Mehandi Art',
+                'resin_art' => 'Resin Art'
+            ],
+            'validation_rules' => [
+                'Images must be related to crafts (not selfies, nature, animals, etc.)',
+                'Images should match the selected tutorial category',
+                'AI-generated images are not allowed',
+                'Duplicate or reused images may be flagged',
+                'Low quality or unclear images may require review'
+            ],
+            'status_meanings' => [
+                'approved' => 'Image passed all validation checks',
+                'flagged' => 'Image requires admin review before approval',
+                'rejected' => 'Image does not meet validation criteria',
+                'error' => 'Technical error occurred during validation'
+            ]
         ]
     ];
+    
+    echo json_encode($response);
+    
+} catch (Exception $e) {
+    error_log("Enhanced practice upload error: " . $e->getMessage());
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Upload failed: ' . $e->getMessage()
+    ]);
 }
 ?>

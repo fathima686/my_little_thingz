@@ -160,9 +160,100 @@ try {
         }
 
     } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Handle practice upload review
+        // Handle different POST actions
         $data = json_decode(file_get_contents('php://input'), true);
+        $action = $data['action'] ?? 'review'; // Default to review action for backward compatibility
         
+        if ($action === 'remove_practice_upload') {
+            // Handle practice upload removal
+            $uploadId = $data['upload_id'] ?? null;
+            
+            if (!$uploadId) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'Upload ID required']);
+                exit;
+            }
+            
+            // Get upload details before deletion for file cleanup
+            $uploadStmt = $db->prepare("SELECT * FROM practice_uploads WHERE id = ?");
+            $uploadStmt->execute([$uploadId]);
+            $upload = $uploadStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$upload) {
+                http_response_code(404);
+                echo json_encode(['status' => 'error', 'message' => 'Practice upload not found']);
+                exit;
+            }
+            
+            // Delete the database record first
+            $deleteStmt = $db->prepare("DELETE FROM practice_uploads WHERE id = ?");
+            $deleteResult = $deleteStmt->execute([$uploadId]);
+            
+            if (!$deleteResult) {
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => 'Failed to delete practice upload from database']);
+                exit;
+            }
+            
+            // Clean up associated files if they exist
+            $filesDeleted = 0;
+            $filesSkipped = 0;
+            
+            if (!empty($upload['images'])) {
+                try {
+                    $images = json_decode($upload['images'], true);
+                    if (is_array($images)) {
+                        foreach ($images as $image) {
+                            if (isset($image['stored_name'])) {
+                                // Try multiple possible paths for the uploaded files
+                                $possiblePaths = [
+                                    '../../uploads/practice/' . $image['stored_name'],
+                                    '../../uploads/practice_uploads/' . $image['stored_name'],
+                                    '../../uploads/' . $image['stored_name'],
+                                    '../../' . $image['stored_name']
+                                ];
+                                
+                                $fileDeleted = false;
+                                foreach ($possiblePaths as $imagePath) {
+                                    if (file_exists($imagePath)) {
+                                        if (unlink($imagePath)) {
+                                            $filesDeleted++;
+                                            $fileDeleted = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (!$fileDeleted) {
+                                    $filesSkipped++;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Log the error but don't fail the deletion
+                    error_log('Error cleaning up files for practice upload ' . $uploadId . ': ' . $e->getMessage());
+                }
+            }
+            
+            $message = 'Practice upload removed successfully';
+            if ($filesDeleted > 0) {
+                $message .= " ($filesDeleted file(s) deleted)";
+            }
+            if ($filesSkipped > 0) {
+                $message .= " ($filesSkipped file(s) not found)";
+            }
+            
+            echo json_encode([
+                'status' => 'success',
+                'message' => $message,
+                'files_deleted' => $filesDeleted,
+                'files_skipped' => $filesSkipped
+            ]);
+            exit;
+        }
+        
+        // Handle practice upload review (existing functionality)
         $uploadId = $data['upload_id'] ?? null;
         $status = $data['status'] ?? null; // 'approved' or 'rejected'
         $feedback = $data['admin_feedback'] ?? ''; // Match frontend parameter name
