@@ -10,7 +10,7 @@
 ### Step 1: Push to GitHub
 ```bash
 git add .
-git commit -m "Add Render deployment config"
+git commit -m "Fix React dependency conflict for Render"
 git push
 ```
 

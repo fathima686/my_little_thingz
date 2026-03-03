@@ -2,7 +2,7 @@ services:
   - type: web
     name: my-little-things-frontend
     env: static
-    buildCommand: cd frontend && npm install && npm run build
+    buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build
     staticPublishPath: frontend/dist
     routes:
       - type: rewrite
