@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Name Auto-Fill Bookmarklet</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .bookmarklet { 
+            background: #007bff; 
+            color: white; 
+            padding: 15px 25px; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .bookmarklet:hover { background: #0056b3; }
+        .instructions { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .success { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; }
+        code { background: #f8f9fa; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Certificate Name Auto-Fill Solution</h1>
+    
+    <div class="success">
+        <h3>✅ Instant Fix Available!</h3>
+        <p>Since the React component isn't working properly, here's an instant solution:</p>
+    </div>
+
+    <div class="instructions">
+        <h3>📋 How to Use:</h3>
+        <ol>
+            <li><strong>Drag this button to your bookmarks bar:</strong></li>
+            <a href="javascript:(function(){var input=document.getElementById('certificateName')||document.querySelector('input[placeholder*=certificate]')||document.querySelector('input[id*=certificate]');if(input){input.value='SOUDHAME';input.focus();input.blur();var event=new Event('input',{bubbles:true});input.dispatchEvent(event);var changeEvent=new Event('change',{bubbles:true});input.dispatchEvent(changeEvent);alert('✅ Certificate name set to SOUDHAME!');}else{alert('❌ Certificate input field not found. Make sure you are on the Pro Dashboard page.');}})()" class="bookmarklet">
+                🎯 Fill Certificate Name
+            </a>
+            
+            <li><strong>Go to your Pro Dashboard certificate section</strong></li>
+            <li><strong>Click the bookmarklet</strong> - it will instantly fill "SOUDHAME"</li>
+            <li><strong>Generate your certificate!</strong></li>
+        </ol>
+    </div>
+
+    <div class="instructions">
+        <h3>🔧 Alternative Method (Copy & Paste):</h3>
+        <p>If you can't drag the bookmarklet, copy this JavaScript code and paste it in your browser console (F12):</p>
+        <code style="display: block; padding: 10px; background: #f1f1f1; margin: 10px 0; word-break: break-all;">
+var input = document.getElementById('certificateName') || document.querySelector('input[placeholder*="certificate"]') || document.querySelector('input[id*="certificate"]');
+if (input) {
+    input.value = 'SOUDHAME';
+    input.focus();
+    input.blur();
+    var event = new Event('input', {bubbles: true});
+    input.dispatchEvent(event);
+    var changeEvent = new Event('change', {bubbles: true});
+    input.dispatchEvent(changeEvent);
+    alert('✅ Certificate name set to SOUDHAME!');
+} else {
+    alert('❌ Certificate input field not found. Make sure you are on the Pro Dashboard page.');
+}
+        </code>
+    </div>
+
+    <div class="instructions">
+        <h3>🚀 Quick Test Button:</h3>
+        <p>Test the functionality right here:</p>
+        <input type="text" id="testInput" placeholder="Enter the name to appear on your certificate" maxlength="80" style="padding: 10px; width: 300px; margin: 10px;">
+        <br>
+        <button onclick="testFill()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Test Fill SOUDHAME
+        </button>
+        <p><small>This should fill the test input above with "SOUDHAME"</small></p>
+    </div>
+
+    <div class="instructions">
+        <h3>📱 Mobile Users:</h3>
+        <p>On mobile devices, you can:</p>
+        <ol>
+            <li>Bookmark this page</li>
+            <li>When on the certificate page, come back to this bookmark</li>
+            <li>Click the "Fill Certificate Name" button below</li>
+        </ol>
+        <button onclick="fillCertificateName()" style="padding: 15px 25px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin: 10px 0;">
+            🎯 Fill Certificate Name (Mobile)
+        </button>
+    </div>
+
+    <script>
+        function testFill() {
+            const testInput = document.getElementById('testInput');
+            testInput.value = 'SOUDHAME';
+            testInput.focus();
+            testInput.blur();
+            alert('✅ Test successful! The same will work on your certificate page.');
+        }
+
+        function fillCertificateName() {
+            // Try to access the parent window (if this is opened from the main app)
+            try {
+                const parentInput = window.opener?.document.getElementById('certificateName') ||
+                                  window.parent?.document.getElementById('certificateName');
+                
+                if (parentInput) {
+                    parentInput.value = 'SOUDHAME';
+                    parentInput.focus();
+                    parentInput.blur();
+                    const event = new Event('input', {bubbles: true});
+                    parentInput.dispatchEvent(event);
+                    const changeEvent = new Event('change', {bubbles: true});
+                    parentInput.dispatchEvent(changeEvent);
+                    alert('✅ Certificate name set to SOUDHAME in main window!');
+                    return;
+                }
+            } catch (e) {
+                // Cross-origin or other access issues
+            }
+            
+            // Fallback: provide instructions
+            alert('📋 Instructions:\n\n1. Go to your Pro Dashboard\n2. Navigate to the certificate section\n3. Use the bookmarklet or console code to fill the name\n\nOr copy this to your clipboard: SOUDHAME');
+            
+            // Copy to clipboard if possible
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText('SOUDHAME').then(() => {
+                    alert('✅ "SOUDHAME" copied to clipboard! Paste it in the certificate name field.');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

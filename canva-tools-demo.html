@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canva-Like Tools Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: #fafafa;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .tool-section {
+            margin-bottom: 30px;
+        }
+        
+        .tool-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .tool-btn {
+            padding: 15px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tool-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .tool-btn i {
+            font-size: 24px;
+            color: #667eea;
+        }
+        
+        .tool-btn span {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+        }
+        
+        .canvas-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        #canvas {
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .properties-panel {
+            width: 320px;
+            background: #fafafa;
+            border-left: 1px solid #e0e0e0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .property-group {
+            margin-bottom: 20px;
+        }
+        
+        .property-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .property-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .property-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .slider-control {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        
+        .action-btn.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .action-btn.secondary:hover {
+            background: #f0f2ff;
+        }
+        
+        .filter-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .filter-btn {
+            padding: 10px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .color-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .color-picker {
+            width: 50px;
+            height: 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Canva-Like Design Tools</h1>
+            <p>Professional design editor with shapes, filters, gradients & more</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Left Sidebar - Tools -->
+            <div class="sidebar">
+                <div class="tool-section">
+                    <h3>📐 Shapes</h3>
+                    <div class="tool-grid">
+                        <button class="tool-btn" onclick="addShape('rectangle')">
+                            <i class="fas fa-square"></i>
+                            <span>Rectangle</span>
+                        </button>
+                        <button class="tool-btn" onclick="addShape('circle')">
+                            <i class="fas fa-circle"></i>
+                            <span>Circle</span>
+                        </button>
+                        <button class="tool-btn" onclick="addShape('triangle')">
+                            <i class="fas fa-play" style="transform: rotate(-90deg)"></i>
+                            <span>Triangle</span>
+                        </button>
+                        <button class="tool-btn" onclick="addShape('line')">
+                            <i class="fas fa-minus"></i>
+                            <span>Line</span>
+                        </button>
+                        <button class="tool-btn" onclick="addShape('star')">
+                            <i class="fas fa-star"></i>
+                            <span>Star</span>
+                        </button>
+                        <button class="tool-btn" onclick="addShape('arrow')">
+                            <i class="fas fa-arrow-right"></i>
+                            <span>Arrow</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tool-section">
+                    <h3>✏️ Elements</h3>
+                    <div class="tool-grid">
+                        <button class="tool-btn" onclick="addText()">
+                            <i class="fas fa-font"></i>
+                            <span>Text</span>
+                        </button>
+                        <button class="tool-btn" onclick="document.getElementById('imageUpload').click()">
+                            <i class="fas fa-image"></i>
+                            <span>Image</span>
+                        </button>
+                        <button class="tool-btn" onclick="addEmoji()">
+                            <i class="fas fa-smile"></i>
+                            <span>Emoji</span>
+                        </button>
+                    </div>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                </div>
+            </div>
+            
+            <!-- Center - Canvas -->
+            <div class="canvas-area">
+                <div class="canvas-wrapper">
+                    <canvas id="canvas" width="600" height="400"></canvas>
+                </div>
+            </div>
+            
+            <!-- Right Sidebar - Properties -->
+            <div class="properties-panel" id="propertiesPanel">
+                <div class="property-group">
+                    <h3 style="margin-bottom: 15px;">🎛️ Properties</h3>
+                    <p style="color: #999; font-size: 13px;">Select an object to edit its properties</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let canvas;
+        let selectedObject = null;
+        
+        // Initialize canvas
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = new fabric.Canvas('canvas', {
+                backgroundColor: '#ffffff'
+            });
+            
+            // Handle object selection
+            canvas.on('selection:created', (e) => updateProperties(e.selected[0]));
+            canvas.on('selection:updated', (e) => updateProperties(e.selected[0]));
+            canvas.on('selection:cleared', () => clearProperties());
+        });
+        
+        // Add shapes
+        function addShape(type) {
+            let shape;
+            const options = {
+                left: 200,
+                top: 150,
+                fill: '#667eea',
+                stroke: '#5568d3',
+                strokeWidth: 2
+            };
+            
+            switch(type) {
+                case 'rectangle':
+                    shape = new fabric.Rect({ ...options, width: 150, height: 100 });
+                    break;
+                case 'circle':
+                    shape = new fabric.Circle({ ...options, radius: 60 });
+                    break;
+                case 'triangle':
+                    shape = new fabric.Triangle({ ...options, width: 120, height: 120 });
+                    break;
+                case 'line':
+                    shape = new fabric.Line([50, 50, 200, 50], { stroke: '#5568d3', strokeWidth: 3 });
+                    break;
+                case 'star':
+                    const points = createStarPoints(5, 60, 30);
+                    shape = new fabric.Polygon(points, options);
+                    break;
+                case 'arrow':
+                    const arrowPoints = [
+                        {x: 0, y: 15}, {x: 100, y: 15}, {x: 100, y: 0},
+                        {x: 130, y: 20}, {x: 100, y: 40}, {x: 100, y: 25}, {x: 0, y: 25}
+                    ];
+                    shape = new fabric.Polygon(arrowPoints, options);
+                    break;
+            }
+            
+            if (shape) {
+                canvas.add(shape);
+                canvas.setActiveObject(shape);
+                canvas.renderAll();
+            }
+        }
+        
+        function createStarPoints(numPoints, outerRadius, innerRadius) {
+            const points = [];
+            const step = Math.PI / numPoints;
+            for (let i = 0; i < 2 * numPoints; i++) {
+                const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                const angle = i * step - Math.PI / 2;
+                points.push({
+                    x: radius * Math.cos(angle),
+                    y: radius * Math.sin(angle)
+                });
+            }
+            return points;
+        }
+        
+        // Add text
+        function addText() {
+            const text = new fabric.Textbox('Double click to edit', {
+                left: 200,
+                top: 150,
+                fontSize: 24,
+                fill: '#333',
+                width: 200
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            text.enterEditing();
+            canvas.renderAll();
+        }
+        
+        // Add emoji
+        function addEmoji() {
+            const emojis = ['😀', '❤️', '⭐', '🎉', '🔥', '✨', '🎨', '🚀'];
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const text = new fabric.Text(emoji, {
+                left: 250,
+                top: 150,
+                fontSize: 60
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            canvas.renderAll();
+        }
+        
+        // Handle image upload
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fabric.Image.fromURL(e.target.result, (img) => {
+                    img.scaleToWidth(200);
+                    img.set({ left: 200, top: 150 });
+                    canvas.add(img);
+                    canvas.setActiveObject(img);
+                    canvas.renderAll();
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Update properties panel
+        function updateProperties(obj) {
+            selectedObject = obj;
+            const panel = document.getElementById('propertiesPanel');
+            
+            if (obj.type === 'image') {
+                panel.innerHTML = `
+                    <div class="property-group">
+                        <h3 style="margin-bottom: 15px;">🖼️ Image Properties</h3>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Opacity: <span id="opacityValue">${Math.round(obj.opacity * 100)}</span>%</label>
+                        <input type="range" class="slider-control" min="0" max="100" value="${Math.round(obj.opacity * 100)}" 
+                               oninput="updateOpacity(this.value)">
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Filters</label>
+                        <div class="filter-buttons">
+                            <button class="filter-btn" onclick="applyFilter('grayscale')">Grayscale</button>
+                            <button class="filter-btn" onclick="applyFilter('sepia')">Sepia</button>
+                            <button class="filter-btn" onclick="applyFilter('vintage')">Vintage</button>
+                            <button class="filter-btn" onclick="applyFilter('sharpen')">Sharpen</button>
+                        </div>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Brightness: <span id="brightnessValue">0</span></label>
+                        <input type="range" class="slider-control" min="-100" max="100" value="0" 
+                               oninput="applyAdjustment('brightness', this.value)">
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Contrast: <span id="contrastValue">0</span></label>
+                        <input type="range" class="slider-control" min="-100" max="100" value="0" 
+                               oninput="applyAdjustment('contrast', this.value)">
+                    </div>
+                    
+                    <div class="property-group">
+                        <button class="action-btn" onclick="flipObject('horizontal')">
+                            <i class="fas fa-arrows-alt-h"></i> Flip Horizontal
+                        </button>
+                        <button class="action-btn secondary" onclick="flipObject('vertical')">
+                            <i class="fas fa-arrows-alt-v"></i> Flip Vertical
+                        </button>
+                    </div>
+                    
+                    <div class="property-group">
+                        <button class="action-btn" onclick="resetFilters()">Reset Filters</button>
+                        <button class="action-btn secondary" onclick="deleteObject()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                `;
+            } else {
+                panel.innerHTML = `
+                    <div class="property-group">
+                        <h3 style="margin-bottom: 15px;">🎨 ${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} Properties</h3>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Fill Color</label>
+                        <div class="color-row">
+                            <input type="color" class="color-picker" value="${obj.fill || '#667eea'}" 
+                                   onchange="updateFill(this.value)">
+                            <input type="text" class="property-control" value="${obj.fill || '#667eea'}" 
+                                   onchange="updateFill(this.value)">
+                        </div>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Opacity: <span id="opacityValue">${Math.round(obj.opacity * 100)}</span>%</label>
+                        <input type="range" class="slider-control" min="0" max="100" value="${Math.round(obj.opacity * 100)}" 
+                               oninput="updateOpacity(this.value)">
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Rotation: <span id="rotationValue">${Math.round(obj.angle)}</span>°</label>
+                        <input type="range" class="slider-control" min="0" max="360" value="${Math.round(obj.angle)}" 
+                               oninput="updateRotation(this.value)">
+                    </div>
+                    
+                    <div class="property-group">
+                        <label class="property-label">Gradient</label>
+                        <div class="color-row">
+                            <input type="color" id="gradColor1" class="color-picker" value="#667eea">
+                            <input type="color" id="gradColor2" class="color-picker" value="#764ba2">
+                        </div>
+                        <button class="action-btn" onclick="applyGradient('linear')" style="margin-top: 10px;">
+                            Apply Linear Gradient
+                        </button>
+                        <button class="action-btn secondary" onclick="applyGradient('radial')">
+                            Apply Radial Gradient
+                        </button>
+                    </div>
+                    
+                    <div class="property-group">
+                        <button class="action-btn" onclick="duplicateObject()">
+                            <i class="fas fa-copy"></i> Duplicate
+                        </button>
+                        <button class="action-btn secondary" onclick="deleteObject()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearProperties() {
+            selectedObject = null;
+            document.getElementById('propertiesPanel').innerHTML = `
+                <div class="property-group">
+                    <h3 style="margin-bottom: 15px;">🎛️ Properties</h3>
+                    <p style="color: #999; font-size: 13px;">Select an object to edit its properties</p>
+                </div>
+            `;
+        }
+        
+        // Property update functions
+        function updateFill(color) {
+            if (selectedObject) {
+                selectedObject.set('fill', color);
+                canvas.renderAll();
+            }
+        }
+        
+        function updateOpacity(value) {
+            if (selectedObject) {
+                selectedObject.set('opacity', value / 100);
+                document.getElementById('opacityValue').textContent = value;
+                canvas.renderAll();
+            }
+        }
+        
+        function updateRotation(value) {
+            if (selectedObject) {
+                selectedObject.set('angle', parseInt(value));
+                document.getElementById('rotationValue').textContent = value;
+                canvas.renderAll();
+            }
+        }
+        
+        function flipObject(direction) {
+            if (!selectedObject) return;
+            if (direction === 'horizontal') {
+                selectedObject.set('flipX', !selectedObject.flipX);
+            } else {
+                selectedObject.set('flipY', !selectedObject.flipY);
+            }
+            canvas.renderAll();
+        }
+        
+        function duplicateObject() {
+            if (!selectedObject) return;
+            selectedObject.clone((cloned) => {
+                cloned.set({ left: selectedObject.left + 20, top: selectedObject.top + 20 });
+                canvas.add(cloned);
+                canvas.setActiveObject(cloned);
+                canvas.renderAll();
+            });
+        }
+        
+        function deleteObject() {
+            if (selectedObject) {
+                canvas.remove(selectedObject);
+                canvas.renderAll();
+                clearProperties();
+            }
+        }
+        
+        // Image filters
+        function applyFilter(type) {
+            if (!selectedObject || selectedObject.type !== 'image') return;
+            
+            selectedObject.filters = [];
+            
+            switch(type) {
+                case 'grayscale':
+                    selectedObject.filters.push(new fabric.Image.filters.Grayscale());
+                    break;
+                case 'sepia':
+                    selectedObject.filters.push(new fabric.Image.filters.Sepia());
+                    break;
+                case 'vintage':
+                    selectedObject.filters.push(new fabric.Image.filters.Vintage());
+                    break;
+                case 'sharpen':
+                    selectedObject.filters.push(new fabric.Image.filters.Convolute({
+                        matrix: [0, -1, 0, -1, 5, -1, 0, -1, 0]
+                    }));
+                    break;
+            }
+            
+            selectedObject.applyFilters();
+            canvas.renderAll();
+        }
+        
+        function applyAdjustment(type, value) {
+            if (!selectedObject || selectedObject.type !== 'image') return;
+            
+            // Remove existing filter of this type
+            selectedObject.filters = selectedObject.filters.filter(f => f.type !== type);
+            
+            if (type === 'brightness') {
+                selectedObject.filters.push(new fabric.Image.filters.Brightness({
+                    brightness: value / 100
+                }));
+                document.getElementById('brightnessValue').textContent = value;
+            } else if (type === 'contrast') {
+                selectedObject.filters.push(new fabric.Image.filters.Contrast({
+                    contrast: value / 100
+                }));
+                document.getElementById('contrastValue').textContent = value;
+            }
+            
+            selectedObject.applyFilters();
+            canvas.renderAll();
+        }
+        
+        function resetFilters() {
+            if (!selectedObject || selectedObject.type !== 'image') return;
+            selectedObject.filters = [];
+            selectedObject.applyFilters();
+            canvas.renderAll();
+        }
+        
+        // Gradients
+        function applyGradient(type) {
+            if (!selectedObject) return;
+            
+            const color1 = document.getElementById('gradColor1').value;
+            const color2 = document.getElementById('gradColor2').value;
+            
+            let gradient;
+            if (type === 'linear') {
+                gradient = new fabric.Gradient({
+                    type: 'linear',
+                    coords: { x1: 0, y1: 0, x2: selectedObject.width || 100, y2: 0 },
+                    colorStops: [
+                        { offset: 0, color: color1 },
+                        { offset: 1, color: color2 }
+                    ]
+                });
+            } else {
+                gradient = new fabric.Gradient({
+                    type: 'radial',
+                    coords: {
+                        x1: (selectedObject.width || 100) / 2,
+                        y1: (selectedObject.height || 100) / 2,
+                        r1: 0,
+                        x2: (selectedObject.width || 100) / 2,
+                        y2: (selectedObject.height || 100) / 2,
+                        r2: (selectedObject.width || 100) / 2
+                    },
+                    colorStops: [
+                        { offset: 0, color: color1 },
+                        { offset: 1, color: color2 }
+                    ]
+                });
+            }
+            
+            selectedObject.set('fill', gradient);
+            canvas.renderAll();
+        }
+    </script>
+</body>
+</html>

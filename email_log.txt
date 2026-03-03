@@ -1,0 +1,64 @@
+[2026-01-19 18:48:35] QUEUE EMAIL
+To: Admin User <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260119-184835-dd590b
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-19 18:50:46] QUEUE EMAIL
+To: Fathima <fathimashibu15@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260119-185044-61f9be
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-20 04:42:46] QUEUE EMAIL
+To: Admin User <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260120-044245-f9d9dd
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-20 04:44:22] QUEUE EMAIL
+To: Fathima <fathimashibu15@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260120-044420-3c4717
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-20 04:53:14] QUEUE EMAIL
+To: Admin User <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260120-045312-d24ae8
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-20 04:54:33] QUEUE EMAIL
+To: Admin User <fathima470077@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260120-045433-1f0978
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-20 05:01:25] QUEUE EMAIL
+To: Fathima <fathimashibu15@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260120-050025-f7cfe8
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.
+[2026-01-21 09:18:21] QUEUE EMAIL
+To: Fathima <fathimashibu15@gmail.com>
+From: My Little Thingz <fathima470077@gmail.com>
+Subject: Payment Successful - Order #ORD-20260121-091647-4e9980
+Preview: Payment Successfulbody{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#6b46c1;color:#fff;padding:20...
+---
+[DEBUG] Attempting SMTP send...
+[INFO] Email sent successfully.

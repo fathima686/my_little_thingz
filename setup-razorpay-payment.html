@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Payment Setup Guide</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .test-cards {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Razorpay Payment Setup</h1>
+        <p>Complete guide to set up real Razorpay payments in your application</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 1: Create Razorpay Account</h3>
+        <p>If you don't have a Razorpay account yet:</p>
+        <ol>
+            <li>Go to <a href="https://dashboard.razorpay.com/signup" target="_blank">Razorpay Signup</a></li>
+            <li>Fill in your business details</li>
+            <li>Verify your email and phone number</li>
+            <li>Complete the KYC process (for live payments)</li>
+        </ol>
+        <a href="https://dashboard.razorpay.com/signup" class="btn" target="_blank">Sign Up for Razorpay</a>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Generate API Keys</h3>
+        <p>Once you have access to the Razorpay Dashboard:</p>
+        <ol>
+            <li>Log in to <a href="https://dashboard.razorpay.com/" target="_blank">Razorpay Dashboard</a></li>
+            <li>Go to <strong>Settings</strong> → <strong>API Keys</strong></li>
+            <li>Make sure you're in <strong>Test Mode</strong> (for development)</li>
+            <li>Click <strong>"Generate Key"</strong></li>
+            <li>Copy both the <strong>Key ID</strong> and <strong>Key Secret</strong></li>
+        </ol>
+        <a href="https://dashboard.razorpay.com/app/keys" class="btn" target="_blank">Go to API Keys</a>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Update Configuration</h3>
+        <p>Update your Razorpay keys in the configuration file:</p>
+        
+        <h4>Option A: Edit razorpay-keys.php (Recommended)</h4>
+        <p>Open <code>backend/config/razorpay-keys.php</code> and replace:</p>
+        <div class="code-block">
+'test' => [
+    'key_id' => 'rzp_test_YOUR_ACTUAL_KEY_ID',
+    'key_secret' => 'YOUR_ACTUAL_SECRET_KEY'
+],
+        </div>
+
+        <h4>Option B: Environment Variables</h4>
+        <p>Create a <code>.env</code> file in your backend folder:</p>
+        <div class="code-block">
+RAZORPAY_KEY_ID=rzp_test_your_key_id_here
+RAZORPAY_KEY_SECRET=your_secret_key_here
+        </div>
+    </div>
+
+    <div class="test-cards">
+        <h3>🧪 Test Card Details</h3>
+        <p>Use these test cards for testing payments:</p>
+        <table>
+            <tr>
+                <th>Card Type</th>
+                <th>Card Number</th>
+                <th>Result</th>
+            </tr>
+            <tr>
+                <td>Visa</td>
+                <td>4111 1111 1111 1111</td>
+                <td>✅ Success</td>
+            </tr>
+            <tr>
+                <td>Visa</td>
+                <td>4000 0000 0000 0002</td>
+                <td>❌ Declined</td>
+            </tr>
+            <tr>
+                <td>Mastercard</td>
+                <td>5555 5555 5555 4444</td>
+                <td>✅ Success</td>
+            </tr>
+            <tr>
+                <td>American Express</td>
+                <td>3782 8224 6310 005</td>
+                <td>✅ Success</td>
+            </tr>
+        </table>
+        <p><strong>For all test cards:</strong></p>
+        <ul>
+            <li>Expiry: Any future date (e.g., 12/25)</li>
+            <li>CVV: Any 3 digits (e.g., 123)</li>
+            <li>Name: Any name</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Test Payment Flow</h3>
+        <ol>
+            <li>Start your application (frontend and backend)</li>
+            <li>Log in as a customer</li>
+            <li>Add items to cart</li>
+            <li>Fill shipping address</li>
+            <li>Click "Pay Securely"</li>
+            <li>Use test card details from above</li>
+            <li>Complete the payment</li>
+        </ol>
+    </div>
+
+    <div class="warning">
+        <h4>⚠️ Important Notes</h4>
+        <ul>
+            <li><strong>Test Mode:</strong> No real money is charged in test mode</li>
+            <li><strong>API Keys:</strong> Test keys start with <code>rzp_test_</code></li>
+            <li><strong>Live Mode:</strong> Only switch to live mode after thorough testing</li>
+            <li><strong>Security:</strong> Never share your secret keys publicly</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Going Live (Production)</h3>
+        <p>When you're ready for real payments:</p>
+        <ol>
+            <li>Complete business verification in Razorpay Dashboard</li>
+            <li>Switch to <strong>Live Mode</strong> in dashboard</li>
+            <li>Generate Live API keys</li>
+            <li>Update configuration with live keys</li>
+            <li>Change mode to 'live' in <code>razorpay-keys.php</code></li>
+            <li>Test with small amounts first</li>
+        </ol>
+    </div>
+
+    <div class="success">
+        <h4>✅ Troubleshooting</h4>
+        <ul>
+            <li><strong>Authentication Failed:</strong> Check if API keys are correct and properly formatted</li>
+            <li><strong>Invalid Key:</strong> Ensure you're using Test keys in Test mode</li>
+            <li><strong>Network Error:</strong> Check if your server can reach Razorpay APIs</li>
+            <li><strong>CORS Error:</strong> Ensure proper headers are set in backend APIs</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <h3>🎉 Ready to Accept Payments!</h3>
+        <p>Once configured, your customers can pay securely using cards, UPI, wallets, and more.</p>
+        <a href="https://razorpay.com/docs/" class="btn" target="_blank">Razorpay Documentation</a>
+        <a href="https://razorpay.com/docs/payments/server-integration/" class="btn" target="_blank">Integration Guide</a>
+    </div>
+</body>
+</html>

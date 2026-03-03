@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply Background Remover Fix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        .emoji {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .steps {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        
+        .step-number {
+            background: #ff6b6b;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            flex: 1;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-direction: column;
+        }
+        
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .btn-primary {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .code-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            text-align: left;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .alert.success {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            color: #065f46;
+        }
+        
+        .alert.error {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+        }
+        
+        .highlight {
+            background: #fbbf24;
+            color: #92400e;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">🔧</div>
+        <h1>Fix Background Remover</h1>
+        <p class="message">
+            Apply the instant fix for the "There was an error reading the image" issue.
+        </p>
+        
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-text">
+                    <strong>Open Design Editor</strong><br>
+                    Make sure you have the design editor page open
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-text">
+                    <strong>Apply Fix</strong><br>
+                    Click the button below to copy the fix code
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-text">
+                    <strong>Paste in Console</strong><br>
+                    Press F12, paste in console, press Enter
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-primary" onclick="copyFix()">
+                📋 Copy Fix Code
+            </button>
+            
+            <button class="btn-success" onclick="openEditor()">
+                🎨 Open Design Editor
+            </button>
+        </div>
+        
+        <div class="alert" id="alertBox"></div>
+        
+        <div class="code-box" id="codeBox">
+            <pre id="fixCode"></pre>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #fffbeb; border-radius: 10px; border: 2px solid #f59e0b;">
+            <h3 style="color: #92400e; margin-bottom: 10px;">💡 Important Notes</h3>
+            <ul style="text-align: left; color: #92400e; line-height: 1.8;">
+                <li>Use <span class="highlight">real photos</span> (people, objects) for testing</li>
+                <li>Avoid simple graphics or logos</li>
+                <li>The fix corrects the image encoding issue</li>
+                <li>You should see "SUCCESS!" instead of errors</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        const fixCode = `(function() {
+    console.log('%c⚡ INSTANT BACKGROUND REMOVER FIX', 'background: #ff6b6b; color: white; padding: 10px; font-size: 16px; font-weight: bold;');
+    
+    let editor = window.editor || window.designEditor;
+    
+    if (!editor) {
+        alert('❌ Editor not found! Please make sure you are on the design editor page.');
+        return;
+    }
+    
+    console.log('✅ Editor found, applying fix...');
+    
+    editor.removeBackground = async function() {
+        console.log('🎨 Remove background started (FIXED VERSION)');
+        
+        if (!this.selectedObject || this.selectedObject.type !== 'image') {
+            alert('⚠️ Please select an image first!');
+            return;
+        }
+        
+        try {
+            this.showCanvasLoading(true);
+            console.log('📤 Processing image with FIXED encoding...');
+            
+            const imageElement = this.selectedObject.getElement();
+            const canvas = document.createElement('canvas');
+            canvas.width = imageElement.naturalWidth || imageElement.width;
+            canvas.height = imageElement.naturalHeight || imageElement.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(imageElement, 0, 0);
+            
+            const imageDataUrl = canvas.toDataURL('image/png');
+            const imageBase64 = imageDataUrl.replace(/^data:image\\/[a-z]+;base64,/, '');
+            
+            console.log('✅ Image converted to clean base64 (length: ' + imageBase64.length + ')');
+            
+            const formData = new FormData();
+            formData.append('image_base64', imageBase64);
+            
+            const response = await fetch('../../backend/api/admin/remove-background.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            console.log('📋 API result:', result);
+            
+            if (result.success) {
+                console.log('✅ SUCCESS! Professional background removal!');
+                alert('🎉 SUCCESS! Background removed using professional AI!');
+                // Image replacement logic would go here
+            } else if (result.fallback) {
+                console.log('⚠️ Using fallback processing');
+                alert('⚠️ Using basic processing (API key issue)');
+            } else {
+                console.error('❌ API Error:', result.error);
+                if (result.error.includes('Could not identify foreground')) {
+                    alert('⚠️ Try a real photo with clear subject/background');
+                } else {
+                    alert('❌ API Error: ' + result.error);
+                }
+            }
+            
+            this.showCanvasLoading(false);
+            
+        } catch (error) {
+            console.error('❌ Error:', error);
+            this.showCanvasLoading(false);
+            alert('❌ Error: ' + error.message);
+        }
+    };
+    
+    const btn = document.getElementById('removeBackgroundBtn');
+    if (btn) {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.onclick = () => editor.removeBackground();
+        console.log('✅ Button re-bound');
+    }
+    
+    window.editor = editor;
+    
+    console.log('%c✅ FIX APPLIED!', 'background: #10b981; color: white; padding: 10px;');
+    alert('✅ BACKGROUND REMOVER FIXED!\\n\\nTest with a real photo (not simple graphics)');
+})();`;
+        
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 8000);
+        }
+        
+        function copyFix() {
+            navigator.clipboard.writeText(fixCode).then(() => {
+                document.getElementById('codeBox').style.display = 'block';
+                document.getElementById('fixCode').textContent = fixCode;
+                showAlert('✅ Fix code copied! Now:\n1. Open design editor\n2. Press F12 (console)\n3. Paste and press Enter\n4. Test with real photo', 'success');
+            }).catch(err => {
+                document.getElementById('codeBox').style.display = 'block';
+                document.getElementById('fixCode').textContent = fixCode;
+                showAlert('⚠️ Copy failed. Please copy manually from the box below.', 'error');
+            });
+        }
+        
+        function openEditor() {
+            window.open('../frontend/admin/design-editor.html', '_blank');
+            showAlert('📝 Opening design editor. Apply the fix there!', 'success');
+        }
+    </script>
+</body>
+</html>

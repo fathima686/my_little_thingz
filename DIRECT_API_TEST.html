@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .error {
+            color: #ff6b6b;
+        }
+        
+        .success {
+            color: #51cf66;
+        }
+        
+        .warning {
+            color: #ffd43b;
+        }
+        
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .image-preview {
+            max-width: 300px;
+            max-height: 300px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Direct API Test for Background Remover</h1>
+        
+        <p>This will test the remove.bg API directly to see what's happening.</p>
+        
+        <input type="file" id="imageInput" accept="image/*" onchange="previewImage()">
+        <br>
+        <img id="imagePreview" class="image-preview" style="display: none;">
+        <br>
+        
+        <button onclick="testAPI()">🧪 Test API Directly</button>
+        <button onclick="testWithDifferentEncoding()">🔧 Test Different Encoding</button>
+        <button onclick="clearLog()">🗑️ Clear Log</button>
+        
+        <div class="log" id="logOutput"></div>
+    </div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            logElement.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('logOutput').innerHTML = '';
+        }
+        
+        function previewImage() {
+            const input = document.getElementById('imageInput');
+            const preview = document.getElementById('imagePreview');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        async function testAPI() {
+            const input = document.getElementById('imageInput');
+            
+            if (!input.files || !input.files[0]) {
+                log('❌ Please select an image first', 'error');
+                return;
+            }
+            
+            log('🧪 Starting API test...', 'info');
+            
+            const file = input.files[0];
+            log(`📁 File: ${file.name} (${file.size} bytes)`, 'info');
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const imageDataUrl = e.target.result;
+                log(`📊 Data URL length: ${imageDataUrl.length}`, 'info');
+                
+                // Method 1: Send full data URL
+                await testWithDataUrl(imageDataUrl, 'Full Data URL');
+                
+                // Method 2: Remove prefix with regex
+                const base64Regex = imageDataUrl.replace(/^data:image\/[a-z]+;base64,/, '');
+                await testWithDataUrl(base64Regex, 'Regex Prefix Removal');
+                
+                // Method 3: Remove prefix with split
+                const base64Split = imageDataUrl.split(',')[1];
+                await testWithDataUrl(base64Split, 'Split Prefix Removal');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        async function testWithDataUrl(imageData, method) {
+            try {
+                log(`🔬 Testing with ${method}...`, 'info');
+                log(`📏 Data length: ${imageData.length}`, 'info');
+                
+                const formData = new FormData();
+                formData.append('image_base64', imageData);
+                
+                const response = await fetch('../../backend/api/admin/remove-background.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                log(`📥 Response status: ${response.status}`, response.status === 200 ? 'success' : 'error');
+                
+                const result = await response.json();
+                log(`📋 ${method} Result:`, 'info');
+                log(JSON.stringify(result, null, 2), 'info');
+                
+                if (result.success) {
+                    log(`✅ ${method} SUCCESS!`, 'success');
+                } else if (result.fallback) {
+                    log(`⚠️ ${method} using fallback`, 'warning');
+                } else {
+                    log(`❌ ${method} error: ${result.error}`, 'error');
+                }
+                
+                log('─'.repeat(50), 'info');
+                
+            } catch (error) {
+                log(`❌ ${method} network error: ${error.message}`, 'error');
+                log('─'.repeat(50), 'info');
+            }
+        }
+        
+        async function testWithDifferentEncoding() {
+            const input = document.getElementById('imageInput');
+            
+            if (!input.files || !input.files[0]) {
+                log('❌ Please select an image first', 'error');
+                return;
+            }
+            
+            log('🔧 Testing different encoding methods...', 'info');
+            
+            const file = input.files[0];
+            
+            // Method 1: Direct file upload
+            try {
+                log('📤 Testing direct file upload...', 'info');
+                
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                const response = await fetch('../../backend/api/admin/remove-background.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                log('📋 Direct file upload result:', 'info');
+                log(JSON.stringify(result, null, 2), 'info');
+                
+            } catch (error) {
+                log(`❌ Direct file upload error: ${error.message}`, 'error');
+            }
+            
+            // Method 2: Canvas conversion
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = async function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                try {
+                    log('🎨 Testing canvas conversion...', 'info');
+                    
+                    const canvasDataUrl = canvas.toDataURL('image/png');
+                    const canvasBase64 = canvasDataUrl.split(',')[1];
+                    
+                    log(`📏 Canvas base64 length: ${canvasBase64.length}`, 'info');
+                    
+                    const formData = new FormData();
+                    formData.append('image_base64', canvasBase64);
+                    
+                    const response = await fetch('../../backend/api/admin/remove-background.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    log('📋 Canvas conversion result:', 'info');
+                    log(JSON.stringify(result, null, 2), 'info');
+                    
+                } catch (error) {
+                    log(`❌ Canvas conversion error: ${error.message}`, 'error');
+                }
+            };
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>

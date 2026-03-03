@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Design → Cart Integration Fix Guide</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .step { background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 15px 0; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .warning { border-left-color: #ffc107; background: #fff3cd; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .btn { display: inline-block; padding: 10px 20px; margin: 5px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .checklist { background: #e9ecef; padding: 15px; border-radius: 5px; }
+        .checklist input[type="checkbox"] { margin-right: 8px; }
+        .issue-summary { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Custom Design → Cart Integration Fix Guide</h1>
+    
+    <div class="issue-summary">
+        <h2>📋 Issue Summary</h2>
+        <p><strong>Problem:</strong> When admin completes a custom design, it doesn't automatically appear in the customer's cart.</p>
+        <p><strong>Root Cause:</strong> Database structure issues - missing columns and tables preventing the integration from working.</p>
+        <p><strong>Solution:</strong> Fix database structure and test the complete flow.</p>
+    </div>
+
+    <div class="step">
+        <h2>🎯 Step 1: Fix Database Structure</h2>
+        <p>The main issue is missing database columns that prevent the cart integration from working.</p>
+        
+        <h3>Quick Fix (Recommended):</h3>
+        <a href="fix-database-structure-complete.php" target="_blank" class="btn btn-success">
+            🔧 Run Complete Database Fix
+        </a>
+        
+        <h3>What this fixes:</h3>
+        <ul>
+            <li>✅ Adds missing <code>canvas_data_file</code> column to <code>custom_request_designs</code></li>
+            <li>✅ Adds missing <code>price</code> column to <code>custom_requests</code></li>
+            <li>✅ Creates missing tables if needed</li>
+            <li>✅ Sets up proper table relationships</li>
+            <li>✅ Creates test data for testing</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>🧪 Step 2: Test the Integration</h2>
+        <p>After fixing the database, test that the integration works correctly.</p>
+        
+        <a href="test-custom-design-cart-integration.php" target="_blank" class="btn btn-info">
+            🧪 Run Integration Test
+        </a>
+        
+        <p>This test will:</p>
+        <ul>
+            <li>✅ Verify database structure is correct</li>
+            <li>✅ Create/use a test custom request</li>
+            <li>✅ Simulate design completion</li>
+            <li>✅ Test automatic cart addition</li>
+            <li>✅ Verify the item appears in cart</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>🔍 Step 3: Debug Real Issues</h2>
+        <p>If you're still having issues with real requests, use the debug tool.</p>
+        
+        <a href="debug-custom-design-cart-flow.html" target="_blank" class="btn btn-warning">
+            🔍 Open Debug Tool
+        </a>
+        
+        <p>Use this tool to:</p>
+        <ul>
+            <li>🔍 Check specific request details</li>
+            <li>🎨 Test design completion</li>
+            <li>🛒 Verify cart contents</li>
+            <li>📊 Get detailed analysis</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>✅ Step 4: Verify Frontend</h2>
+        <p>Make sure the frontend properly displays completed designs.</p>
+        
+        <h3>Check these components:</h3>
+        <ul>
+            <li><strong>Cart Page:</strong> Should show custom designs with special badges</li>
+            <li><strong>Custom Request Status:</strong> Should show "Go to Cart & Pay" button when completed</li>
+            <li><strong>Payment Flow:</strong> Should work normally for custom designs</li>
+        </ul>
+        
+        <h3>Expected Flow:</h3>
+        <ol>
+            <li>Customer creates custom request</li>
+            <li>Admin opens design editor and completes design</li>
+            <li><strong>System automatically:</strong>
+                <ul>
+                    <li>Creates artwork record</li>
+                    <li>Adds artwork to customer's cart</li>
+                    <li>Updates request status</li>
+                </ul>
+            </li>
+            <li>Customer sees design in cart with active payment button</li>
+            <li>Customer can proceed with payment</li>
+        </ol>
+    </div>
+
+    <div class="checklist">
+        <h2>📋 Troubleshooting Checklist</h2>
+        <p>If you're still having issues, check these items:</p>
+        
+        <label><input type="checkbox"> Database structure is fixed (all required columns exist)</label><br>
+        <label><input type="checkbox"> Integration test passes</label><br>
+        <label><input type="checkbox"> Admin can complete designs without errors</label><br>
+        <label><input type="checkbox"> Completed designs appear in customer cart</label><br>
+        <label><input type="checkbox"> Payment button is active for completed designs</label><br>
+        <label><input type="checkbox"> Server logs show no errors during design completion</label><br>
+        <label><input type="checkbox"> Customer ID mapping is correct in requests</label><br>
+    </div>
+
+    <div class="step error">
+        <h2>🚨 If Issues Persist</h2>
+        <p>If you're still having problems after running the fixes:</p>
+        
+        <h3>Check Server Logs:</h3>
+        <p>Look for errors in your PHP error logs when completing designs.</p>
+        
+        <h3>Manual Database Check:</h3>
+        <p>Run these SQL queries to check your data:</p>
+        <pre>-- Check if design completion creates artworks
+SELECT * FROM artworks WHERE category = 'custom' ORDER BY created_at DESC LIMIT 5;
+
+-- Check if artworks are added to cart
+SELECT c.*, a.title, a.category 
+FROM cart c 
+JOIN artworks a ON c.artwork_id = a.id 
+WHERE a.category = 'custom' 
+ORDER BY c.added_at DESC LIMIT 5;
+
+-- Check request and design status
+SELECT cr.id, cr.title, cr.status, cr.workflow_stage,
+       crd.status as design_status, crd.design_image_url
+FROM custom_requests cr
+LEFT JOIN custom_request_designs crd ON cr.id = crd.request_id
+ORDER BY cr.created_at DESC LIMIT 5;</pre>
+        
+        <h3>Contact Support:</h3>
+        <p>If the issue persists, provide:</p>
+        <ul>
+            <li>Results from the integration test</li>
+            <li>Server error logs</li>
+            <li>Database query results</li>
+            <li>Specific request ID that's not working</li>
+        </ul>
+    </div>
+
+    <div class="step success">
+        <h2>🎉 Success Indicators</h2>
+        <p>You'll know the integration is working when:</p>
+        <ul>
+            <li>✅ Admin can complete designs without errors</li>
+            <li>✅ Completed designs automatically appear in customer cart</li>
+            <li>✅ Customer sees "Go to Cart & Pay" button for completed designs</li>
+            <li>✅ Payment flow works normally</li>
+            <li>✅ No errors in server logs during design completion</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>🔗 Quick Links</h2>
+        <a href="fix-database-structure-complete.php" target="_blank" class="btn btn-success">Fix Database</a>
+        <a href="test-custom-design-cart-integration.php" target="_blank" class="btn btn-info">Test Integration</a>
+        <a href="debug-custom-design-cart-flow.html" target="_blank" class="btn btn-warning">Debug Tool</a>
+        <a href="check-custom-request-designs-table.php" target="_blank" class="btn btn-primary">Check Tables</a>
+    </div>
+
+    <script>
+        // Auto-check completed items
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        this.parentElement.style.textDecoration = 'line-through';
+                        this.parentElement.style.color = '#28a745';
+                    } else {
+                        this.parentElement.style.textDecoration = 'none';
+                        this.parentElement.style.color = 'inherit';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

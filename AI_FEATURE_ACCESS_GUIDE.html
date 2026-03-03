@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generation - Access Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4caf50;
+            color: white;
+            border-radius: 20px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-icon {
+            font-size: 32px;
+        }
+        
+        .card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .integration-steps {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .step {
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .step h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .step code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 AI Image Generation Feature</h1>
+            <p>Access Guide & Integration Instructions</p>
+            <div class="status" id="status">Checking service...</div>
+        </div>
+        
+        <div class="cards">
+            <div class="card">
+                <h2><span class="card-icon">🧪</span> Test AI Service</h2>
+                <p>Use the standalone test interface to generate AI images right now. No integration needed!</p>
+                <a href="http://localhost:8001/test-ui.html" target="_blank" class="btn">Open Test UI</a>
+            </div>
+            
+            <div class="card">
+                <h2><span class="card-icon">📊</span> Check Service Status</h2>
+                <p>Verify that the AI service is running and healthy.</p>
+                <a href="http://localhost:8001/health" target="_blank" class="btn btn-secondary">Check Health</a>
+            </div>
+            
+            <div class="card">
+                <h2><span class="card-icon">📚</span> View Documentation</h2>
+                <p>Read the complete integration guide to add AI to your admin interface.</p>
+                <a href="file:///C:/xampp/htdocs/my_little_thingz/ai_service/INTEGRATION_GUIDE.md" class="btn btn-secondary">Integration Guide</a>
+            </div>
+        </div>
+        
+        <div class="integration-steps">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🔧 Where is the AI Feature?</h2>
+            
+            <div class="warning">
+                <strong>⚠️ Important:</strong> The AI image generation is currently a <strong>separate backend service</strong>. It's NOT yet integrated into your admin "Design Editor" interface.
+            </div>
+            
+            <div class="success">
+                <strong>✅ What's Working:</strong>
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>AI Service is running at <code>http://localhost:8001</code></li>
+                    <li>Standalone test UI is available</li>
+                    <li>API endpoints are ready</li>
+                    <li>React component is created</li>
+                </ul>
+            </div>
+            
+            <h3 style="margin: 30px 0 20px 0; color: #333;">Current Access Points:</h3>
+            
+            <div class="step">
+                <h3>1. Standalone Test Page</h3>
+                <p>Open this URL in your browser:</p>
+                <code>http://localhost:8001/test-ui.html</code>
+                <p style="margin-top: 10px;">This is a separate page where you can test AI image generation without any integration.</p>
+            </div>
+            
+            <div class="step">
+                <h3>2. API Endpoint (For Developers)</h3>
+                <p>Use PowerShell to test the API:</p>
+                <code>$body = @{ prompt = "a golden trophy" } | ConvertTo-Json<br>
+                Invoke-RestMethod -Uri http://localhost:8001/generate-image -Method Post -Body $body -ContentType "application/json"</code>
+            </div>
+            
+            <div class="step">
+                <h3>3. React Component (Not Integrated Yet)</h3>
+                <p>Location: <code>frontend/src/components/admin/AIImageGenerator.jsx</code></p>
+                <p style="margin-top: 10px;">This component is created but needs to be added to your Design Editor.</p>
+            </div>
+            
+            <h3 style="margin: 30px 0 20px 0; color: #333;">To Add AI to Your Admin Interface:</h3>
+            
+            <div class="step">
+                <h3>Step 1: Locate Your Design Editor</h3>
+                <p>Your design editor is at: <code>frontend/admin/design-editor.html</code></p>
+                <p style="margin-top: 10px;">Or in the React version: <code>frontend/src/components/admin/TemplateEditor.jsx</code></p>
+            </div>
+            
+            <div class="step">
+                <h3>Step 2: Add AI Button</h3>
+                <p>Add a button in the toolbar that says "Generate AI Image" or shows a sparkle icon (✨)</p>
+            </div>
+            
+            <div class="step">
+                <h3>Step 3: Connect to AI Service</h3>
+                <p>When the button is clicked, call the AI service API:</p>
+                <code>fetch('http://localhost:8001/generate-image', { method: 'POST', body: JSON.stringify({ prompt: userPrompt }) })</code>
+            </div>
+            
+            <div class="step">
+                <h3>Step 4: Display Generated Image</h3>
+                <p>Add the returned image URL to your canvas/editor</p>
+            </div>
+            
+            <h3 style="margin: 30px 0 20px 0; color: #333;">Quick Integration Option:</h3>
+            
+            <div class="step">
+                <h3>Use the Pre-built React Component</h3>
+                <p>If you're using React, simply import and use:</p>
+                <code>import AIImageGenerator from './AIImageGenerator';<br>
+                &lt;AIImageGenerator isOpen={showAI} onClose={() => setShowAI(false)} onImageGenerated={(url) => addToCanvas(url)} /&gt;</code>
+                <p style="margin-top: 10px;">See <code>ai_service/INTEGRATION_GUIDE.md</code> for complete instructions.</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: white;">
+            <p>Need help? Check the documentation files in the <code>ai_service/</code> folder</p>
+        </div>
+    </div>
+    
+    <script>
+        // Check service status
+        fetch('http://localhost:8001/health')
+            .then(res => res.json())
+            .then(data => {
+                const statusEl = document.getElementById('status');
+                if (data.status === 'healthy') {
+                    statusEl.textContent = '✅ Service Running';
+                    statusEl.style.background = '#4caf50';
+                } else {
+                    statusEl.textContent = '⚠️ Service Issue';
+                    statusEl.style.background = '#ff9800';
+                }
+            })
+            .catch(err => {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = '❌ Service Offline';
+                statusEl.style.background = '#f44336';
+            });
+    </script>
+</body>
+</html>

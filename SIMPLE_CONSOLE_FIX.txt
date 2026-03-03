@@ -1,0 +1,68 @@
+// SIMPLE FIX - Just copy and paste this in console after typing 'allow pasting'
+
+window.editor.removeBackground = async function() {
+    if (!this.selectedObject || this.selectedObject.type !== 'image') {
+        alert('Please select an image first!');
+        return;
+    }
+    
+    try {
+        this.showCanvasLoading(true);
+        
+        const imageElement = this.selectedObject.getElement();
+        const canvas = document.createElement('canvas');
+        canvas.width = imageElement.naturalWidth || imageElement.width;
+        canvas.height = imageElement.naturalHeight || imageElement.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imageElement, 0, 0);
+        
+        // FIX: Remove data URL prefix properly
+        const imageDataUrl = canvas.toDataURL('image/png');
+        const imageBase64 = imageDataUrl.split(',')[1];
+        
+        console.log('FIXED: Sending clean base64 data, length:', imageBase64.length);
+        
+        const formData = new FormData();
+        formData.append('image_base64', imageBase64);
+        
+        const response = await fetch('../../backend/api/admin/remove-background.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        console.log('API Result:', result);
+        
+        if (result.success) {
+            alert('✅ SUCCESS! Professional background removal working!');
+            // Replace image logic here...
+            const self = this;
+            fabric.Image.fromURL(result.image, function(img) {
+                const left = self.selectedObject.left;
+                const top = self.selectedObject.top;
+                const scaleX = self.selectedObject.scaleX;
+                const scaleY = self.selectedObject.scaleY;
+                const angle = self.selectedObject.angle;
+                
+                self.canvas.remove(self.selectedObject);
+                img.set({ left, top, scaleX, scaleY, angle });
+                self.canvas.add(img);
+                self.canvas.setActiveObject(img);
+                self.canvas.renderAll();
+                self.selectedObject = img;
+                self.showCanvasLoading(false);
+            }, { crossOrigin: 'anonymous' });
+        } else {
+            console.log('API Error:', result.error);
+            alert('API Error: ' + result.error);
+            this.showCanvasLoading(false);
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+        this.showCanvasLoading(false);
+    }
+};
+
+alert('✅ Fix applied! Try background remover with a real photo now.');

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Column Fix</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .error { 
+            background-color: #f8d7da; 
+            border: 1px solid #f5c6cb; 
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { 
+            background-color: #d4edda; 
+            border: 1px solid #c3e6cb; 
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info { 
+            background-color: #d1ecf1; 
+            border: 1px solid #bee5eb; 
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .fix-button {
+            background-color: #28a745;
+        }
+        .fix-button:hover {
+            background-color: #218838;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        iframe {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Database Column Fix</h1>
+        
+        <div class="error">
+            <h3>Problem:</h3>
+            <p>The design save is failing with error:</p>
+            <pre>SQLSTATE[42S22]: Column not found: 1054 Unknown column 'canvas_data_file' in 'field list'</pre>
+        </div>
+
+        <div class="info">
+            <h3>Solution:</h3>
+            <p>This page will add the missing <code>canvas_data_file</code> column to your database table.</p>
+            <p>The column is needed for the new file-based storage system that fixes the MySQL packet size issue.</p>
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="fix-button" onclick="runFix()" id="fixButton">
+                🔧 Fix Database Now
+            </button>
+            <button onclick="checkStatus()" id="checkButton">
+                📊 Check Current Status
+            </button>
+        </div>
+
+        <div id="result"></div>
+
+        <div class="info">
+            <h3>What this fix does:</h3>
+            <ul>
+                <li>Adds the missing <code>canvas_data_file</code> column</li>
+                <li>Ensures all required columns exist</li>
+                <li>Creates the table if it doesn't exist</li>
+                <li>Shows the final table structure</li>
+                <li>Makes the design save functionality work properly</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <h3>After running the fix:</h3>
+            <ol>
+                <li>Go back to your design editor</li>
+                <li>Try saving your design again</li>
+                <li>It should now work without the column error</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function runFix() {
+            const button = document.getElementById('fixButton');
+            const result = document.getElementById('result');
+            
+            button.disabled = true;
+            button.textContent = '🔄 Running Fix...';
+            
+            result.innerHTML = '<div class="info">Running database fix...</div>';
+            
+            // Create iframe to run the fix
+            const iframe = document.createElement('iframe');
+            iframe.src = 'fix-database-column.php';
+            iframe.onload = function() {
+                button.disabled = false;
+                button.textContent = '🔧 Fix Database Now';
+            };
+            
+            result.innerHTML = '<h3>Fix Results:</h3>';
+            result.appendChild(iframe);
+        }
+
+        function checkStatus() {
+            const button = document.getElementById('checkButton');
+            const result = document.getElementById('result');
+            
+            button.disabled = true;
+            button.textContent = '🔄 Checking...';
+            
+            // Simple check by trying to load the fix page
+            const iframe = document.createElement('iframe');
+            iframe.src = 'fix-database-column.php';
+            iframe.onload = function() {
+                button.disabled = false;
+                button.textContent = '📊 Check Current Status';
+            };
+            
+            result.innerHTML = '<h3>Current Database Status:</h3>';
+            result.appendChild(iframe);
+        }
+
+        // Show initial instructions
+        document.addEventListener('DOMContentLoaded', function() {
+            const result = document.getElementById('result');
+            result.innerHTML = `
+                <div class="info">
+                    <h3>Ready to Fix</h3>
+                    <p>Click the "Fix Database Now" button above to add the missing column and resolve the error.</p>
+                    <p><strong>This is safe to run</strong> - it only adds missing columns and won't delete any existing data.</p>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>
